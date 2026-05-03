@@ -1,17 +1,16 @@
 /-
 SafeVerify target for Erdős Problem 694.
 
-This file enumerates the four public theorems we claim — plus the
-auxiliary `R` definition they rely on — with `sorry` bodies. SafeVerify
-then checks that `Erdos/P694/Proof.lean` provides matching declarations
-that depend only on:
+Enumerates the four public theorems and the `R` definition that Proof.lean
+must provide, with `sorry` bodies. SafeVerify replays both files and checks
+the submission's matching declarations only depend on the allow-list:
 
   Mathlib core (propext, Classical.choice, Quot.sound)
-  + Erdos694.mertens_product
-  + Erdos694.linnik_dvd
+  + Erdos694.mertens_product   -- Mertens' product theorem (1874)
+  + Erdos694.linnik_dvd        -- Linnik's theorem, divisibility form (1944)
 
-(The two extra named axioms are added to SafeVerify's `allowedAxioms`
-list at SafeVerify/Main.lean:355.)
+The two extra axiom names are local to this problem; reproduction recipe
+in ../README.md "Verifying with SafeVerify".
 -/
 
 import Mathlib

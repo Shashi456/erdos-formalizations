@@ -28,8 +28,8 @@ Inspect by enabling the `#print axioms …` block at the bottom of each
 `Proof.lean`, or by reading the per-problem `README.md`. The trust boundary
 for #694 is also independently confirmed by
 [SafeVerify](https://github.com/GasStationManager/SafeVerify); see
-[`safeverify/`](safeverify/) for the spec, the JSON report, and reproduction
-steps.
+[Erdos/P694/README.md § Verifying with SafeVerify](Erdos/P694/README.md#verifying-with-safeverify)
+for the spec, the JSON report, and reproduction steps.
 
 ## Build
 
