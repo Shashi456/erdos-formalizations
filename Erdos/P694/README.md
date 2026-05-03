@@ -24,10 +24,10 @@ R(x) := max_{n ≤ x, n ∈ φ(ℕ)} f_max(n) / f_min(n).
 lake build Erdos.P694.Proof
 ```
 
-**Online (no Lake required):** open
-[live.lean-lang.org](https://live.lean-lang.org/), paste the contents of
-`Proof.lean`, wait for the build. Tested on Lean / Mathlib `v4.27.0` and
-`v4.28.0`.
+**Online (no Lake required):** open the file in
+[live.lean-lang.org against Mathlib v4.28.0](https://live.lean-lang.org/#project=mathlib-v4.28.0&url=https%3A%2F%2Fraw.githubusercontent.com%2FShashi456%2Ferdos-formalizations%2Frefs%2Fheads%2Fmain%2FErdos%2FP694%2FProof.lean)
+(or [v4.27.0](https://live.lean-lang.org/#project=mathlib-v4.27.0&url=https%3A%2F%2Fraw.githubusercontent.com%2FShashi456%2Ferdos-formalizations%2Frefs%2Fheads%2Fmain%2FErdos%2FP694%2FProof.lean)).
+Both versions verified compile-clean.
 
 ## Trust boundary
 

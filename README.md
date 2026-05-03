@@ -9,7 +9,7 @@ single-namespace, `import Mathlib`, ready to copy-paste into
 
 | # | Problem | Informal | Formal proof |
 |---|---------|----------|--------------|
-| [694](https://www.erdosproblems.com/694) | Totient fibre extremes: `R(x) = max_{n ≤ x} f_max(n)/f_min(n) = (e^γ + o(1)) log log x` | [informal.md](Erdos/P694/informal.md) · [proof.pdf](Erdos/P694/proof.pdf) | [Proof.lean](Erdos/P694/Proof.lean) · [live](https://live.lean-lang.org/) |
+| [694](https://www.erdosproblems.com/694) | Totient fibre extremes: `R(x) = max_{n ≤ x} f_max(n)/f_min(n) = (e^γ + o(1)) log log x` | [informal.md](Erdos/P694/informal.md) · [proof.pdf](Erdos/P694/proof.pdf) | [Proof.lean](Erdos/P694/Proof.lean) · [live](https://live.lean-lang.org/#project=mathlib-v4.28.0&url=https%3A%2F%2Fraw.githubusercontent.com%2FShashi456%2Ferdos-formalizations%2Frefs%2Fheads%2Fmain%2FErdos%2FP694%2FProof.lean) |
 
 See each problem's per-folder README for the full statement, trust boundary,
 and notes on alignment with the upstream
