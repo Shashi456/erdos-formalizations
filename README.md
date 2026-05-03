@@ -25,7 +25,11 @@ Beyond Mathlib core (`propext`, `Classical.choice`, `Quot.sound`):
 | 694 | `mertens_product`, `linnik_dvd` | Both classical and unconditional (Mertens 1874, Linnik 1944). Mathlib has surrounding infrastructure but not these named statements. |
 
 Inspect by enabling the `#print axioms …` block at the bottom of each
-`Proof.lean`, or by reading the per-problem `README.md`.
+`Proof.lean`, or by reading the per-problem `README.md`. The trust boundary
+for #694 is also independently confirmed by
+[SafeVerify](https://github.com/GasStationManager/SafeVerify); see
+[`safeverify/`](safeverify/) for the spec, the JSON report, and reproduction
+steps.
 
 ## Build
 

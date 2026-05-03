@@ -45,7 +45,11 @@ classical, unconditional results; Mathlib has surrounding infrastructure but
 not these named statements yet.
 
 The audit block at the bottom of `Proof.lean` (`#print axioms …`) reproduces
-this table at build time.
+this table at build time. It is also independently confirmed by
+[SafeVerify](https://github.com/GasStationManager/SafeVerify), which replays
+every declaration through the kernel and enforces a hard axiom allow-list —
+see [`safeverify/`](../../safeverify/) for the spec, the JSON report, and
+reproduction steps.
 
 ## Relationship to `formal-conjectures`
 
