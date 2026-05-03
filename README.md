@@ -3,17 +3,18 @@
 Lean 4 / Mathlib formalizations of problems from
 [erdosproblems.com](https://www.erdosproblems.com).
 
-Each row links to (a) the informal write-up the formalization is based on,
-(b) the standalone Lean file (single-namespace, `import Mathlib`, copy-pastes
-into [live.lean-lang.org](https://live.lean-lang.org/) without a Lake project),
-and (c) the upstream
-[`formal-conjectures`](https://github.com/google-deepmind/formal-conjectures)
-skeleton when one exists, with a note on whether our proof is a syntactic
-match for it.
+Each row links to the informal write-up and to the standalone Lean file —
+single-namespace, `import Mathlib`, ready to copy-paste into
+[live.lean-lang.org](https://live.lean-lang.org/) without a Lake project.
 
-| # | Problem | Informal | Formal proof | Live editor | FC skeleton |
-|---|---------|----------|--------------|-------------|-------------|
-| [694](https://www.erdosproblems.com/694) | Totient fibre extremes: `R(x) = max_{n ≤ x} f_max(n)/f_min(n) = (e^γ + o(1)) log log x` | [informal.md](Erdos/P694/informal.md) · [proof.pdf](Erdos/P694/proof.pdf) | [Proof.lean](Erdos/P694/Proof.lean) | paste into [live.lean-lang.org](https://live.lean-lang.org/) | [`erdos_694`](https://github.com/google-deepmind/formal-conjectures/blob/main/FormalConjectures/ErdosProblems/694.lean) — **unaligned** (`IsGreatest … answer(sorry)` template; we ship the asymptotic in `Tendsto` form) |
+| # | Problem | Informal | Formal proof |
+|---|---------|----------|--------------|
+| [694](https://www.erdosproblems.com/694) | Totient fibre extremes: `R(x) = max_{n ≤ x} f_max(n)/f_min(n) = (e^γ + o(1)) log log x` | [informal.md](Erdos/P694/informal.md) · [proof.pdf](Erdos/P694/proof.pdf) | [Proof.lean](Erdos/P694/Proof.lean) · [live](https://live.lean-lang.org/) |
+
+See each problem's per-folder README for the full statement, trust boundary,
+and notes on alignment with the upstream
+[`formal-conjectures`](https://github.com/google-deepmind/formal-conjectures)
+skeleton when one exists.
 
 ## Trust boundaries
 
