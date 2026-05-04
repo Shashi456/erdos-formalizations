@@ -10,6 +10,7 @@ single-namespace, `import Mathlib`, ready to copy-paste into
 | # | Problem | Informal | Formal proof |
 |---|---------|----------|--------------|
 | [694](https://www.erdosproblems.com/694) | Totient fibre extremes: `R(x) = max_{n ≤ x} f_max(n)/f_min(n) = (e^γ + o(1)) log log x` | [informal.md](Erdos/P694/informal.md) · [proof.pdf](Erdos/P694/proof.pdf) | [Proof.lean](Erdos/P694/Proof.lean) · [live](https://live.lean-lang.org/#project=mathlib-v4.28.0&url=https%3A%2F%2Fraw.githubusercontent.com%2FShashi456%2Ferdos-formalizations%2Frefs%2Fheads%2Fmain%2FErdos%2FP694%2FProof.lean) |
+| [750](https://www.erdosproblems.com/750) | Almost-half independent sets: ∃ graph of infinite chromatic number with `α(F) ≥ |V(F)|/2 − f(|V(F)|)` for every `f → ∞` | [informal.md](Erdos/P750/informal.md) · [proof.pdf](Erdos/P750/proof.pdf) | [Proof.lean](Erdos/P750/Proof.lean) · [live](https://live.lean-lang.org/#project=mathlib-v4.27.0&url=https%3A%2F%2Fraw.githubusercontent.com%2FShashi456%2Ferdos-formalizations%2Frefs%2Fheads%2Fmain%2FErdos%2FP750%2FProof.lean) |
 
 See each problem's per-folder README for the full statement, trust boundary,
 and notes on alignment with the upstream
@@ -23,6 +24,7 @@ Beyond Mathlib core (`propext`, `Classical.choice`, `Quot.sound`):
 | # | Extra axioms | Status |
 |---|--------------|--------|
 | 694 | `mertens_product`, `linnik_dvd` | Both classical and unconditional (Mertens 1874, Linnik 1944). Mathlib has surrounding infrastructure but not these named statements. |
+| 750 | `stiebitz_lower_bound` | Stiebitz's theorem on chromatic number of recursively built generalized Mycielski graphs (Stiebitz 1985 thesis; topological method of Lovász). Mathlib has fragments but not this named result. |
 
 Inspect by enabling the `#print axioms …` block at the bottom of each
 `Proof.lean`, or by reading the per-problem `README.md`. The trust boundary
