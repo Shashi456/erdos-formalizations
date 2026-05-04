@@ -22,6 +22,7 @@ set_option maxHeartbeats 400000
 namespace Erdos750
 
 open SimpleGraph Filter
+open scoped NNReal
 
 universe u v
 
@@ -1951,16 +1952,25 @@ theorem erdos_750_independence_FC_form :
     exact_mod_cast Nat.zero_le _
 
 /--
-**`formal-conjectures` upstream form (`True ↔ ...`).** Fills out
+**`formal-conjectures` upstream form (`True ↔ ...`).** Discharges
 [`FormalConjectures/ErdosProblems/750.lean`](https://github.com/google-deepmind/formal-conjectures/blob/main/FormalConjectures/ErdosProblems/750.lean)
-under `answer := True`: the theorem becomes `True ↔ <existence statement>`,
-trivially equivalent to the existence statement, which we proved as
-`erdos_750_independence_FC_form`. -/
+under `answer := True`. The body matches FC's `erdos_750` essentially literally:
+`f : ℕ → ℝ≥0`, `atTop.Tendsto f atTop`, and `m / 2 - f m ≤ I.ncard` elaborates as
+`(↑m : ℝ≥0) / 2 - f m` (NNReal real division and truncated subtraction).
+
+The one cosmetic gap from FC's literal text is `V : Type` instead of `V : Type*`:
+FC's `Type*` auto-introduces a universe variable, which requires `autoImplicit`
+(off in this project's `lakefile.toml`). The witness we build (`V := ℕ × ℕ`) lives
+in `Type 0 = Type`, so this restriction is harmless — every model `Type*` would
+accept also accepts `Type`.
+
+Forward direction is `erdos_750_independence_FC_form`; backward direction is
+trivial. -/
 theorem erdos_750_FC :
-    True ↔ ∀ (f : ℕ → NNReal) (_hf : Tendsto f atTop atTop),
+    True ↔ ∀ (f : ℕ → ℝ≥0) (_hf : atTop.Tendsto f atTop),
       ∃ (V : Type) (G : SimpleGraph V), G.chromaticNumber = ⊤ ∧
         ∀ (m : ℕ) (S : Set V), 0 < m → S.ncard = m →
-          ∃ I ⊆ S, G.IsIndepSet I ∧ (m : NNReal) / 2 - f m ≤ I.ncard :=
+          ∃ I ⊆ S, G.IsIndepSet I ∧ m / 2 - f m ≤ I.ncard :=
   ⟨fun _ => erdos_750_independence_FC_form, fun _ => trivial⟩
 
 /-! ## Audit
