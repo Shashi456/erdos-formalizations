@@ -2,3 +2,5 @@
 -- under `Erdos/P<number>/`.
 import Erdos.P694.Proof
 import Erdos.P750.Proof
+import Erdos.P283.Proof
+import Erdos.P42.Proof
