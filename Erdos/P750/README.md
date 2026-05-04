@@ -16,7 +16,8 @@ corollary.
 
 | File | What |
 |------|------|
-| [`Proof.lean`](Proof.lean) | Lean 4 / Mathlib formalization. Single `Erdos750` namespace, `import Mathlib`, ~1850 lines. |
+| [`Proof.lean`](Proof.lean) | Lean 4 / Mathlib formalization for **Mathlib v4.27.0** (the toolchain pinned in `lean-toolchain`). Single `Erdos750` namespace, `import Mathlib`, ~2000 lines. |
+| [`Proof_v4.28.lean`](Proof_v4.28.lean) | **Mathlib v4.28+ port** of `Proof.lean`, with the few API-drift fixes (`Std.Irrefl`, explicit-vertex `Walk.rotate`, etc.). Same proof, same trust boundary. Use this against `live.lean-lang.org`'s newer-Mathlib projects. |
 | [`proof.pdf`](proof.pdf) | Chojecki + GPT-5.5 Pro, *Local odd-cycle transversals in generalized Mycielski graphs and an Erdős problem on almost-half independent sets*, 3 May 2026. |
 | [`informal.md`](informal.md) | Human-readable proof outline / strategy notes. |
 | [`safeverify/Spec.lean`](safeverify/Spec.lean) | SafeVerify target — the public theorems with `sorry` bodies. |
@@ -28,11 +29,11 @@ corollary.
 lake build Erdos.P750.Proof
 ```
 
-**Online (no Lake required):** open the file in
-[live.lean-lang.org against Mathlib v4.27.0](https://live.lean-lang.org/#project=mathlib-v4.27.0&url=https%3A%2F%2Fraw.githubusercontent.com%2FShashi456%2Ferdos-formalizations%2Frefs%2Fheads%2Fmain%2FErdos%2FP750%2FProof.lean)
-(matches the toolchain pinned in `lean-toolchain`; newer Mathlib versions have
-API drift — `Irreflexive` → `Std.Irrefl`, `Walk.rotate` signature change — that
-will fail to compile this file unmodified).
+**Online (no Lake required):** two flavours, depending on which Mathlib version
+your live target supports:
+
+- v4.27.0 (matching our `lean-toolchain`): [load `Proof.lean`](https://live.lean-lang.org/#project=mathlib-v4.27.0&url=https%3A%2F%2Fraw.githubusercontent.com%2FShashi456%2Ferdos-formalizations%2Frefs%2Fheads%2Fmain%2FErdos%2FP750%2FProof.lean)
+- v4.28.0+: [load `Proof_v4.28.lean`](https://live.lean-lang.org/#project=mathlib-v4.28.0&url=https%3A%2F%2Fraw.githubusercontent.com%2FShashi456%2Ferdos-formalizations%2Frefs%2Fheads%2Fmain%2FErdos%2FP750%2FProof_v4.28.lean)
 
 ## Trust boundary
 
