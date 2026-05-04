@@ -8,8 +8,8 @@ v4.27.0 and v4.28+ are adjusted:
   * `SimpleGraph.loopless` field type changed from `Irreflexive Adj` to `Std.Irrefl Adj`
     (a struct). Constructions `loopless := ...` now wrap in `⟨...⟩` and accesses use
     `G.irrefl` (the protected theorem) instead of `G.loopless v`.
-  * `SimpleGraph.Walk.rotate` and `Walk.support_rotate` / `Walk.mem_support_rotate_iff` /
-    `Walk.rotate_darts` now take the rotation vertex as an *explicit* argument.
+
+(`Walk.rotate` and friends keep the v4.27.0 signature in v4.28.0.)
 
 If Mathlib v4.27.0 is what your environment supplies, use `Proof.lean` instead.
 
@@ -831,7 +831,7 @@ private lemma exists_isCycle_of_odd_closedWalk
     have hy_mem : y ∈ w.support :=
       (Walk.mem_support_iff w).mpr (Or.inr hy_dup.mem)
     -- Rotate to start at y.
-    let w' := w.rotate y hy_mem
+    let w' := w.rotate hy_mem
     have hw'_len : w'.length = w.length := by
       show ((w.dropUntil y hy_mem).append (w.takeUntil y hy_mem)).length = w.length
       rw [Walk.length_append, add_comm]
@@ -844,7 +844,7 @@ private lemma exists_isCycle_of_odd_closedWalk
       List.duplicate_iff_two_le_count.mp hy_dup
     -- And in w'.support.tail (rotation preserves count).
     have hperm : List.Perm w'.support.tail w.support.tail :=
-      (Walk.support_rotate w y hy_mem).perm
+      (Walk.support_rotate w hy_mem).perm
     have hy_count_w' : 2 ≤ List.count y w'.support.tail := by
       rw [hperm.count_eq]; exact hy_count_w
     -- w' is non-nil (odd length).
@@ -1282,10 +1282,10 @@ theorem finite_oct_profile (g : ℕ → ℕ) (hg_mono : Monotone g)
             exact (Nat.not_odd_iff_even.mpr heven) hwodd
           -- Step C: rotate wH to start/end at apex.
           set wApex : H.Walk (apex s V_inner) (apex s V_inner) :=
-            wH.rotate (apex s V_inner) hApexInSupport with hwApex_def
+            wH.rotate hApexInSupport with hwApex_def
           -- Length-rotate via the dart-rotation lemma.
           have hwApexlen : wApex.length = wH.length := by
-            have hd : wApex.darts ~r wH.darts := Walk.rotate_darts wH (apex s V_inner) hApexInSupport
+            have hd : wApex.darts ~r wH.darts := Walk.rotate_darts wH hApexInSupport
             have := hd.perm.length_eq
             rw [Walk.length_darts, Walk.length_darts] at this
             exact this
@@ -1450,12 +1450,13 @@ theorem infinite_chromatic_local_oct (g : ℕ → ℕ) (hg_mono : Monotone g)
       rintro p q ⟨r, u, v, hp, hq, hadj⟩
       exact ⟨r, v, u, hq, hp, hadj.symm⟩
     loopless := by
+      refine ⟨?_⟩
       rintro p ⟨r, u, v, hp, hq, hadj⟩
       rw [hp] at hq
       have hval : (eᵣ r u).val = (eᵣ r v).val := ((Prod.mk.injEq _ _ _ _).mp hq).2
       have huv : eᵣ r u = eᵣ r v := Fin.eq_of_val_eq hval
       rw [(eᵣ r).injective huv] at hadj
-      exact (Hᵣ r).loopless _ hadj
+      exact (Hᵣ r).irrefl hadj
   }
   -- Component homomorphism Hᵣ →g G.
   let φᵣ : ∀ r, (Hᵣ r) →g G := fun r => ⟨fun u => (r, (eᵣ r u).val),
