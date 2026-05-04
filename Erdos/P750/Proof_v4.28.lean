@@ -1938,36 +1938,38 @@ theorem erdos_750_independence :
 /--
 **Upstream-shape wrapper** matching `formal-conjectures`'s
 [`FormalConjectures/ErdosProblems/750.lean`](https://github.com/google-deepmind/formal-conjectures/blob/main/FormalConjectures/ErdosProblems/750.lean)
-exact syntax: `m / 2 - f m ≤ I.ncard` with NNReal-truncated subtraction (where
-`m / 2` is natural-number division). Implied by the real-valued form
-`erdos_750_independence` proved above, since NNReal subtraction is bounded by the
-truncated max of the real difference and `0`. -/
+exact syntax: `m / 2 - f m ≤ I.ncard`. With Lean's default elaboration, `f m : ℝ≥0`
+forces the subtraction into NNReal, which makes `m / 2` *real division* in NNReal
+(`(↑m : ℝ≥0) / 2`), and the subtraction is NNReal-truncated. Implied by the
+real-valued form `erdos_750_independence` proved above. -/
 theorem erdos_750_independence_FC_form :
     ∀ (f : ℕ → NNReal) (_ : Tendsto f atTop atTop),
       ∃ (V : Type) (G : SimpleGraph V),
         G.chromaticNumber = ⊤ ∧
         ∀ (m : ℕ) (S : Set V), 0 < m → S.ncard = m →
-          ∃ I ⊆ S, G.IsIndepSet I ∧ ((m / 2 : ℕ) : NNReal) - f m ≤ (I.ncard : NNReal) := by
+          ∃ I ⊆ S, G.IsIndepSet I ∧ (m : NNReal) / 2 - f m ≤ (I.ncard : NNReal) := by
   intro f hf
   obtain ⟨V, G, hChrom, hWit⟩ := erdos_750_independence f hf
   refine ⟨V, G, hChrom, ?_⟩
   intro m S hm hScard
   obtain ⟨I, hI_sub, hI_indep, hI_real⟩ := hWit m S hm hScard
   refine ⟨I, hI_sub, hI_indep, ?_⟩
-  -- `hI_real : (m / 2 : ℝ) - f m ≤ I.ncard`. Translate to NNReal-truncated form.
   rw [← NNReal.coe_le_coe]
   rw [NNReal.coe_sub_def]
-  -- Goal: max ((((m / 2 : ℕ) : NNReal) : ℝ) - ((f m : NNReal) : ℝ)) 0 ≤ ((I.ncard : NNReal) : ℝ)
   push_cast
   refine max_le ?_ ?_
-  · -- ((m / 2 : ℕ) : ℝ) - (f m : ℝ) ≤ (I.ncard : ℝ)
-    have hfloor : ((m / 2 : ℕ) : ℝ) ≤ (m : ℝ) / 2 := by
-      rw [le_div_iff₀ (by norm_num : (0:ℝ) < 2)]
-      have := Nat.div_mul_le_self m 2
-      exact_mod_cast this
-    linarith
-  · -- 0 ≤ (I.ncard : ℝ)
-    exact_mod_cast Nat.zero_le _
+  · linarith
+  · exact_mod_cast Nat.zero_le _
+
+/--
+**`formal-conjectures` upstream form (`True ↔ ...`).** Fills out FC's
+`erdos_750` under `answer := True`. -/
+theorem erdos_750_FC :
+    True ↔ ∀ (f : ℕ → NNReal) (_hf : Tendsto f atTop atTop),
+      ∃ (V : Type) (G : SimpleGraph V), G.chromaticNumber = ⊤ ∧
+        ∀ (m : ℕ) (S : Set V), 0 < m → S.ncard = m →
+          ∃ I ⊆ S, G.IsIndepSet I ∧ (m : NNReal) / 2 - f m ≤ I.ncard :=
+  ⟨fun _ => erdos_750_independence_FC_form, fun _ => trivial⟩
 
 /-! ## Audit
 

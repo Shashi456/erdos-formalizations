@@ -86,13 +86,21 @@ theorem erdos_750_independence :
         ∀ (m : ℕ) (S : Set V), 0 < m → S.ncard = m →
           ∃ I ⊆ S, G.IsIndepSet I ∧ (m / 2 : ℝ) - f m ≤ I.ncard := sorry
 
-/-- Wrapper matching the upstream `formal-conjectures` syntax with NNReal-truncated
-subtraction (where `m / 2` is natural-number division). -/
+/-- Wrapper matching the upstream `formal-conjectures` literal syntax: NNReal real
+division with NNReal-truncated subtraction. -/
 theorem erdos_750_independence_FC_form :
     ∀ (f : ℕ → NNReal) (_ : Tendsto f atTop atTop),
       ∃ (V : Type) (G : SimpleGraph V),
         G.chromaticNumber = ⊤ ∧
         ∀ (m : ℕ) (S : Set V), 0 < m → S.ncard = m →
-          ∃ I ⊆ S, G.IsIndepSet I ∧ ((m / 2 : ℕ) : NNReal) - f m ≤ (I.ncard : NNReal) := sorry
+          ∃ I ⊆ S, G.IsIndepSet I ∧ (m : NNReal) / 2 - f m ≤ (I.ncard : NNReal) := sorry
+
+/-- The `formal-conjectures` upstream form: `True ↔ <existence statement>`.
+Discharges FC's `erdos_750` under `answer := True`. -/
+theorem erdos_750_FC :
+    True ↔ ∀ (f : ℕ → NNReal) (_hf : Tendsto f atTop atTop),
+      ∃ (V : Type) (G : SimpleGraph V), G.chromaticNumber = ⊤ ∧
+        ∀ (m : ℕ) (S : Set V), 0 < m → S.ncard = m →
+          ∃ I ⊆ S, G.IsIndepSet I ∧ (m : NNReal) / 2 - f m ≤ I.ncard := sorry
 
 end Erdos750
