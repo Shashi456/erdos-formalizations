@@ -93,6 +93,11 @@ Per-theorem status:
 | `switchingPoly_natDegree_eq`, `switchingPoly_leadingCoeff_eq` | ✅ proved |
 | `IntValued.{add, sub, sum, comp_nat_mul_X}`, `switchingPoly_intValued`, `A_intValued` | ✅ proved |
 | `D_recip`, `main_telescoping`, `isEgyptianPattern_E0`, `A_leadingCoeff_eq`, `theta_gt_one`, `Dpoly_eval_at_succ` | ✅ proved |
+| `lambdaConst`, `muConst`, `lambdaConst_lt_muConst`, `muConst_lt_a_theta_P`, positivity | ✅ proved |
+| `Dpoly_natDegree`, `Dpoly_leadingCoeff`, `Dpoly_intValued` | ✅ proved |
+| `A_comp_Dpoly_natDegree`, `A_comp_Dpoly_leadingCoeff`, `A_comp_Dpoly_intValued`, positivity, `A_comp_Dpoly_eval_at_succ` | ✅ proved |
+| `qPoly`, `qPoly_natDegree`, `qPoly_leadingCoeff`, `qPoly_leadingCoeff_pos`, `qPoly_natDegree_pos`, `qPoly_eval_at_succ` | ✅ proved |
+| `MainChoice`, `MainGCDData` records (numerator + gcd-data interface for theorem_1 case neg) | ✅ defined |
 | `u_coprime_six`, `D_coprime_six`, `main_valuation_profile`, `tau_valuation_profile`, `filler_v2_at_least_three` | ✅ proved |
 | `duplicated_generators_subset_sum_all_residues` | ✅ proved |
 | `exists_large_correction_denominator` (density / sieve argument) | `sorry` |

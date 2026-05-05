@@ -29,6 +29,81 @@ namespace PolynomialEgyptianSums
 
 open Filter Polynomial Finset
 
+/-! ## Construction-data records
+
+The non-constant branch of `theorem_1` constructs auxiliary data in two
+phases. Splitting them into records keeps the proof modular and makes the
+RSG inputs explicit. -/
+
+/-- **First phase**: choose `J` so that the asymptotic threshold conditions
+hold. The key facts are:
+  * `1 ≤ J`,
+  * `A(D j) > 0` for all `j ≥ J` (positivity past the leading-coefficient
+    threshold of `A p`),
+  * `1/(P u_J) < α` (the telescoping head leaves room for filler),
+  * `L < D J` and `L < τ J` (denominator threshold respected). -/
+structure MainChoice (α : ℚ) (L : ℕ) (p : ℚ[X]) (hp : IntValued p) : Type where
+  J : ℕ
+  hJ_pos : 1 ≤ J
+  hA_pos :
+    ∀ j : ℕ, J ≤ j →
+      0 < intEval (A p) (A_intValued p hp) ((D j : ℕ) : ℤ)
+  hleft_small :
+    (1 : ℚ) / ((P : ℚ) * (u J : ℚ)) < α
+  hD_gt_L : L < D J
+  htau_base_gt_L : L < tau J
+
+/-- **Second phase**: extract the gcd `g` of `A(D j)` values for `j ≥ J`,
+along with the no-prime-fixed-divisor RSG hypothesis for the quotient
+polynomial `qPoly p md.J g`. The `hg_no_prime_fixed_quot` field is the key
+RSG bridge: it says that for every prime `ℓ`, some quotient value
+`(qPoly p md.J g).eval (t : ℚ) ≠ 0 (mod ℓ)` for `t ≥ 1`. -/
+structure MainGCDData
+    {α : ℚ} {L : ℕ} (p : ℚ[X]) (hp : IntValued p)
+    (md : MainChoice α L p hp) : Type where
+  g : ℕ
+  hg_pos : 1 ≤ g
+  hg_dvd :
+    ∀ j : ℕ, md.J ≤ j →
+      (g : ℤ) ∣
+        intEval (A p) (A_intValued p hp) ((D j : ℕ) : ℤ)
+  hg_no_prime_fixed_quot :
+    ∀ ℓ : ℕ, ℓ.Prime →
+      ∃ t : ℕ, 1 ≤ t ∧ ∃ z : ℤ,
+        (z : ℚ) = (qPoly p md.J g).eval (t : ℚ) ∧
+        ¬ ((ℓ : ℤ) ∣ z)
+
+/-! ### Quotient-gcd bridge (sketch — full proof forthcoming)
+
+The most important missing bridge for theorem_1's case neg: if `g` is the
+positive generator of `Ideal.span (mainValueSet p hp md.J)`, then the
+quotient values `(qPoly p md.J g).eval (t : ℚ)` (for `t ≥ 1`) generate the
+unit ideal in `ℤ`. Equivalently, no prime `ℓ` divides every quotient value.
+
+Mathematically: `g = gcd { A(D j) : j ≥ J }` by construction. Dividing the
+spanning set by `g` gives values whose gcd is 1, so no prime divides them
+all. RSG's `h_gcd_one` hypothesis is exactly this.
+
+The full proof uses `Ideal.span` over ℤ (a PID), the principal-ideal
+generator decomposition, and a transport from "gcd of values is `g`" to
+"gcd of `value/g` is 1". For now declared as a sketch hypothesis used by the
+`MainGCDData` constructor; the constructor itself is forthcoming. -/
+section MainQuotBridge
+
+variable {α : ℚ} {L : ℕ} (p : ℚ[X]) (hp : IntValued p)
+
+/-- Stub statement-shape for the quotient-gcd bridge. The substance lives
+in the forthcoming `MainGCDData` constructor; this `def` records the target
+shape so callers can refer to it by name. -/
+def mainQuot_no_prime_fixed_stmt (md : MainChoice α L p hp) (g : ℕ)
+    (_ : 1 ≤ g) : Prop :=
+  ∀ ℓ : ℕ, ℓ.Prime →
+    ∃ t : ℕ, 1 ≤ t ∧ ∃ z : ℤ,
+      (z : ℚ) = (qPoly p md.J g).eval (t : ℚ) ∧
+      ¬ ((ℓ : ℤ) ∣ z)
+
+end MainQuotBridge
+
 /-- **Main theorem (PDF Theorem 1).** For `α ∈ ℚ_{>0}`, `L ≥ 1`, and a polynomial
 `p ∈ ℚ[x]` integer-valued with positive leading coefficient and no fixed
 divisor on positive integers, all sufficiently large integers `m` admit an

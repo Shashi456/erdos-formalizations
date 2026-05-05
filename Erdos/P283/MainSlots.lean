@@ -406,9 +406,80 @@ lemma A_comp_Dpoly_eval_at_succ (p : ℚ[X]) (hp : IntValued p) (J t : ℕ)
   push_cast
   rfl
 
-/- The rescaled polynomial `q := A ∘ Dpoly / g`, where `g` is the (positive)
-generator of the ideal spanned by the main-value set. Definition deferred —
-depends on the choice of `g` from `Ideal.span (mainValueSet …)`; constructed
-inside `Theorem1.lean`. -/
+/-! ## The rescaled polynomial `qPoly`
+
+`qPoly p J g := (A p) ∘ (Dpoly J) / g`, where `g` will be the gcd of
+`(A p).intEval (D j)` for `j ≥ J` (constructed inside `Theorem1.lean`'s
+case-neg). The structural facts below cover the post-division layer:
+natDegree, leadingCoeff (with explicit `1/g`), and positivity. The RSG-input
+predicates (positivity at positive integers + no-prime-fixed-divisor for the
+quotient values) live in `Theorem1.lean` since they require `J` and the
+ideal/gcd construction. -/
+
+/-- The divided rescaled polynomial `qPoly p J g := (1/g) · (A p ∘ Dpoly J)`. -/
+noncomputable def qPoly (p : ℚ[X]) (J g : ℕ) : ℚ[X] :=
+  Polynomial.C ((g : ℚ)⁻¹) * ((A p).comp (Dpoly J))
+
+/-- natDegree of `qPoly` is `2 r` (scalar `1/g ≠ 0` doesn't change degree). -/
+lemma qPoly_natDegree (p : ℚ[X]) (J g : ℕ) (hg : 1 ≤ g)
+    (h_nonconst : 1 ≤ p.natDegree) (h_lead_pos : 0 < p.leadingCoeff) :
+    (qPoly p J g).natDegree = 2 * p.natDegree := by
+  unfold qPoly
+  rw [Polynomial.natDegree_C_mul, A_comp_Dpoly_natDegree p J h_nonconst h_lead_pos]
+  exact inv_ne_zero (by exact_mod_cast (Nat.one_le_iff_ne_zero.mp hg))
+
+/-- Leading coefficient of `qPoly`: `lc(p) · Θ_r · P^{2r} / g`. -/
+lemma qPoly_leadingCoeff (p : ℚ[X]) (J g : ℕ) (hg : 1 ≤ g)
+    (h_nonconst : 1 ≤ p.natDegree) (h_lead_pos : 0 < p.leadingCoeff) :
+    (qPoly p J g).leadingCoeff =
+      p.leadingCoeff * theta p.natDegree *
+        ((P : ℚ) ^ (2 * p.natDegree)) / (g : ℚ) := by
+  unfold qPoly
+  rw [Polynomial.leadingCoeff_mul, Polynomial.leadingCoeff_C,
+      A_comp_Dpoly_leadingCoeff p J h_nonconst h_lead_pos]
+  have hg_ne : (g : ℚ) ≠ 0 := by exact_mod_cast (Nat.one_le_iff_ne_zero.mp hg)
+  field_simp
+
+/-- `0 < (qPoly p J g).leadingCoeff` whenever `1 ≤ g`, `1 ≤ p.natDegree`,
+`lc(p) > 0`. RSG's `0 < f.leadingCoeff` hypothesis. -/
+lemma qPoly_leadingCoeff_pos (p : ℚ[X]) (J g : ℕ) (hg : 1 ≤ g)
+    (h_nonconst : 1 ≤ p.natDegree) (h_lead_pos : 0 < p.leadingCoeff) :
+    0 < (qPoly p J g).leadingCoeff := by
+  rw [qPoly_leadingCoeff p J g hg h_nonconst h_lead_pos]
+  have hθ : 0 < theta p.natDegree := by
+    have := theta_gt_one _ h_nonconst; linarith
+  have hP : (0 : ℚ) < (P : ℚ) ^ (2 * p.natDegree) := by
+    have : (0 : ℚ) < (P : ℚ) := by unfold P; norm_num
+    exact pow_pos this _
+  have hg_pos : (0 : ℚ) < (g : ℚ) := by exact_mod_cast hg
+  positivity
+
+/-- `0 < (qPoly p J g).natDegree`. RSG's `0 < f.natDegree` hypothesis. -/
+lemma qPoly_natDegree_pos (p : ℚ[X]) (J g : ℕ) (hg : 1 ≤ g)
+    (h_nonconst : 1 ≤ p.natDegree) (h_lead_pos : 0 < p.leadingCoeff) :
+    0 < (qPoly p J g).natDegree := by
+  rw [qPoly_natDegree p J g hg h_nonconst h_lead_pos]; omega
+
+/-- `qPoly p J g` evaluated at `t : ℕ` (with `1 ≤ t`) equals `intEval (A p) at
+D (J + t - 1)` divided by `g`. Direct corollary of `A_comp_Dpoly_eval_at_succ`. -/
+lemma qPoly_eval_at_succ (p : ℚ[X]) (hp : IntValued p) (J g t : ℕ)
+    (ht : 1 ≤ t) :
+    (qPoly p J g).eval (t : ℚ) =
+      ((intEval (A p) (A_intValued p hp)
+        ((D (J + t - 1) : ℕ) : ℤ) : ℤ) : ℚ) / (g : ℚ) := by
+  unfold qPoly
+  rw [Polynomial.eval_mul, Polynomial.eval_C,
+      A_comp_Dpoly_eval_at_succ p hp J t ht]
+  ring
+
+/-! ### RSG-indexing note
+
+`roth_szekeres_graham` returns subset sums of `f.eval ((i + 1 : ℕ) : ℚ)` indexed
+by `i : ℕ`. Substituting `t := i + 1` into `qPoly_eval_at_succ` gives:
+
+  `(qPoly p J g).eval ((i + 1 : ℕ) : ℚ) = (intEval (A p) (D (J + i))) / g`
+
+so the natural index correspondence in the window-representation is `i ↦ J + i`,
+*not* `t ↦ J + t - 1`. The latter is internal to `Dpoly_eval_at_succ`'s proof. -/
 
 end PolynomialEgyptianSums

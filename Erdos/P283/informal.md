@@ -9,7 +9,7 @@
 
 **Erdős #351** (`[ErGr80, p.58]`). Let `p ∈ ℚ[x]` be non-constant with positive leading coefficient. Is `A_p = { p(n) + 1/n : n ∈ ℕ }` strongly complete (every sufficiently large integer is a finite subset-sum from `A_p \ B` for any finite `B`)?
 
-The May 3 proof resolves both: **#283 affirmatively** for any rational `α > 0` (a strict generalization of Erdős's question with `α = 1`), and **#351** affirmatively after the corrected hypothesis (allow `p = 0` or `p ≠ 0` with non-negative leading coefficient).
+The May 3 proof resolves both: **#283 affirmatively** for any rational `α > 0` (a strict generalization of Erdős's question with `α = 1`), and **#351** affirmatively after the corrected hypothesis: `p = 0`, or `p` has positive leading coefficient. (Equivalently, among nonzero polynomials, the leading coefficient must be positive.)
 
 ### #351: FC target vs full corrected corollary
 
@@ -38,7 +38,9 @@ Let `α ∈ ℚ_{>0}`, `L ≥ 1`, and let `p ∈ ℚ[x]` satisfy `p(ℤ) ⊆ ℤ
 ∑ 1/n_i = α        and        ∑ p(n_i) = m.
 ```
 
-Erdős #283 is the special case `α = 1, L = 0`.
+Erdős #283 follows by taking `α = 1` and any fixed `L ≥ 1`. This is stronger
+than the original problem because the denominators can be forced to exceed
+an arbitrary prescribed bound.
 
 ## Black box: Roth-Szekeres-Graham (Theorem 2 in the PDF)
 
@@ -112,7 +114,7 @@ The reciprocal identity `∑ 1/D_j + 1/τ_N + ∑ 1/c_ν + ∑ 1/(Λ f) = α` ho
 
 **Strong completeness** of `A_p = {p(n) + 1/n : n ∈ ℕ}`:
 - If `p = 0`: every positive integer is a sum of distinct unit fractions with denominators bounded below (Lemma 3).
-- If `p ≠ 0` with positive leading coefficient: scale to `q(x) := Dp(x)/h` (integer-valued, no fixed divisor) and apply Theorem 1 to each residue `r ∈ {1, …, h}` of `Dm` mod `h`.
+- If `p` has positive leading coefficient (uniformly across `natDegree p = 0` and `natDegree p ≥ 1`): scale to `q(x) := D·p(x)/h` (integer-valued, no fixed divisor, positive leading coefficient) and apply Theorem 1 to each residue `r ∈ {1, …, h}` of `Dm` mod `h`. The constant case `p = C c, c > 0` is automatically subsumed: `D = 1`, `D·p = p`, `h = c`, `q = c/c = 1`, and Theorem 1's already-proved constant case applies. *No bespoke positive-constant-strong-completeness proof is needed.*
 - If `p` has *negative* leading coefficient: `A_p` is bounded above by finitely many positive elements, so cannot be strongly complete.
 
 **Lean: Euclidean division replaces `⌈Dm/h⌉ − 1`.** The PDF chooses `M := ⌈Dm/h⌉ − 1, r := Dm − hM` so that `r ∈ {1, …, h}`. Lean works directly with Nat-Euclidean division to avoid `Nat.ceil` over ℚ:
@@ -124,7 +126,12 @@ r : ℕ := D * m - h * M
 1 ≤ r ∧ r ≤ h ∧ D * m = h * M + r
 ```
 
-Apply Theorem 1 with `α := r/h ∈ ℚ_{>0}` (or the equivalent `α = 1` form, scaled by `h`) for each of the `h` possible residues; the union of the resulting `m₀_r` thresholds gives the global `m₀` for `corollary_7_pos_leading`.
+**Apply Theorem 1 with `α := (r : ℚ) / D`** (note: `D` not `h`) for each of the `h` possible residues. The verification:
+```
+∑ (p(n_i) + 1/n_i) = (h/D) · ∑ q(n_i) + ∑ 1/n_i
+                   = h·M/D + r/D = (h·M + r)/D = D·m/D = m.
+```
+The `α := r/h` formulation in earlier drafts was incorrect; the PDF uses `r/D`. The union of the `h` resulting `m₀_r` thresholds gives the global `m₀` for `corollary_7_pos_leading`.
 
 ## Black-box dependency
 

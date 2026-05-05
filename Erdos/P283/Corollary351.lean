@@ -91,13 +91,20 @@ theorem corollary_7_zero : IsStronglyComplete (imageSet 0) := by
 /-! ## Case positive leading coefficient -/
 
 /-- **Corollary 7, positive-leading case.** For `p` with positive leading
-coefficient, `A_p` is strongly complete. The proof has two sub-cases:
+coefficient, `A_p` is strongly complete.
 
-  * `natDegree p = 0`: `p = C c` with `c = lc > 0`. Each `m ≥ ⌈cM⌉` decomposes
-    as `M c + r` with residual `r ∈ [0, c)`, then `r` is summed by
-    `egyptian_expansion` (similar to `corollary_7_zero`).
-  * `natDegree p ≥ 1`: reduce to `theorem_1` via `q := Dp/h`
-    (denominator-cleared, fixed-divisor-removed) for each residue `r ∈ {1,…,h}`. -/
+Reduction (uniform in `natDegree p`): scale to `q := D·p/h` where `D` is the
+common denominator of `p`'s coefficients and `h := gcd { (D·p)(n) : n ≥ 1 }`,
+making `q` integer-valued, fixed-divisor-free, and positive-leading. For each
+`m`, take `M := (D·m - 1) / h, r := D·m - h·M ∈ {1, …, h}` (Euclidean
+division), then apply `theorem_1` to `q` with `α := (r : ℚ) / D`. The
+identity `∑ (p(n_i) + 1/n_i) = (h/D) ∑ q(n_i) + ∑ 1/n_i = hM/D + r/D = m`
+recovers the imageSet form.
+
+The constant case `natDegree p = 0` is handled uniformly: if `p = C c` with
+`c > 0` integer (forced by IntValued + lc > 0), then `D = 1`, `D·p = p`,
+`h = gcd{c} = c`, and `q = c/c = 1`. Then `theorem_1` reduces to its
+already-proved constant case. No separate proof is needed. -/
 theorem corollary_7_pos_leading (p : ℚ[X])
     (h_lead_pos : 0 < p.leadingCoeff) :
     IsStronglyComplete (imageSet p) := by
