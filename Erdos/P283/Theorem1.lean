@@ -234,6 +234,166 @@ lemma chooseMainChoice (α : ℚ) (hα : 0 < α) (L : ℕ) (p : ℚ[X]) (hp : In
             apply Nat.mul_le_mul_right; omega
     omega
 
+/-- Constructor for `MainGCDData`: given a fixed `MainChoice md` (so `J` is
+chosen and `A(D j) > 0` for `j ≥ J`), extract the gcd `g` of the integer
+values `A(D j) : j ≥ J` (as the natAbs of the generator of
+`Ideal.span (mainValueSet p hp md.J)`), prove `1 ≤ g` and divisibility,
+and prove the no-prime-fixed-divisor RSG hypothesis for the quotient
+values. -/
+lemma chooseMainGCDData {α : ℚ} {L : ℕ} (p : ℚ[X]) (hp : IntValued p)
+    (h_nonconst : 1 ≤ p.natDegree) (h_lead_pos : 0 < p.leadingCoeff)
+    (md : MainChoice α L p hp) :
+    Nonempty (MainGCDData p hp md) := by
+  classical
+  -- The ideal we extract a generator from.
+  set I : Ideal ℤ := Ideal.span (mainValueSet p hp md.J) with hI_def
+  -- ℤ is a PID, so I is principal.
+  haveI hI_principal : Submodule.IsPrincipal I := IsPrincipalIdealRing.principal I
+  set z : ℤ := Submodule.IsPrincipal.generator I with hz_def
+  set g : ℕ := z.natAbs with hg_def
+  -- Span = ⟨z⟩.
+  have hI_span : Ideal.span ({z} : Set ℤ) = I :=
+    Submodule.IsPrincipal.span_singleton_generator I
+  -- The value at j = md.J is in mainValueSet, hence in I, and is positive.
+  have hA_J_pos : 0 < intEval (A p) (A_intValued p hp) ((D md.J : ℕ) : ℤ) :=
+    md.hA_pos md.J (le_refl _)
+  have hA_J_in_set :
+      intEval (A p) (A_intValued p hp) ((D md.J : ℕ) : ℤ)
+        ∈ mainValueSet p hp md.J := ⟨md.J, le_refl _, rfl⟩
+  have hA_J_in_I :
+      intEval (A p) (A_intValued p hp) ((D md.J : ℕ) : ℤ) ∈ I :=
+    Ideal.subset_span hA_J_in_set
+  -- I ≠ ⊥ since it contains a positive integer.
+  have hI_ne_bot : I ≠ ⊥ := by
+    intro h_bot
+    have : intEval (A p) (A_intValued p hp) ((D md.J : ℕ) : ℤ) = 0 := by
+      have hmem : intEval (A p) (A_intValued p hp) ((D md.J : ℕ) : ℤ) ∈ (⊥ : Ideal ℤ) := by
+        rw [← h_bot]; exact hA_J_in_I
+      simpa [Ideal.mem_bot] using hmem
+    omega
+  -- Hence z ≠ 0, so g ≥ 1.
+  have hz_ne_zero : z ≠ 0 := by
+    intro hz0
+    apply hI_ne_bot
+    rw [Submodule.IsPrincipal.eq_bot_iff_generator_eq_zero, ← hz_def]
+    exact hz0
+  have hg_pos : 1 ≤ g := by
+    have : 0 < g := Int.natAbs_pos.mpr hz_ne_zero
+    omega
+  -- Divisibility: for j ≥ md.J, intEval (A p) (D j) ∈ I, hence z ∣ it, hence g ∣ it.
+  have hg_dvd :
+      ∀ j : ℕ, md.J ≤ j →
+        (g : ℤ) ∣ intEval (A p) (A_intValued p hp) ((D j : ℕ) : ℤ) := by
+    intro j hj
+    have hmem : intEval (A p) (A_intValued p hp) ((D j : ℕ) : ℤ) ∈ I :=
+      Ideal.subset_span ⟨j, hj, rfl⟩
+    rw [← hI_span, Ideal.mem_span_singleton] at hmem
+    -- z ∣ value, hence (z.natAbs : ℤ) ∣ value.
+    rw [hg_def, Int.natAbs_dvd]
+    exact hmem
+  -- Step 4: no-prime-fixed-quot. Use that g ∈ I (the generator) is a finite ℤ-combo
+  -- of values from mainValueSet. Dividing by g yields 1 = ∑ cᵢ (sᵢ/g), so any prime
+  -- dividing every quotient would divide 1 — contradiction.
+  have hg_no_prime_fixed_quot :
+      ∀ ℓ : ℕ, ℓ.Prime →
+        ∃ t : ℕ, 1 ≤ t ∧ ∃ z' : ℤ,
+          (z' : ℚ) = (qPoly p md.J g).eval (t : ℚ) ∧
+          ¬ ((ℓ : ℤ) ∣ z') := by
+    intro ℓ hℓ
+    -- We argue by contradiction: assume ℓ divides every quotient (qPoly).eval(t).
+    by_contra h_no
+    push_neg at h_no
+    -- After negating ∃ t, ∃ z', ..., we get ∀ t ≥ 1, ∀ z', if (z' = ...) then ℓ ∣ z'.
+    have hℓ_dvd_quot : ∀ t : ℕ, 1 ≤ t → ∀ z' : ℤ,
+        (z' : ℚ) = (qPoly p md.J g).eval (t : ℚ) → (ℓ : ℤ) ∣ z' := h_no
+    -- The key idea: derive (ℓ * g : ℤ) ∣ a for every a ∈ mainValueSet,
+    -- hence (ℓ * g : ℤ) ∣ z (the principal generator). But z.natAbs = g, so |z| = g,
+    -- so ℓ * g ∣ ±g, forcing ℓ ∣ 1, contradiction.
+    -- For each j ≥ md.J, ℓ * g ∣ intEval (A p) (D j).
+    have hℓg_dvd : ∀ j : ℕ, md.J ≤ j →
+        ((ℓ : ℤ) * (g : ℤ)) ∣ intEval (A p) (A_intValued p hp) ((D j : ℕ) : ℤ) := by
+      intro j hj
+      -- t := j - md.J + 1
+      set t : ℕ := j - md.J + 1 with ht_def
+      have ht_pos : 1 ≤ t := by omega
+      have ht_eq : md.J + t - 1 = j := by omega
+      -- Quotient value as integer:
+      have hg_dvd_j := hg_dvd j hj
+      obtain ⟨q, hq⟩ := hg_dvd_j
+      -- (q : ℚ) = (qPoly).eval (t : ℚ)
+      have hq_eq_eval : (q : ℚ) = (qPoly p md.J g).eval (t : ℚ) := by
+        rw [qPoly_eval_at_succ p hp md.J g t ht_pos, ht_eq]
+        rw [hq]
+        push_cast
+        have hg_ne : (g : ℚ) ≠ 0 := by
+          exact_mod_cast (Nat.one_le_iff_ne_zero.mp hg_pos)
+        field_simp
+      -- ℓ ∣ q.
+      have hℓ_dvd_q : (ℓ : ℤ) ∣ q := hℓ_dvd_quot t ht_pos q hq_eq_eval
+      -- So ℓ * g ∣ g * q = intEval (A p) (D j).
+      obtain ⟨q', hq'⟩ := hℓ_dvd_q
+      refine ⟨q', ?_⟩
+      rw [hq, hq']
+      ring
+    -- Hence I ⊆ ⟨ℓ * g⟩.
+    have hI_le : I ≤ Ideal.span ({(ℓ : ℤ) * (g : ℤ)} : Set ℤ) := by
+      rw [hI_def]
+      apply Ideal.span_le.mpr
+      intro x hx
+      obtain ⟨j, hj, hx_eq⟩ := hx
+      have : x ∈ Ideal.span ({(ℓ : ℤ) * (g : ℤ)} : Set ℤ) := by
+        rw [Ideal.mem_span_singleton, hx_eq]
+        exact hℓg_dvd j hj
+      exact this
+    -- z ∈ I ⊆ ⟨ℓ * g⟩, so ℓ * g ∣ z.
+    have hz_mem_I : z ∈ I := Submodule.IsPrincipal.generator_mem I
+    have hℓg_dvd_z : ((ℓ : ℤ) * (g : ℤ)) ∣ z := by
+      have hz_in : z ∈ Ideal.span ({(ℓ : ℤ) * (g : ℤ)} : Set ℤ) := hI_le hz_mem_I
+      rwa [Ideal.mem_span_singleton] at hz_in
+    -- (g : ℤ) = z.natAbs, so |z| = g, so z = ±g. Hence ℓ * g ∣ ±g, so ℓ ∣ 1.
+    have hg_eq_natAbs : (g : ℤ) = z.natAbs := by rw [hg_def]
+    -- z = g or z = -g.
+    rcases Int.natAbs_eq z with hpos | hneg
+    · -- z = z.natAbs = g
+      have hz_eq_g : z = (g : ℤ) := by rw [hpos, hg_eq_natAbs]
+      rw [hz_eq_g] at hℓg_dvd_z
+      -- (ℓ * g : ℤ) ∣ (g : ℤ).
+      have hg_pos_int : (0 : ℤ) < (g : ℤ) := by exact_mod_cast hg_pos
+      have : (ℓ : ℤ) ∣ 1 := by
+        rcases hℓg_dvd_z with ⟨k, hk⟩
+        -- (g : ℤ) = ℓ * g * k = g * (ℓ * k), cancel g.
+        have hg_ne : (g : ℤ) ≠ 0 := ne_of_gt hg_pos_int
+        have hk' : (1 : ℤ) = ℓ * k := by
+          have : (g : ℤ) * 1 = (g : ℤ) * (ℓ * k) := by linarith
+          exact (mul_left_cancel₀ hg_ne this)
+        exact ⟨k, hk'⟩
+      -- ℓ prime, so ℓ ≥ 2, so ℓ ∤ 1.
+      have hℓ_ge_two : 2 ≤ ℓ := hℓ.two_le
+      have h_le : (ℓ : ℤ) ≤ 1 := Int.le_of_dvd (by norm_num) this
+      have h_ℓ_ge2_int : (2 : ℤ) ≤ (ℓ : ℤ) := by exact_mod_cast hℓ_ge_two
+      omega
+    · -- z = -z.natAbs = -g
+      have hz_eq_neg_g : z = -(g : ℤ) := by rw [hneg, hg_eq_natAbs]
+      rw [hz_eq_neg_g] at hℓg_dvd_z
+      have hg_pos_int : (0 : ℤ) < (g : ℤ) := by exact_mod_cast hg_pos
+      have hℓg_dvd_g : ((ℓ : ℤ) * (g : ℤ)) ∣ (g : ℤ) := by
+        rcases hℓg_dvd_z with ⟨k, hk⟩
+        refine ⟨-k, ?_⟩
+        linarith
+      have hℓ_dvd_one : (ℓ : ℤ) ∣ 1 := by
+        rcases hℓg_dvd_g with ⟨k, hk⟩
+        have hg_ne : (g : ℤ) ≠ 0 := ne_of_gt hg_pos_int
+        have hk' : (1 : ℤ) = ℓ * k := by
+          have : (g : ℤ) * 1 = (g : ℤ) * (ℓ * k) := by linarith
+          exact (mul_left_cancel₀ hg_ne this)
+        exact ⟨k, hk'⟩
+      have hℓ_ge_two : 2 ≤ ℓ := hℓ.two_le
+      have h_le : (ℓ : ℤ) ≤ 1 := Int.le_of_dvd (by norm_num) hℓ_dvd_one
+      have h_ℓ_ge2_int : (2 : ℤ) ≤ (ℓ : ℤ) := by exact_mod_cast hℓ_ge_two
+      omega
+  exact ⟨{ g := g, hg_pos := hg_pos, hg_dvd := hg_dvd,
+           hg_no_prime_fixed_quot := hg_no_prime_fixed_quot }⟩
+
 /-! ### Quotient-gcd bridge (sketch — full proof forthcoming)
 
 The most important missing bridge for theorem_1's case neg: if `g` is the
