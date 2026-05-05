@@ -73,6 +73,167 @@ structure MainGCDData
         (z : ℚ) = (qPoly p md.J g).eval (t : ℚ) ∧
         ¬ ((ℓ : ℤ) ∣ z)
 
+/-- Constructor for `MainChoice`: under the standard hypotheses (positive
+leading coefficient + nonconstant), there exists `J ≥ 1` satisfying all the
+threshold conditions of `MainChoice`. -/
+lemma chooseMainChoice (α : ℚ) (hα : 0 < α) (L : ℕ) (p : ℚ[X]) (hp : IntValued p)
+    (h_nonconst : 1 ≤ p.natDegree) (h_lead_pos : 0 < p.leadingCoeff) :
+    Nonempty (MainChoice α L p hp) := by
+  -- Cast `A p : ℚ[X]` to a real polynomial to apply the asymptotic lemma.
+  set Ar : ℝ[X] := (A p).map (algebraMap ℚ ℝ) with hAr_def
+  have h_inj : Function.Injective ((algebraMap ℚ ℝ) : ℚ →+* ℝ) :=
+    (algebraMap ℚ ℝ).injective
+  have hAr_natDegree : Ar.natDegree = p.natDegree := by
+    rw [hAr_def, Polynomial.natDegree_map_eq_of_injective h_inj,
+        A_natDegree_eq p h_nonconst h_lead_pos]
+  have hAr_lead : (0 : ℝ) < Ar.leadingCoeff := by
+    rw [hAr_def, Polynomial.leadingCoeff_map_of_injective h_inj]
+    have hpos : (0 : ℚ) < (A p).leadingCoeff := A_leadingCoeff p h_nonconst h_lead_pos
+    have : (0 : ℝ) < ((A p).leadingCoeff : ℝ) := by exact_mod_cast hpos
+    simpa [algebraMap] using this
+  have hAr_deg_pos : 0 < Ar.degree := by
+    have hnat : 0 < Ar.natDegree := by
+      rw [hAr_natDegree]; exact h_nonconst
+    exact Polynomial.natDegree_pos_iff_degree_pos.mp hnat
+  -- `Ar.eval` tends to `+∞` at `+∞`.
+  have h_tendsto : Filter.Tendsto (fun x : ℝ => Ar.eval x) Filter.atTop Filter.atTop :=
+    Polynomial.tendsto_atTop_of_leadingCoeff_nonneg Ar hAr_deg_pos hAr_lead.le
+  -- Get a real threshold N₀ : ℝ such that x ≥ N₀ ⇒ Ar.eval x ≥ 1.
+  have hN0 : ∃ N0 : ℝ, ∀ x : ℝ, N0 ≤ x → 1 ≤ Ar.eval x :=
+    Filter.tendsto_atTop_atTop.mp h_tendsto 1
+  obtain ⟨N0, hN0_le⟩ := hN0
+  -- We need a natural-number threshold M such that for j ≥ M, (D j : ℝ) ≥ N0.
+  -- `D j = (36j+1)(36(j+1)+1) ≥ j`, so M := ⌈N0⌉₊ + 1 works.
+  set M_real : ℕ := Nat.ceil (max N0 0) with hM_real_def
+  have hM_real_ge : (M_real : ℝ) ≥ N0 := by
+    have hN0_le_max : N0 ≤ max N0 0 := le_max_left _ _
+    have h_le_ceil : (max N0 0) ≤ (Nat.ceil (max N0 0) : ℝ) := Nat.le_ceil _
+    linarith
+  -- We also want a lower bound for `1 / (P · u_J) < α`.
+  -- u_J = 36J + 1, P = 36, so P · u_J = 36(36J+1) ≥ 36J ≥ J.
+  -- We need 1 / (P · u_J) < α, i.e., (P · u_J) · α > 1.
+  -- Since P · u_J ≥ J, sufficient that J · α > 1, i.e., J > 1/α.
+  set M_alpha : ℕ := Nat.ceil ((1 : ℚ) / α) + 1 with hM_alpha_def
+  -- Final J: max of all thresholds, plus extra to ensure all conditions.
+  set J : ℕ := max (max M_real M_alpha) (max (L + 1) 1) with hJ_def
+  refine ⟨{ J := J, hJ_pos := ?_, hA_pos := ?_, hleft_small := ?_,
+            hD_gt_L := ?_, htau_base_gt_L := ?_ }⟩
+  · -- 1 ≤ J
+    have : 1 ≤ max (L + 1) 1 := le_max_right _ _
+    exact le_trans this (le_max_right _ _)
+  · -- ∀ j ≥ J, 0 < intEval (A p) (D j : ℤ)
+    intro j hj
+    -- D j ≥ j ≥ J ≥ M_real, so (D j : ℝ) ≥ N0, so Ar.eval (D j) ≥ 1.
+    have hj_ge_M_real : M_real ≤ j := by
+      have h1 : M_real ≤ max M_real M_alpha := le_max_left _ _
+      have h2 : max M_real M_alpha ≤ J := by
+        rw [hJ_def]; exact le_max_left _ _
+      omega
+    -- D j ≥ j: in fact much bigger, but j is enough.
+    have hDj_ge_j : j ≤ D j := by
+      unfold D u P
+      have h2 : 1 ≤ 36 * (j + 1) + 1 := by omega
+      have h3 : j ≤ (36 * j + 1) := by omega
+      calc j ≤ 36 * j + 1 := h3
+        _ ≤ (36 * j + 1) * (36 * (j + 1) + 1) := Nat.le_mul_of_pos_right _ h2
+    have hDj_ge_M_real : M_real ≤ D j := le_trans hj_ge_M_real hDj_ge_j
+    have hDj_real_ge_N0 : N0 ≤ ((D j : ℕ) : ℝ) := by
+      have : ((M_real : ℕ) : ℝ) ≤ ((D j : ℕ) : ℝ) := by exact_mod_cast hDj_ge_M_real
+      linarith
+    -- Ar.eval ((D j : ℕ) : ℝ) ≥ 1.
+    have h_eval_real : 1 ≤ Ar.eval ((D j : ℕ) : ℝ) := hN0_le _ hDj_real_ge_N0
+    -- Convert: Ar.eval ((D j : ℕ) : ℝ) = ((A p).eval ((D j : ℕ) : ℚ) : ℝ).
+    have h_eval_cast :
+        Ar.eval ((D j : ℕ) : ℝ) = (((A p).eval ((D j : ℕ) : ℚ) : ℚ) : ℝ) := by
+      rw [hAr_def]
+      have h1 : ((D j : ℕ) : ℝ) = (algebraMap ℚ ℝ) ((D j : ℕ) : ℚ) := by
+        simp [algebraMap]
+      rw [h1, Polynomial.eval_map_apply]
+      simp [algebraMap]
+    -- So 1 ≤ (A p).eval ((D j : ℕ) : ℚ) (in ℝ, hence ℚ).
+    have h_eval_q : 1 ≤ (A p).eval ((D j : ℕ) : ℚ) := by
+      have : ((1 : ℚ) : ℝ) ≤ ((((A p).eval ((D j : ℕ) : ℚ)) : ℚ) : ℝ) := by
+        rw [show ((1 : ℚ) : ℝ) = (1 : ℝ) by norm_num]
+        rw [← h_eval_cast]; exact h_eval_real
+      exact_mod_cast this
+    -- intEval is positive iff its rational version is.
+    have h_intEval_eq :
+        ((intEval (A p) (A_intValued p hp) ((D j : ℕ) : ℤ) : ℤ) : ℚ) =
+          (A p).eval ((D j : ℕ) : ℚ) := by
+      rw [intEval_spec]
+      push_cast
+      rfl
+    have h_pos_q : 0 < (A p).eval ((D j : ℕ) : ℚ) := by linarith
+    have h_pos_int : (0 : ℚ) < ((intEval (A p) (A_intValued p hp)
+        ((D j : ℕ) : ℤ) : ℤ) : ℚ) := by rw [h_intEval_eq]; exact h_pos_q
+    exact_mod_cast h_pos_int
+  · -- 1 / (P · u_J) < α
+    -- Since J ≥ M_alpha = ⌈1/α⌉ + 1 > 1/α, we have α · J > 1, and
+    -- P · u_J ≥ u_J ≥ J + 1 > J, so α · P · u_J > 1.
+    have hJ_ge_M_alpha : M_alpha ≤ J := by
+      have h1 : M_alpha ≤ max M_real M_alpha := le_max_right _ _
+      have h2 : max M_real M_alpha ≤ J := by
+        rw [hJ_def]; exact le_max_left _ _
+      omega
+    have hP_ge_one : (1 : ℚ) ≤ (P : ℚ) := by unfold P; norm_num
+    have huJ_ge : (J + 1 : ℚ) ≤ (u J : ℚ) := by
+      unfold u P; push_cast; linarith
+    have huJ_pos : (0 : ℚ) < (u J : ℚ) := by unfold u P; push_cast; positivity
+    have hPuJ_pos : (0 : ℚ) < ((P : ℚ) * (u J : ℚ)) := by
+      have hP_pos : (0 : ℚ) < (P : ℚ) := by unfold P; norm_num
+      exact mul_pos hP_pos huJ_pos
+    rw [div_lt_iff₀ hPuJ_pos]
+    -- J > 1/α (strictly).
+    have hJ_alpha_strict : (1 : ℚ) / α < (J : ℚ) := by
+      have h_ceil_ge : ((1 : ℚ) / α) ≤ (Nat.ceil ((1 : ℚ) / α) : ℚ) := Nat.le_ceil _
+      have hM_alpha_le_J : ((M_alpha : ℕ) : ℚ) ≤ (J : ℚ) := by exact_mod_cast hJ_ge_M_alpha
+      rw [hM_alpha_def] at hM_alpha_le_J
+      push_cast at hM_alpha_le_J
+      linarith
+    -- Hence α · J > 1.
+    have h_alpha_J : (1 : ℚ) < α * (J : ℚ) := by
+      have hα_ne : α ≠ 0 := ne_of_gt hα
+      have h_eq : α * (1 / α) = 1 := by field_simp
+      nlinarith [hα, hJ_alpha_strict]
+    -- P · u_J ≥ J: u_J ≥ J + 1 > J, and P ≥ 1.
+    have hJ_le_PuJ : (J : ℚ) ≤ (P : ℚ) * (u J : ℚ) := by
+      have hJ_le_uJ : (J : ℚ) ≤ (u J : ℚ) := by linarith
+      calc (J : ℚ) ≤ (u J : ℚ) := hJ_le_uJ
+        _ = 1 * (u J : ℚ) := by ring
+        _ ≤ (P : ℚ) * (u J : ℚ) := mul_le_mul_of_nonneg_right hP_ge_one huJ_pos.le
+    have h_step : α * (J : ℚ) ≤ α * ((P : ℚ) * (u J : ℚ)) :=
+      mul_le_mul_of_nonneg_left hJ_le_PuJ hα.le
+    linarith [h_alpha_J, h_step]
+  · -- L < D J
+    have hJ_ge_L1 : L + 1 ≤ J := by
+      have h1 : L + 1 ≤ max (L + 1) 1 := le_max_left _ _
+      have h2 : max (L + 1) 1 ≤ J := by rw [hJ_def]; exact le_max_right _ _
+      omega
+    -- D J ≥ J ≥ L + 1 > L.
+    have hJ_le_DJ : J ≤ D J := by
+      unfold D u P
+      have h2 : 1 ≤ 36 * (J + 1) + 1 := by omega
+      have h3 : J ≤ (36 * J + 1) := by omega
+      calc J ≤ 36 * J + 1 := h3
+        _ ≤ (36 * J + 1) * (36 * (J + 1) + 1) := Nat.le_mul_of_pos_right _ h2
+    omega
+  · -- L < tau J
+    have hJ_ge_L1 : L + 1 ≤ J := by
+      have h1 : L + 1 ≤ max (L + 1) 1 := le_max_left _ _
+      have h2 : max (L + 1) 1 ≤ J := by rw [hJ_def]; exact le_max_right _ _
+      omega
+    -- tau J = P · u (J+1) = 36 · (36(J+1)+1) ≥ J+1 ≥ L+1 > L.
+    have hJ_le_tau : J ≤ tau J := by
+      unfold tau u P
+      -- tau J = 36 · (36(J+1)+1) ≥ 36 · (J+1) ≥ J+1 > J
+      have hJ1 : J + 1 ≤ 36 * (J + 1) + 1 := by omega
+      calc J ≤ J + 1 := by omega
+        _ ≤ 36 * (J + 1) + 1 := hJ1
+        _ = 1 * (36 * (J + 1) + 1) := by ring
+        _ ≤ 36 * (36 * (J + 1) + 1) := by
+            apply Nat.mul_le_mul_right; omega
+    omega
+
 /-! ### Quotient-gcd bridge (sketch — full proof forthcoming)
 
 The most important missing bridge for theorem_1's case neg: if `g` is the
