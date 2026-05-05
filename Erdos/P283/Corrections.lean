@@ -98,18 +98,26 @@ The hypothesis `hQpos : 0 < (switchingPoly p Gν).leadingCoeff` makes
 `Q_{Gν}(c) > 0` for `c` past the largest real root. This is supplied at the
 call site from `switchingPoly_leadingCoeff`.
 
+The forbidden-finite avoidance is stated in the same shape as the
+main-denominator avoidance (`∀ e ∈ insert 1 Gν, e * c ∉ forbiddenFinite`)
+so the caller can stuff "all previous correction-denominator candidates"
+directly into `forbiddenFinite` without extra division-by-`e` bookkeeping.
+
+`hQGν : IntValued (switchingPoly p Gν)` is derived from `hp` via
+`switchingPoly_intValued`; the caller doesn't need to plumb it manually.
+
 This is the second-hardest sub-lemma of the whole proof (after Lemma 3). -/
 theorem exists_large_correction_denominator
-    (p : ℚ[X]) (hp : IntValued p) (hA : IntValued (A p))
+    (p : ℚ[X]) (hp : IntValued p)
     (Tg aσ J L lower : ℕ) (Gν : Finset ℕ) (hGν : IsEgyptianPattern Gν)
-    (hQGν : IntValued (switchingPoly p Gν))
     (hQpos : 0 < (switchingPoly p Gν).leadingCoeff)
     (forbiddenFinite : Finset ℕ) (hTg : 1 ≤ Tg) :
     ∃ c : ℕ,
       c ≡ aσ [MOD Tg] ∧
       lower < c ∧ L < c ∧
-      0 < intEval (switchingPoly p Gν) hQGν ((c : ℕ) : ℤ) ∧
-      c ∉ forbiddenFinite ∧
+      0 < intEval (switchingPoly p Gν)
+            (switchingPoly_intValued p hp Gν) ((c : ℕ) : ℤ) ∧
+      (∀ e ∈ insert 1 Gν, e * c ∉ forbiddenFinite) ∧
       (∀ j, J ≤ j → ∀ h ∈ ({1, 2, 3, 6} : Finset ℕ),
         ∀ e ∈ insert 1 Gν, e * c ≠ h * D j) := by
   sorry
