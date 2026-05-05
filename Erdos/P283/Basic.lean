@@ -59,10 +59,28 @@ def HasIntegralMultiple (B : ℕ) (p : ℚ[X]) : Prop :=
   ∃ P : ℤ[X], P.map (Int.castRingHom ℚ) = Polynomial.C (B : ℚ) * p
 
 /-- Every rational polynomial has an integral multiple. (Routine denominator
-clearing: take `B` = lcm of the denominators of the coefficients.) -/
+clearing: take `B` = product of the denominators of the coefficients.) -/
 theorem exists_integral_multiple (p : ℚ[X]) :
     ∃ B : ℕ, 1 ≤ B ∧ HasIntegralMultiple B p := by
-  sorry
+  classical
+  induction p using Polynomial.induction_on' with
+  | add p q hp hq =>
+    obtain ⟨B₁, hB₁, P₁, hP₁⟩ := hp
+    obtain ⟨B₂, hB₂, P₂, hP₂⟩ := hq
+    refine ⟨B₁ * B₂, ?_, ?_⟩
+    · exact Nat.one_le_iff_ne_zero.mpr
+        (mul_ne_zero (Nat.one_le_iff_ne_zero.mp hB₁) (Nat.one_le_iff_ne_zero.mp hB₂))
+    · refine ⟨Polynomial.C (B₂ : ℤ) * P₁ + Polynomial.C (B₁ : ℤ) * P₂, ?_⟩
+      simp [Polynomial.map_add, Polynomial.map_mul, hP₁, hP₂]
+      ring
+  | monomial n c =>
+    refine ⟨c.den, c.den_pos, Polynomial.monomial n c.num, ?_⟩
+    rw [Polynomial.map_monomial, Polynomial.C_mul_monomial]
+    congr 1
+    show (c.num : ℚ) = (c.den : ℚ) * c
+    have h : (c.num : ℚ) / (c.den : ℚ) = c := c.num_div_den
+    field_simp at h
+    linarith
 
 /-! ## Roth–Szekeres–Graham (axiom) -/
 
