@@ -278,6 +278,65 @@ theorem egyptian_pattern_with_period (T M : ℕ) (hT : 1 ≤ T) (hM : 1 ≤ M)
     (ρ : ZMod M) :
     ∃ E : Finset ℕ, IsEgyptianPattern E ∧ (∀ e ∈ E, T ∣ e) ∧
       (E.card : ZMod M) = ρ := by
-  sorry
+  classical
+  -- Step 1: Apply egyptian_expansion to R = T at L = 1.
+  have hT_pos : (0 : ℚ) < T := by exact_mod_cast hT
+  obtain ⟨K, hK⟩ := egyptian_expansion (T : ℚ) hT_pos 1
+  -- Step 2: Choose k ≥ K with (k : ZMod M) = ρ.
+  have hM_ne : NeZero M := ⟨Nat.one_le_iff_ne_zero.mp hM⟩
+  let r : ℕ := (ρ - (K : ZMod M)).val
+  let k : ℕ := K + r
+  have hk_ge : k ≥ K := Nat.le_add_right _ _
+  have hk_cast : (k : ZMod M) = ρ := by
+    show ((K + r : ℕ) : ZMod M) = ρ
+    push_cast
+    show (K : ZMod M) + ((ρ - (K : ZMod M)).val : ZMod M) = ρ
+    rw [ZMod.natCast_val, ZMod.cast_id]
+    ring
+  -- Step 3: Get F : Finset ℕ from egyptian_expansion at this k.
+  obtain ⟨F, hF_card, hF_lb, hF_sum⟩ := hK k hk_ge
+  -- Each f ∈ F satisfies 2 ≤ f.
+  have hF_two : ∀ f ∈ F, 2 ≤ f := fun f hf => hF_lb f hf
+  -- Step 4: Build E = F.image (fun f => T * f).
+  refine ⟨F.image (fun f => T * f), ?_, ?_, ?_⟩
+  · -- IsEgyptianPattern E
+    refine ⟨?_, ?_⟩
+    · -- ∀ e ∈ E, 2 ≤ e
+      intro e he
+      rw [Finset.mem_image] at he
+      obtain ⟨f, hf, rfl⟩ := he
+      have : 2 ≤ f := hF_two f hf
+      have : T * 2 ≤ T * f := Nat.mul_le_mul_left T this
+      have hT2 : 2 ≤ T * 2 := by omega
+      omega
+    · -- ∑ e ∈ E, 1/e = 1
+      have h_inj : Set.InjOn (fun f => T * f) F := by
+        intro a _ b _ hab
+        exact Nat.eq_of_mul_eq_mul_left (by omega : 0 < T) hab
+      rw [Finset.sum_image h_inj]
+      have hT_ne : (T : ℚ) ≠ 0 := by
+        have : (0 : ℚ) < T := hT_pos
+        linarith
+      have h_eq : ∀ f ∈ F, (1 : ℚ) / (T * f : ℕ) = (1 / T) * (1 / f) := by
+        intro f hf
+        have hf2 : 2 ≤ f := hF_two f hf
+        have hf_ne : (f : ℚ) ≠ 0 := by
+          have : (0 : ℚ) < f := by exact_mod_cast (by omega : 0 < f)
+          linarith
+        push_cast
+        field_simp
+      rw [Finset.sum_congr rfl h_eq, ← Finset.mul_sum, ← hF_sum]
+      field_simp
+  · -- ∀ e ∈ E, T ∣ e
+    intro e he
+    rw [Finset.mem_image] at he
+    obtain ⟨f, _, rfl⟩ := he
+    exact Dvd.intro f rfl
+  · -- (E.card : ZMod M) = ρ
+    have h_inj : Function.Injective (fun f => T * f) := by
+      intro a b hab
+      exact Nat.eq_of_mul_eq_mul_left (by omega : 0 < T) hab
+    rw [Finset.card_image_of_injective F h_inj, hF_card]
+    exact hk_cast
 
 end PolynomialEgyptianSums
