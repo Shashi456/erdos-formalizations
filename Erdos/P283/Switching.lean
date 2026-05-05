@@ -178,6 +178,282 @@ lemma switchingPoly_leadingCoeff (p : ℚ[X]) (E : Finset ℕ)
   apply mul_pos h_lead_pos
   linarith
 
+/-! ### Exact `natDegree` and `leadingCoeff` formulas for `switchingPoly`
+
+These are needed in Theorem 1 for the asymptotic comparison `λ < μ < a Θ P^{2r}`,
+where `Θ = ∑_{e ∈ E} e^r - 1` for `E = E0`. -/
+
+/-- The natDegree of `switchingPoly p E` equals `natDegree p` whenever `E` is an
+Egyptian pattern, `lc(p) > 0`, and `1 ≤ natDegree p`. -/
+lemma switchingPoly_natDegree_eq (p : ℚ[X]) (E : Finset ℕ)
+    (hE : IsEgyptianPattern E) (h_lead_pos : 0 < p.leadingCoeff)
+    (h_nonconst : 1 ≤ p.natDegree) :
+    (switchingPoly p E).natDegree = p.natDegree := by
+  classical
+  obtain ⟨h2, hsum⟩ := hE
+  have hne : E.Nonempty := by
+    rcases Finset.eq_empty_or_nonempty E with h | h
+    · rw [h, Finset.sum_empty] at hsum; norm_num at hsum
+    · exact h
+  have hp_ne : p ≠ 0 := by
+    intro h; rw [h] at h_nonconst; simp at h_nonconst
+  set r := p.natDegree with hr_def
+  have h_nat_deg : ∀ e ∈ E,
+      (p.comp (Polynomial.C (e : ℚ) * Polynomial.X)).natDegree = r := by
+    intro e he
+    have he_ne : (e : ℚ) ≠ 0 := by
+      have := h2 e he; exact_mod_cast (by omega : e ≠ 0)
+    rw [Polynomial.natDegree_comp, Polynomial.natDegree_C_mul_X (e : ℚ) he_ne]; ring
+  have h_q_e_ne : ∀ e ∈ E, p.comp (Polynomial.C (e : ℚ) * Polynomial.X) ≠ 0 := by
+    intro e he h_eq
+    have : (p.comp (Polynomial.C (e : ℚ) * Polynomial.X)).natDegree = 0 := by
+      rw [h_eq]; simp
+    rw [h_nat_deg e he] at this; omega
+  have h_q_e_deg : ∀ e ∈ E,
+      (p.comp (Polynomial.C (e : ℚ) * Polynomial.X)).degree = (r : WithBot ℕ) := by
+    intro e he
+    rw [Polynomial.degree_eq_natDegree (h_q_e_ne e he), h_nat_deg e he]
+  have h_lc : ∀ e ∈ E,
+      (p.comp (Polynomial.C (e : ℚ) * Polynomial.X)).leadingCoeff =
+        p.leadingCoeff * ((e : ℚ) ^ r) := by
+    intro e he
+    have he_ne : (e : ℚ) ≠ 0 := by
+      have := h2 e he; exact_mod_cast (by omega : e ≠ 0)
+    have h_deg : (Polynomial.C (e : ℚ) * Polynomial.X).natDegree = 1 :=
+      Polynomial.natDegree_C_mul_X (e : ℚ) he_ne
+    rw [Polynomial.leadingCoeff_comp (by rw [h_deg]; norm_num),
+        Polynomial.leadingCoeff_C_mul_X]
+  have h_sum_pow_ge : (2 : ℚ) ≤ (∑ e ∈ E, ((e : ℚ) ^ r)) := by
+    have h_card_pos : 1 ≤ E.card := Finset.card_pos.mpr hne
+    have step : ∀ e ∈ E, (2 : ℚ) ≤ ((e : ℚ) ^ r) := by
+      intro e he
+      have he2 : (2 : ℚ) ≤ e := by exact_mod_cast h2 e he
+      have hr_le : 1 ≤ r := h_nonconst
+      calc (2 : ℚ) = (2 : ℚ) ^ 1 := by norm_num
+      _ ≤ (2 : ℚ) ^ r := pow_le_pow_right₀ (by norm_num) hr_le
+      _ ≤ (e : ℚ) ^ r := pow_le_pow_left₀ (by norm_num) he2 _
+    have hsum2 : (∑ _ ∈ E, (2 : ℚ)) ≤ (∑ e ∈ E, ((e : ℚ) ^ r)) :=
+      Finset.sum_le_sum step
+    have hsum2_eq : (∑ _ ∈ E, (2 : ℚ)) = 2 * E.card := by
+      rw [Finset.sum_const]; ring
+    rw [hsum2_eq] at hsum2
+    have h_card_q : (1 : ℚ) ≤ E.card := by exact_mod_cast h_card_pos
+    linarith
+  have h_sum_lc_pos : 0 <
+      ∑ e ∈ E, (p.comp (Polynomial.C (e : ℚ) * Polynomial.X)).leadingCoeff := by
+    have h_eq :
+        (∑ e ∈ E, (p.comp (Polynomial.C (e : ℚ) * Polynomial.X)).leadingCoeff) =
+        ∑ e ∈ E, p.leadingCoeff * ((e : ℚ) ^ r) :=
+      Finset.sum_congr rfl h_lc
+    rw [h_eq, ← Finset.mul_sum]; apply mul_pos h_lead_pos; linarith
+  have h_sum_lc_ne :
+      (∑ e ∈ E, (p.comp (Polynomial.C (e : ℚ) * Polynomial.X)).leadingCoeff) ≠ 0 :=
+    ne_of_gt h_sum_lc_pos
+  have h_sum_natDegree :
+      (∑ e ∈ E, p.comp (Polynomial.C (e : ℚ) * Polynomial.X)).natDegree = r := by
+    have h_le :
+        (∑ e ∈ E, p.comp (Polynomial.C (e : ℚ) * Polynomial.X)).natDegree ≤ r := by
+      apply Polynomial.natDegree_sum_le_of_forall_le
+      intro i hi; rw [h_nat_deg i hi]
+    apply le_antisymm h_le
+    apply Polynomial.le_natDegree_of_ne_zero
+    rw [Polynomial.finset_sum_coeff]
+    have h_coeff_eq : ∀ e ∈ E, (p.comp (Polynomial.C (e : ℚ) * Polynomial.X)).coeff r =
+        (p.comp (Polynomial.C (e : ℚ) * Polynomial.X)).leadingCoeff := by
+      intro e he
+      rw [show (p.comp (Polynomial.C (e : ℚ) * Polynomial.X)).leadingCoeff = _ from rfl,
+          Polynomial.leadingCoeff, h_nat_deg e he]
+    rw [Finset.sum_congr rfl h_coeff_eq]; exact h_sum_lc_ne
+  have h_sum_lc_eq :
+      (∑ e ∈ E, p.comp (Polynomial.C (e : ℚ) * Polynomial.X)).leadingCoeff
+        = ∑ e ∈ E, (p.comp (Polynomial.C (e : ℚ) * Polynomial.X)).leadingCoeff :=
+    Polynomial.leadingCoeff_sum_of_degree_eq h_q_e_deg h_sum_lc_ne
+  have h_sum_lc_val :
+      (∑ e ∈ E, p.comp (Polynomial.C (e : ℚ) * Polynomial.X)).leadingCoeff
+        = p.leadingCoeff * ∑ e ∈ E, ((e : ℚ) ^ r) := by
+    rw [h_sum_lc_eq]
+    have h_eq :
+        (∑ e ∈ E, (p.comp (Polynomial.C (e : ℚ) * Polynomial.X)).leadingCoeff) =
+        ∑ e ∈ E, p.leadingCoeff * ((e : ℚ) ^ r) :=
+      Finset.sum_congr rfl h_lc
+    rw [h_eq, ← Finset.mul_sum]
+  have h_sum_deg :
+      (∑ e ∈ E, p.comp (Polynomial.C (e : ℚ) * Polynomial.X)).degree = (r : WithBot ℕ) := by
+    rw [Polynomial.degree_eq_natDegree, h_sum_natDegree]
+    intro h; rw [h] at h_sum_natDegree; simp at h_sum_natDegree; omega
+  have h_p_deg : p.degree = (r : WithBot ℕ) := Polynomial.degree_eq_natDegree hp_ne
+  have h_p_lc_ne : p.leadingCoeff ≠ 0 := ne_of_gt h_lead_pos
+  have h_lc_diff :
+      (∑ e ∈ E, p.comp (Polynomial.C (e : ℚ) * Polynomial.X)).leadingCoeff
+        ≠ p.leadingCoeff := by
+    rw [h_sum_lc_val]
+    intro h_eq
+    have : p.leadingCoeff * (∑ e ∈ E, ((e : ℚ) ^ r) - 1) = 0 := by linarith
+    rcases mul_eq_zero.mp this with h1 | h2
+    · exact h_p_lc_ne h1
+    · linarith
+  unfold switchingPoly
+  -- (sum - p).natDegree ≤ max sum.natDegree p.natDegree = r.
+  have h_le : (∑ e ∈ E, p.comp (Polynomial.C (e : ℚ) * Polynomial.X) - p).natDegree ≤ r := by
+    have := Polynomial.natDegree_sub_le
+      (∑ e ∈ E, p.comp (Polynomial.C (e : ℚ) * Polynomial.X)) p
+    rw [h_sum_natDegree, ← hr_def] at this
+    omega
+  -- coeff at r is sum.lc - p.lc, which is nonzero by h_lc_diff.
+  have h_coeff_ne : (∑ e ∈ E, p.comp (Polynomial.C (e : ℚ) * Polynomial.X) - p).coeff r ≠ 0 := by
+    rw [Polynomial.coeff_sub]
+    have h1 : (∑ e ∈ E, p.comp (Polynomial.C (e : ℚ) * Polynomial.X)).coeff r =
+        (∑ e ∈ E, p.comp (Polynomial.C (e : ℚ) * Polynomial.X)).leadingCoeff := by
+      rw [Polynomial.leadingCoeff, h_sum_natDegree]
+    have h2 : p.coeff r = p.leadingCoeff := by rw [Polynomial.leadingCoeff, ← hr_def]
+    rw [h1, h2]
+    intro h_eq
+    apply h_lc_diff
+    linarith
+  have h_ge : r ≤ (∑ e ∈ E, p.comp (Polynomial.C (e : ℚ) * Polynomial.X) - p).natDegree :=
+    Polynomial.le_natDegree_of_ne_zero h_coeff_ne
+  omega
+
+/-- Exact leading-coefficient formula:
+`lc(switchingPoly p E) = lc(p) · (∑_{e∈E} e^r − 1)` where `r = natDegree p`. -/
+lemma switchingPoly_leadingCoeff_eq (p : ℚ[X]) (E : Finset ℕ)
+    (hE : IsEgyptianPattern E) (h_lead_pos : 0 < p.leadingCoeff)
+    (h_nonconst : 1 ≤ p.natDegree) :
+    (switchingPoly p E).leadingCoeff =
+      p.leadingCoeff * ((∑ e ∈ E, ((e : ℚ) ^ p.natDegree)) - 1) := by
+  classical
+  obtain ⟨h2, hsum⟩ := hE
+  have hne : E.Nonempty := by
+    rcases Finset.eq_empty_or_nonempty E with h | h
+    · rw [h, Finset.sum_empty] at hsum; norm_num at hsum
+    · exact h
+  have hp_ne : p ≠ 0 := by
+    intro h; rw [h] at h_nonconst; simp at h_nonconst
+  set r := p.natDegree with hr_def
+  have h_nat_deg : ∀ e ∈ E,
+      (p.comp (Polynomial.C (e : ℚ) * Polynomial.X)).natDegree = r := by
+    intro e he
+    have he_ne : (e : ℚ) ≠ 0 := by
+      have := h2 e he; exact_mod_cast (by omega : e ≠ 0)
+    rw [Polynomial.natDegree_comp, Polynomial.natDegree_C_mul_X (e : ℚ) he_ne]; ring
+  have h_q_e_ne : ∀ e ∈ E, p.comp (Polynomial.C (e : ℚ) * Polynomial.X) ≠ 0 := by
+    intro e he h_eq
+    have : (p.comp (Polynomial.C (e : ℚ) * Polynomial.X)).natDegree = 0 := by
+      rw [h_eq]; simp
+    rw [h_nat_deg e he] at this; omega
+  have h_q_e_deg : ∀ e ∈ E,
+      (p.comp (Polynomial.C (e : ℚ) * Polynomial.X)).degree = (r : WithBot ℕ) := by
+    intro e he
+    rw [Polynomial.degree_eq_natDegree (h_q_e_ne e he), h_nat_deg e he]
+  have h_lc : ∀ e ∈ E,
+      (p.comp (Polynomial.C (e : ℚ) * Polynomial.X)).leadingCoeff =
+        p.leadingCoeff * ((e : ℚ) ^ r) := by
+    intro e he
+    have he_ne : (e : ℚ) ≠ 0 := by
+      have := h2 e he; exact_mod_cast (by omega : e ≠ 0)
+    have h_deg : (Polynomial.C (e : ℚ) * Polynomial.X).natDegree = 1 :=
+      Polynomial.natDegree_C_mul_X (e : ℚ) he_ne
+    rw [Polynomial.leadingCoeff_comp (by rw [h_deg]; norm_num),
+        Polynomial.leadingCoeff_C_mul_X]
+  have h_sum_pow_ge : (2 : ℚ) ≤ (∑ e ∈ E, ((e : ℚ) ^ r)) := by
+    have h_card_pos : 1 ≤ E.card := Finset.card_pos.mpr hne
+    have step : ∀ e ∈ E, (2 : ℚ) ≤ ((e : ℚ) ^ r) := by
+      intro e he
+      have he2 : (2 : ℚ) ≤ e := by exact_mod_cast h2 e he
+      have hr_le : 1 ≤ r := h_nonconst
+      calc (2 : ℚ) = (2 : ℚ) ^ 1 := by norm_num
+      _ ≤ (2 : ℚ) ^ r := pow_le_pow_right₀ (by norm_num) hr_le
+      _ ≤ (e : ℚ) ^ r := pow_le_pow_left₀ (by norm_num) he2 _
+    have hsum2 : (∑ _ ∈ E, (2 : ℚ)) ≤ (∑ e ∈ E, ((e : ℚ) ^ r)) :=
+      Finset.sum_le_sum step
+    have hsum2_eq : (∑ _ ∈ E, (2 : ℚ)) = 2 * E.card := by
+      rw [Finset.sum_const]; ring
+    rw [hsum2_eq] at hsum2
+    have h_card_q : (1 : ℚ) ≤ E.card := by exact_mod_cast h_card_pos
+    linarith
+  have h_sum_lc_pos : 0 <
+      ∑ e ∈ E, (p.comp (Polynomial.C (e : ℚ) * Polynomial.X)).leadingCoeff := by
+    have h_eq :
+        (∑ e ∈ E, (p.comp (Polynomial.C (e : ℚ) * Polynomial.X)).leadingCoeff) =
+        ∑ e ∈ E, p.leadingCoeff * ((e : ℚ) ^ r) :=
+      Finset.sum_congr rfl h_lc
+    rw [h_eq, ← Finset.mul_sum]; apply mul_pos h_lead_pos; linarith
+  have h_sum_lc_ne :
+      (∑ e ∈ E, (p.comp (Polynomial.C (e : ℚ) * Polynomial.X)).leadingCoeff) ≠ 0 :=
+    ne_of_gt h_sum_lc_pos
+  have h_sum_lc_eq :
+      (∑ e ∈ E, p.comp (Polynomial.C (e : ℚ) * Polynomial.X)).leadingCoeff
+        = ∑ e ∈ E, (p.comp (Polynomial.C (e : ℚ) * Polynomial.X)).leadingCoeff :=
+    Polynomial.leadingCoeff_sum_of_degree_eq h_q_e_deg h_sum_lc_ne
+  have h_sum_lc_val :
+      (∑ e ∈ E, p.comp (Polynomial.C (e : ℚ) * Polynomial.X)).leadingCoeff
+        = p.leadingCoeff * ∑ e ∈ E, ((e : ℚ) ^ r) := by
+    rw [h_sum_lc_eq]
+    have h_eq :
+        (∑ e ∈ E, (p.comp (Polynomial.C (e : ℚ) * Polynomial.X)).leadingCoeff) =
+        ∑ e ∈ E, p.leadingCoeff * ((e : ℚ) ^ r) :=
+      Finset.sum_congr rfl h_lc
+    rw [h_eq, ← Finset.mul_sum]
+  have h_sum_natDegree :
+      (∑ e ∈ E, p.comp (Polynomial.C (e : ℚ) * Polynomial.X)).natDegree = r := by
+    have h_le :
+        (∑ e ∈ E, p.comp (Polynomial.C (e : ℚ) * Polynomial.X)).natDegree ≤ r := by
+      apply Polynomial.natDegree_sum_le_of_forall_le
+      intro i hi; rw [h_nat_deg i hi]
+    apply le_antisymm h_le
+    apply Polynomial.le_natDegree_of_ne_zero
+    rw [Polynomial.finset_sum_coeff]
+    have h_coeff_eq : ∀ e ∈ E, (p.comp (Polynomial.C (e : ℚ) * Polynomial.X)).coeff r =
+        (p.comp (Polynomial.C (e : ℚ) * Polynomial.X)).leadingCoeff := by
+      intro e he
+      rw [show (p.comp (Polynomial.C (e : ℚ) * Polynomial.X)).leadingCoeff = _ from rfl,
+          Polynomial.leadingCoeff, h_nat_deg e he]
+    rw [Finset.sum_congr rfl h_coeff_eq]; exact h_sum_lc_ne
+  have h_sum_deg :
+      (∑ e ∈ E, p.comp (Polynomial.C (e : ℚ) * Polynomial.X)).degree = (r : WithBot ℕ) := by
+    rw [Polynomial.degree_eq_natDegree, h_sum_natDegree]
+    intro h; rw [h] at h_sum_natDegree; simp at h_sum_natDegree; omega
+  have h_p_deg : p.degree = (r : WithBot ℕ) := Polynomial.degree_eq_natDegree hp_ne
+  have h_deg_eq :
+      (∑ e ∈ E, p.comp (Polynomial.C (e : ℚ) * Polynomial.X)).degree = p.degree := by
+    rw [h_sum_deg, h_p_deg]
+  have h_p_lc_ne : p.leadingCoeff ≠ 0 := ne_of_gt h_lead_pos
+  have h_lc_diff :
+      (∑ e ∈ E, p.comp (Polynomial.C (e : ℚ) * Polynomial.X)).leadingCoeff
+        ≠ p.leadingCoeff := by
+    rw [h_sum_lc_val]
+    intro h_eq
+    have : p.leadingCoeff * (∑ e ∈ E, ((e : ℚ) ^ r) - 1) = 0 := by linarith
+    rcases mul_eq_zero.mp this with h1 | h2
+    · exact h_p_lc_ne h1
+    · linarith
+  unfold switchingPoly
+  rw [Polynomial.leadingCoeff_sub_of_degree_eq h_deg_eq h_lc_diff,
+      h_sum_lc_val]
+  ring
+
+/-! ### Closure of `IntValued` under `switchingPoly` -/
+
+/-- Composition `p(e · x)` of an integer-valued polynomial with `e ∈ ℕ` is
+integer-valued. -/
+lemma IntValued.comp_nat_mul_X (p : ℚ[X]) (hp : IntValued p) (e : ℕ) :
+    IntValued (p.comp (Polynomial.C (e : ℚ) * Polynomial.X)) := by
+  intro z
+  obtain ⟨k, hk⟩ := hp ((e : ℤ) * z)
+  refine ⟨k, ?_⟩
+  rw [hk, Polynomial.eval_comp, Polynomial.eval_mul, Polynomial.eval_C,
+      Polynomial.eval_X]
+  push_cast
+  ring
+
+/-- `switchingPoly p E` is integer-valued whenever `p` is. -/
+lemma switchingPoly_intValued (p : ℚ[X]) (hp : IntValued p) (E : Finset ℕ) :
+    IntValued (switchingPoly p E) := by
+  unfold switchingPoly
+  exact IntValued.sub
+    (IntValued.sum E _ (fun e _ => IntValued.comp_nat_mul_X p hp e))
+    hp
+
 /-- The set of **integer values** of switching polynomials over all Egyptian
 patterns and positive integers. -/
 noncomputable def switchValueSet (p : ℚ[X]) (hp : IntValued p) : Set ℤ :=

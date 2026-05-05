@@ -94,11 +94,16 @@ plus the curves `{(h/e) D j : j ≥ J}` (parametrized by `j`, contributing
 `O(√X)` elements up to `X`) has density zero. So the AP eventually contains
 elements avoiding all forbidden values.
 
+The hypothesis `hQpos : 0 < (switchingPoly p Gν).leadingCoeff` makes
+`Q_{Gν}(c) > 0` for `c` past the largest real root. This is supplied at the
+call site from `switchingPoly_leadingCoeff`.
+
 This is the second-hardest sub-lemma of the whole proof (after Lemma 3). -/
 theorem exists_large_correction_denominator
     (p : ℚ[X]) (hp : IntValued p) (hA : IntValued (A p))
     (Tg aσ J L lower : ℕ) (Gν : Finset ℕ) (hGν : IsEgyptianPattern Gν)
     (hQGν : IntValued (switchingPoly p Gν))
+    (hQpos : 0 < (switchingPoly p Gν).leadingCoeff)
     (forbiddenFinite : Finset ℕ) (hTg : 1 ≤ Tg) :
     ∃ c : ℕ,
       c ≡ aσ [MOD Tg] ∧

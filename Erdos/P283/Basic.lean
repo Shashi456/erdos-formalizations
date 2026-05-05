@@ -43,6 +43,42 @@ lemma intEval_spec (p : ℚ[X]) (hp : IntValued p) (z : ℤ) :
     ((intEval p hp z : ℤ) : ℚ) = p.eval (z : ℚ) :=
   (hp z).choose_spec
 
+/-! ### Closure of `IntValued` -/
+
+lemma IntValued.add {p q : ℚ[X]} (hp : IntValued p) (hq : IntValued q) :
+    IntValued (p + q) := by
+  intro z
+  obtain ⟨a, ha⟩ := hp z
+  obtain ⟨b, hb⟩ := hq z
+  refine ⟨a + b, ?_⟩
+  rw [Polynomial.eval_add, ← ha, ← hb]
+  push_cast; ring
+
+lemma IntValued.sub {p q : ℚ[X]} (hp : IntValued p) (hq : IntValued q) :
+    IntValued (p - q) := by
+  intro z
+  obtain ⟨a, ha⟩ := hp z
+  obtain ⟨b, hb⟩ := hq z
+  refine ⟨a - b, ?_⟩
+  rw [Polynomial.eval_sub, ← ha, ← hb]
+  push_cast; ring
+
+lemma IntValued.sum {ι : Type*} (s : Finset ι) (f : ι → ℚ[X])
+    (hf : ∀ i ∈ s, IntValued (f i)) :
+    IntValued (∑ i ∈ s, f i) := by
+  classical
+  induction s using Finset.induction_on with
+  | empty =>
+    intro z
+    refine ⟨0, ?_⟩
+    simp
+  | @insert a s ha ih =>
+    rw [Finset.sum_insert ha]
+    refine IntValued.add (hf a (Finset.mem_insert_self a s)) ?_
+    apply ih
+    intro i hi
+    exact hf i (Finset.mem_insert_of_mem hi)
+
 /-! ## Fixed-divisor predicate -/
 
 /-- The polynomial `p` has **no fixed divisor** on the positive integers if no

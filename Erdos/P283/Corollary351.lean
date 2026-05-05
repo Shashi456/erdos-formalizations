@@ -90,12 +90,16 @@ theorem corollary_7_zero : IsStronglyComplete (imageSet 0) := by
 
 /-! ## Case positive leading coefficient -/
 
-/-- **Corollary 7, positive-leading case.** For `p ≠ 0` with positive leading
-coefficient, `A_p` is strongly complete. The proof reduces to `theorem_1` via
-`q := Dp/h` (denominator-cleared, fixed-divisor-removed) for each residue
-`r ∈ {1, …, h}`. -/
+/-- **Corollary 7, positive-leading case.** For `p` with positive leading
+coefficient, `A_p` is strongly complete. The proof has two sub-cases:
+
+  * `natDegree p = 0`: `p = C c` with `c = lc > 0`. Each `m ≥ ⌈cM⌉` decomposes
+    as `M c + r` with residual `r ∈ [0, c)`, then `r` is summed by
+    `egyptian_expansion` (similar to `corollary_7_zero`).
+  * `natDegree p ≥ 1`: reduce to `theorem_1` via `q := Dp/h`
+    (denominator-cleared, fixed-divisor-removed) for each residue `r ∈ {1,…,h}`. -/
 theorem corollary_7_pos_leading (p : ℚ[X])
-    (h_nonconst : 1 ≤ p.natDegree) (h_lead_pos : 0 < p.leadingCoeff) :
+    (h_lead_pos : 0 < p.leadingCoeff) :
     IsStronglyComplete (imageSet p) := by
   sorry
 
@@ -242,13 +246,15 @@ theorem not_strongly_complete_of_neg_leadingCoeff
 
 /-! ## Combined corollary 7 statement -/
 
-/-- **Corollary 7 (PDF, combined).** If `p = 0` or `p ≠ 0` with positive leading
-coefficient, `A_p = {p(n) + 1/n}` is strongly complete. -/
+/-- **Corollary 7 (PDF, combined).** If `p = 0` or `p` has positive leading
+coefficient, `A_p = {p(n) + 1/n}` is strongly complete. (Includes positive
+constants — `p = C c` with `c > 0` — in addition to nonconstant positive-leading
+polynomials. FC #351 separately requires `0 < natDegree p`.) -/
 theorem corollary_7 (p : ℚ[X])
-    (h : p = 0 ∨ (1 ≤ p.natDegree ∧ 0 < p.leadingCoeff)) :
+    (h : p = 0 ∨ 0 < p.leadingCoeff) :
     IsStronglyComplete (imageSet p) := by
-  rcases h with rfl | ⟨hd, hl⟩
+  rcases h with rfl | hl
   · exact corollary_7_zero
-  · exact corollary_7_pos_leading p hd hl
+  · exact corollary_7_pos_leading p hl
 
 end PolynomialEgyptianSums

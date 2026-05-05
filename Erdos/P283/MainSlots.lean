@@ -113,7 +113,55 @@ lemma isEgyptianPattern_E0 : IsEgyptianPattern E0 := by
         Finset.sum_singleton]
     norm_num
 
-/-! ## Leading coefficient of A -/
+/-! ## Leading coefficient of A and the constant Θ
+
+The asymptotic comparison in Theorem 1 needs the *exact* leading coefficient of
+`A p`, not just positivity. Specifically, `lc(A p) = lc(p) · (Θ_r) > 0` where
+`Θ_r := 2^r + 3^r + 6^r − 1`. -/
+
+/-- `Θ r := 2^r + 3^r + 6^r - 1`. Used in the main-theorem asymptotics:
+`λ = a P^{2r}` and `a Θ_r P^{2r}` bracket the rescaled-polynomial leading term. -/
+def theta (r : ℕ) : ℚ := (2 : ℚ)^r + (3 : ℚ)^r + (6 : ℚ)^r - 1
+
+/-- `1 < Θ r` for `r ≥ 1`. (At `r = 1`: `Θ = 2 + 3 + 6 - 1 = 10`.) -/
+lemma theta_gt_one (r : ℕ) (hr : 1 ≤ r) : 1 < theta r := by
+  unfold theta
+  have h2 : (2 : ℚ) ≤ (2 : ℚ) ^ r := by
+    calc (2 : ℚ) = (2 : ℚ) ^ 1 := by norm_num
+    _ ≤ (2 : ℚ) ^ r := pow_le_pow_right₀ (by norm_num) hr
+  have h3 : (3 : ℚ) ≤ (3 : ℚ) ^ r := by
+    calc (3 : ℚ) = (3 : ℚ) ^ 1 := by norm_num
+    _ ≤ (3 : ℚ) ^ r := pow_le_pow_right₀ (by norm_num) hr
+  have h6 : (6 : ℚ) ≤ (6 : ℚ) ^ r := by
+    calc (6 : ℚ) = (6 : ℚ) ^ 1 := by norm_num
+    _ ≤ (6 : ℚ) ^ r := pow_le_pow_right₀ (by norm_num) hr
+  linarith
+
+/-- `theta r = ∑ e ∈ E0, e^r - 1`. -/
+lemma theta_eq_sum (r : ℕ) :
+    theta r = (∑ e ∈ E0, ((e : ℚ) ^ r)) - 1 := by
+  unfold theta E0
+  rw [show ({2, 3, 6} : Finset ℕ) = insert 2 (insert 3 ({6} : Finset ℕ)) from rfl]
+  rw [Finset.sum_insert (by decide), Finset.sum_insert (by decide),
+      Finset.sum_singleton]
+  push_cast; ring
+
+/-- The natDegree of `A p` equals `natDegree p` whenever `lc(p) > 0` and
+`1 ≤ natDegree p`. -/
+lemma A_natDegree_eq (p : ℚ[X])
+    (h_nonconst : 1 ≤ p.natDegree) (h_lead_pos : 0 < p.leadingCoeff) :
+    (A p).natDegree = p.natDegree := by
+  unfold A
+  exact switchingPoly_natDegree_eq p E0 isEgyptianPattern_E0 h_lead_pos h_nonconst
+
+/-- Exact leading-coefficient formula:
+`lc(A p) = lc(p) · Θ_r` where `r = natDegree p`. -/
+lemma A_leadingCoeff_eq (p : ℚ[X])
+    (h_nonconst : 1 ≤ p.natDegree) (h_lead_pos : 0 < p.leadingCoeff) :
+    (A p).leadingCoeff = p.leadingCoeff * theta p.natDegree := by
+  unfold A
+  rw [switchingPoly_leadingCoeff_eq p E0 isEgyptianPattern_E0 h_lead_pos h_nonconst,
+      theta_eq_sum]
 
 /-- The leading coefficient of `A p = switchingPoly p {2, 3, 6}` is
 `lc(p) · (2^r + 3^r + 6^r - 1) > 0` when `lc(p) > 0` and `r := deg p ≥ 1`. -/
@@ -122,6 +170,10 @@ lemma A_leadingCoeff (p : ℚ[X])
     0 < (A p).leadingCoeff := by
   unfold A
   exact switchingPoly_leadingCoeff p E0 isEgyptianPattern_E0 h_lead_pos h_nonconst
+
+/-- `A p` is integer-valued whenever `p` is. -/
+lemma A_intValued (p : ℚ[X]) (hp : IntValued p) : IntValued (A p) :=
+  switchingPoly_intValued p hp E0
 
 /-! ## The set of main-slot increments -/
 
@@ -133,10 +185,15 @@ noncomputable def mainValueSet (p : ℚ[X]) (hp : IntValued p) (hA : IntValued (
 /-! ## The polynomial `Dpoly` and rescaled `q` -/
 
 /-- `Dpoly p J x := (P(J + x - 1) + 1)(P(J + x) + 1)`, a polynomial of degree 2
-with leading coefficient `P²`. Substituting `t ≥ 1` gives `D (J + t - 1)`. -/
+with leading coefficient `P²`. Substituting `t ≥ 1` gives `D (J + t - 1)`.
+
+Defined with explicit ℚ-subtraction inside `ℚ[X]` (not Nat subtraction) so the
+formula matches the paper for every `J`, including `J = 0`. -/
 noncomputable def Dpoly (J : ℕ) : ℚ[X] :=
-  (Polynomial.C (P : ℚ) * (Polynomial.C (J - 1 : ℚ) + Polynomial.X) + 1) *
-  (Polynomial.C (P : ℚ) * (Polynomial.C (J : ℚ) + Polynomial.X) + 1)
+  (Polynomial.C (P : ℚ) *
+      (Polynomial.C (J : ℚ) + Polynomial.X - Polynomial.C (1 : ℚ)) + 1) *
+  (Polynomial.C (P : ℚ) *
+      (Polynomial.C (J : ℚ) + Polynomial.X) + 1)
 
 /-- `Dpoly J` applied at `t : ℕ` (with `1 ≤ t`) gives `D (J + t - 1)`. -/
 lemma Dpoly_eval_at_succ (J t : ℕ) (ht : 1 ≤ t) :
@@ -146,12 +203,11 @@ lemma Dpoly_eval_at_succ (J t : ℕ) (ht : 1 ≤ t) :
   have h_cast : ((J + t - 1 : ℕ) : ℚ) = (J : ℚ) + (t : ℚ) - 1 := by
     rw [Nat.cast_sub h_pos]; push_cast; ring
   unfold Dpoly D u
-  simp only [Polynomial.eval_mul, Polynomial.eval_add, Polynomial.eval_C,
-             Polynomial.eval_X, Polynomial.eval_one]
+  simp only [Polynomial.eval_mul, Polynomial.eval_add, Polynomial.eval_sub,
+             Polynomial.eval_C, Polynomial.eval_X, Polynomial.eval_one]
   rw [h_succ]
   push_cast
   rw [h_cast]
-  ring
 
 /- The rescaled polynomial `q := A ∘ Dpoly / g`, where `g` is the (positive)
 generator of the ideal spanned by the main-value set. Definition deferred —
