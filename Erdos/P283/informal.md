@@ -11,6 +11,25 @@
 
 The May 3 proof resolves both: **#283 affirmatively** for any rational `α > 0` (a strict generalization of Erdős's question with `α = 1`), and **#351** affirmatively after the corrected hypothesis (allow `p = 0` or `p ≠ 0` with non-negative leading coefficient).
 
+### #351: FC target vs full corrected corollary
+
+The upstream [`formal-conjectures`](https://github.com/google-deepmind/formal-conjectures/blob/main/FormalConjectures/ErdosProblems/351.lean) statement asks only for non-constant positive-leading polynomials, while the original Erdős page (and the PDF's Corollary 7) phrases the corrected statement for arbitrary `p ∈ ℚ[x]`. The Lean formalization explicitly separates:
+
+```
+FC target (Erdos351.erdos_351):
+  ∀ p ∈ ℚ[x], 0 < natDegree p → 0 < leadingCoeff p → HasCompleteImage p
+
+Full corrected corollary (PolynomialEgyptianSums.corollary_7):
+  p = 0 ∨ 0 < leadingCoeff p   ⇒   IsStronglyComplete (imageSet p)
+  leadingCoeff p < 0           ⇒   ¬ IsStronglyComplete (imageSet p)
+```
+
+The FC wrapper drops to the nonconstant restriction; `corollary_7_pos_leading` (positive leading coefficient, including positive constants) and `not_strongly_complete_of_neg_leadingCoeff` together cover the full case analysis.
+
+### #351: FC `n = 0` convention
+
+FC's `imageSet P` is defined as `Set.range (fun n : ℕ ↦ P.eval n + 1/n)` and includes `n = 0`, where `1/0 = 0` in ℚ so the value at `n = 0` is `P.eval 0`. The FC comment notes this does not change the conjecture (a single extra value can be excluded by the `B` filter). Our `corollary_7_zero` proof works against the FC convention directly and chooses Egyptian denominators `> L ≥ 1`, so the `n = 0` element is automatically not used.
+
 ## Main theorem (Theorem 1 in the PDF)
 
 Let `α ∈ ℚ_{>0}`, `L ≥ 1`, and let `p ∈ ℚ[x]` satisfy `p(ℤ) ⊆ ℤ`. Suppose `p` has positive leading coefficient and no integer `d ≥ 2` divides `p(n)` for all `n ≥ 1`. Then there is `m_0` such that for all `m ≥ m_0`, there exist distinct positive integers `L < n_1 < ⋯ < n_k` with
@@ -49,6 +68,30 @@ Non-constant case (`deg p ≥ 1`, leading coefficient `a > 0`, degree `r`). Set 
 
 - **Correction slots.** Choose finitely many Egyptian patterns `E_{i_σ}` so that `Q_{E_{i_σ}}(a_σ) (mod g)` (with `g := gcd{A(D_j)}`) generate `ℤ/gℤ`. Build correction denominators `c_ν` with prescribed congruences (using Lemma 5's periodicity). Each `c_ν` admits a switch with switching polynomial `b_ν := Q_{E_{i_σ}}(c_ν)`.
 
+  **Lean encoding of `g`.** Mathlib has no "gcd of an infinite set of integers" primitive, so `g` is encoded via the principal-ideal generator. Concretely, in `MainSlots.lean`:
+
+  ```lean
+  mainValueSet p hp hA J : Set ℤ := { z | ∃ j ≥ J, z = intEval (A p) hA (D j) }
+  ```
+
+  Then in `Theorem1.lean` (assembly):
+
+  ```lean
+  let I := Ideal.span (mainValueSet p hp hA J)
+  obtain ⟨g₀, hg₀⟩ := IsPrincipalIdealRing.principal I |>.principal'
+  let g : ℕ := g₀.natAbs
+  ```
+
+  with three key facts to extract:
+
+  ```lean
+  1 ≤ g                                         -- I ≠ 0 (some A(D_j) is nonzero)
+  ∀ j, J ≤ j → (g : ℤ) ∣ intEval (A p) hA (D j) -- g divides each generator
+  -- The quotient values { A(D_j) / g } have gcd 1 in ℤ.
+  ```
+
+  (Lemma 6's `switching_values_span_top` gives the corresponding `Ideal.span = ⊤` statement for switching values *jointly* over all Egyptian patterns; the main-slot `g` is the residual gcd from a single pattern `E0`.)
+
 - **Filler denominators.** Use Lemma 3 to get `R_0 = α − 1/(P u_J) − C_0` as `∑_{f ∈ F} 1/(Λ f)` for an integer scaling `Λ` (chosen `> Y_corr` and `8 ∣ Λ`, ensuring no collision with main/correction). These never switch.
 
 The reciprocal identity `∑ 1/D_j + 1/τ_N + ∑ 1/c_ν + ∑ 1/(Λ f) = α` holds (with `τ_N := P u_{N+1}`).
@@ -61,6 +104,8 @@ The reciprocal identity `∑ 1/D_j + 1/τ_N + ∑ 1/c_ν + ∑ 1/(Λ f) = α` ho
 
 **Attainable intervals.** For each large `N`, the set of attainable `m` covers `[B_N + B_* + M_0, B_N + μ N^{2r}]`, where `B_N` is the base sum and `μ ∈ (a P^{2r}, a Θ P^{2r})`. The lower endpoint is reachable by a correction subset hitting any residue class `mod g`; the upper endpoint by Roth-Szekeres-Graham (Theorem 2) applied to a rescaled polynomial `q`.
 
+  **Lean: rational `μ`.** The PDF's `μ` is a real number strictly between `a P^{2r}` and `a Θ P^{2r}`. Lean is significantly easier with `μ : ℚ`: pick e.g. `μ := a * P^(2*r) * (1 + theta r) / 2` (the midpoint, in ℚ since `a, theta r, P ∈ ℚ`). `μ < a * theta r * P^(2r)` follows from `1 + theta r < 2 * theta r ↔ 1 < theta r` (`theta_gt_one`), and `a * P^(2r) < μ` from `1 < 1 + theta r ↔ 0 < theta r`. Cast to ℝ only inside generic asymptotic helper lemmas (e.g. when invoking real-valued tendsto results).
+
 **Overlap of intervals.** Consecutive intervals overlap because `B_{N+1} − B_N = λ N^{2r} + O(N^{2r-1})` with `λ < μ`. So `⋃_N I_N` covers all sufficiently large integers. ∎
 
 ## Corollary 7 (Erdős #351)
@@ -69,6 +114,17 @@ The reciprocal identity `∑ 1/D_j + 1/τ_N + ∑ 1/c_ν + ∑ 1/(Λ f) = α` ho
 - If `p = 0`: every positive integer is a sum of distinct unit fractions with denominators bounded below (Lemma 3).
 - If `p ≠ 0` with positive leading coefficient: scale to `q(x) := Dp(x)/h` (integer-valued, no fixed divisor) and apply Theorem 1 to each residue `r ∈ {1, …, h}` of `Dm` mod `h`.
 - If `p` has *negative* leading coefficient: `A_p` is bounded above by finitely many positive elements, so cannot be strongly complete.
+
+**Lean: Euclidean division replaces `⌈Dm/h⌉ − 1`.** The PDF chooses `M := ⌈Dm/h⌉ − 1, r := Dm − hM` so that `r ∈ {1, …, h}`. Lean works directly with Nat-Euclidean division to avoid `Nat.ceil` over ℚ:
+
+```lean
+M : ℕ := (D * m - 1) / h   -- Nat division
+r : ℕ := D * m - h * M
+-- Provable from D * m ≥ 1 and h ≥ 1:
+1 ≤ r ∧ r ≤ h ∧ D * m = h * M + r
+```
+
+Apply Theorem 1 with `α := r/h ∈ ℚ_{>0}` (or the equivalent `α = 1` form, scaled by `h`) for each of the `h` possible residues; the union of the resulting `m₀_r` thresholds gives the global `m₀` for `corollary_7_pos_leading`.
 
 ## Black-box dependency
 
