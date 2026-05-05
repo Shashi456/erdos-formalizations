@@ -29,13 +29,21 @@ open Finset
 /-- The split identity `1/y = 1/(y+1) + 1/(y(y+1))` for `y ≥ 1`. -/
 lemma egyptian_split_identity (y : ℕ) (hy : 1 ≤ y) :
     (1 : ℚ) / y = 1 / (y + 1 : ℕ) + 1 / (y * (y + 1) : ℕ) := by
-  sorry
+  have hy' : (y : ℚ) ≠ 0 := by exact_mod_cast Nat.one_le_iff_ne_zero.mp hy
+  have hy1 : ((y : ℚ) + 1) ≠ 0 := by positivity
+  push_cast
+  field_simp
 
 /-- After a split at the largest denominator `y`, the new denominators
 `y + 1` and `y(y+1)` are both larger than `y`. -/
 lemma egyptian_split_lower_bound (y : ℕ) (hy : 1 ≤ y) :
     y < y + 1 ∧ y < y * (y + 1) := by
-  sorry
+  refine ⟨Nat.lt_succ_self y, ?_⟩
+  have h_le : y * 1 ≤ y * (y + 1) := Nat.mul_le_mul_left y (by omega)
+  have h_pos : y * 1 < y * (y + 1) ∨ y * 1 = y * (y + 1) := lt_or_eq_of_le h_le
+  rcases h_pos with h | h
+  · simpa using h
+  · exfalso; have := (Nat.mul_left_cancel hy h); omega
 
 /-! ## Lemma 3 — Egyptian expansion existence and arbitrary length -/
 
