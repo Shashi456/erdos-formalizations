@@ -283,6 +283,74 @@ lemma Dpoly_eval_at_succ (J t : ℕ) (ht : 1 ≤ t) :
   push_cast
   rw [h_cast]
 
+/-! ### `Dpoly` natDegree and leadingCoeff -/
+
+/-- `Dpoly J` factors as `(C P · X + C ((P : ℚ)·(J-1) + 1)) · (C P · X + C ((P : ℚ)·J + 1))`. -/
+lemma Dpoly_eq_linear_mul (J : ℕ) :
+    Dpoly J =
+      (Polynomial.C (P : ℚ) * Polynomial.X + Polynomial.C ((P : ℚ) * ((J : ℚ) - 1) + 1)) *
+      (Polynomial.C (P : ℚ) * Polynomial.X + Polynomial.C ((P : ℚ) * (J : ℚ) + 1)) := by
+  unfold Dpoly
+  simp only [Polynomial.C_mul, Polynomial.C_add, Polynomial.C_sub, Polynomial.C_1]
+  ring
+
+/-- `Dpoly J` has natDegree exactly 2. -/
+lemma Dpoly_natDegree (J : ℕ) : (Dpoly J).natDegree = 2 := by
+  have hP_ne : (P : ℚ) ≠ 0 := by unfold P; norm_num
+  rw [Dpoly_eq_linear_mul]
+  rw [Polynomial.natDegree_mul]
+  · rw [Polynomial.natDegree_linear hP_ne, Polynomial.natDegree_linear hP_ne]
+  · -- first factor ≠ 0
+    intro h
+    have := Polynomial.natDegree_linear (a := (P : ℚ))
+        (b := (P : ℚ) * ((J : ℚ) - 1) + 1) hP_ne
+    rw [h] at this; simp at this
+  · -- second factor ≠ 0
+    intro h
+    have := Polynomial.natDegree_linear (a := (P : ℚ))
+        (b := (P : ℚ) * (J : ℚ) + 1) hP_ne
+    rw [h] at this; simp at this
+
+/-- `Dpoly J` has leading coefficient `P²`. -/
+lemma Dpoly_leadingCoeff (J : ℕ) : (Dpoly J).leadingCoeff = (P : ℚ) ^ 2 := by
+  have hP_ne : (P : ℚ) ≠ 0 := by unfold P; norm_num
+  rw [Dpoly_eq_linear_mul, Polynomial.leadingCoeff_mul]
+  rw [Polynomial.leadingCoeff_linear hP_ne, Polynomial.leadingCoeff_linear hP_ne]
+  ring
+
+/-! ### Composition `(A p) ∘ (Dpoly J)`
+
+The rescaled polynomial in Theorem 1 is `q := (A p).comp (Dpoly J) / g` where
+`g` is the gcd of the main-slot values. Before dividing by `g`, we have:
+
+  * natDegree `(A p).comp (Dpoly J) = 2 r` where `r = natDegree p`
+  * leadingCoeff `(A p).comp (Dpoly J) = lc(p) · Θ_r · P^{2r}`
+
+These follow from `Polynomial.natDegree_comp` and `Polynomial.leadingCoeff_comp`,
+combined with `A_natDegree_eq`, `A_leadingCoeff_eq`, `Dpoly_natDegree`,
+`Dpoly_leadingCoeff`. -/
+
+/-- natDegree of the composition. -/
+lemma A_comp_Dpoly_natDegree (p : ℚ[X]) (J : ℕ)
+    (h_nonconst : 1 ≤ p.natDegree) (h_lead_pos : 0 < p.leadingCoeff) :
+    ((A p).comp (Dpoly J)).natDegree = 2 * p.natDegree := by
+  rw [Polynomial.natDegree_comp, A_natDegree_eq p h_nonconst h_lead_pos,
+      Dpoly_natDegree]
+  ring
+
+/-- Leading coefficient of the composition: `lc(p) · Θ_r · P^{2r}`. -/
+lemma A_comp_Dpoly_leadingCoeff (p : ℚ[X]) (J : ℕ)
+    (h_nonconst : 1 ≤ p.natDegree) (h_lead_pos : 0 < p.leadingCoeff) :
+    ((A p).comp (Dpoly J)).leadingCoeff =
+      p.leadingCoeff * theta p.natDegree * ((P : ℚ) ^ (2 * p.natDegree)) := by
+  have hP_ne : (P : ℚ) ≠ 0 := by unfold P; norm_num
+  rw [Polynomial.leadingCoeff_comp ?_, A_leadingCoeff_eq p h_nonconst h_lead_pos,
+      Dpoly_leadingCoeff, A_natDegree_eq p h_nonconst h_lead_pos]
+  · -- Goal: lc(p) * Θ * (P²)^r = lc(p) * Θ * P^{2r}
+    rw [← pow_mul]
+  · -- Goal: (Dpoly J).natDegree ≠ 0
+    rw [Dpoly_natDegree]; norm_num
+
 /- The rescaled polynomial `q := A ∘ Dpoly / g`, where `g` is the (positive)
 generator of the ideal spanned by the main-value set. Definition deferred —
 depends on the choice of `g` from `Ideal.span (mainValueSet …)`; constructed
