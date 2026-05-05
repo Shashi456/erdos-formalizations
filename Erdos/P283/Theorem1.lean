@@ -394,6 +394,67 @@ lemma chooseMainGCDData {α : ℚ} {L : ℕ} (p : ℚ[X]) (hp : IntValued p)
   exact ⟨{ g := g, hg_pos := hg_pos, hg_dvd := hg_dvd,
            hg_no_prime_fixed_quot := hg_no_prime_fixed_quot }⟩
 
+/-- Helper: `qPoly` takes positive integer values on `n ≥ 1` whenever
+`MainChoice` and `MainGCDData` are constructed. Combines `md.hA_pos` (positivity
+of `A(D j)`) with `gcd.hg_dvd` (divisibility by `g`) and `qPoly_eval_at_succ`. -/
+lemma qPoly_int_pos_on_pos {α : ℚ} {L : ℕ} (p : ℚ[X]) (hp : IntValued p)
+    (md : MainChoice α L p hp) (gcd : MainGCDData p hp md) :
+    ∀ n : ℕ, 1 ≤ n →
+      ∃ z : ℤ, 0 < z ∧ (z : ℚ) = (qPoly p md.J gcd.g).eval (n : ℚ) := by
+  intro n hn
+  -- Set j := md.J + n - 1 so that md.J ≤ j.
+  set j : ℕ := md.J + n - 1 with hj_def
+  have hjJ : md.J ≤ j := by omega
+  -- val := intEval (A p) (D j) is positive.
+  set val : ℤ := intEval (A p) (A_intValued p hp) ((D j : ℕ) : ℤ) with hval_def
+  have hval_pos : 0 < val := md.hA_pos j hjJ
+  -- (gcd.g : ℤ) divides val.
+  have hg_dvd_val : (gcd.g : ℤ) ∣ val := gcd.hg_dvd j hjJ
+  -- gcd.g is positive (as ℤ).
+  have hg_pos_int : (0 : ℤ) < (gcd.g : ℤ) := by exact_mod_cast gcd.hg_pos
+  have hg_ne_int : (gcd.g : ℤ) ≠ 0 := ne_of_gt hg_pos_int
+  have hg_ne_q : (gcd.g : ℚ) ≠ 0 := by
+    exact_mod_cast (Nat.one_le_iff_ne_zero.mp gcd.hg_pos)
+  -- Extract z such that val = gcd.g * z.
+  obtain ⟨z, hz⟩ := hg_dvd_val
+  refine ⟨z, ?_, ?_⟩
+  · -- 0 < z. From 0 < val = gcd.g * z and 0 < gcd.g.
+    have h1 : 0 < (gcd.g : ℤ) * z := by rw [← hz]; exact hval_pos
+    exact Int.pos_of_mul_pos_right h1 hg_pos_int
+  · -- (z : ℚ) = (qPoly).eval (n : ℚ).
+    -- qPoly_eval_at_succ p hp md.J gcd.g n hn :
+    --   (qPoly p md.J gcd.g).eval (n : ℚ) =
+    --     ((intEval (A p) (D (md.J + n - 1)) : ℤ) : ℚ) / (gcd.g : ℚ).
+    rw [qPoly_eval_at_succ p hp md.J gcd.g n hn]
+    -- Now goal: (z : ℚ) = (val : ℚ) / (gcd.g : ℚ), where val = gcd.g * z.
+    show (z : ℚ) = ((intEval (A p) (A_intValued p hp)
+        ((D (md.J + n - 1) : ℕ) : ℤ) : ℤ) : ℚ) / (gcd.g : ℚ)
+    -- Rewrite via val = gcd.g * z.
+    have hval_eq : (val : ℚ) = (gcd.g : ℚ) * (z : ℚ) := by
+      have : ((val : ℤ) : ℚ) = (((gcd.g : ℤ) * z : ℤ) : ℚ) := by
+        rw [hz]
+      push_cast at this
+      exact this
+    -- val on the goal is exactly the intEval expression with j = md.J + n - 1.
+    show (z : ℚ) = (val : ℚ) / (gcd.g : ℚ)
+    rw [hval_eq]
+    field_simp
+
+/-- **Window representation (PDF §2).** Apply Roth–Szekeres–Graham to
+`qPoly p md.J gcd.g`. Every sufficiently large integer `X` is a finite subset
+sum of `qPoly`-values evaluated at `(i + 1 : ℕ)` for `i : ℕ`. -/
+lemma main_window_representation {α : ℚ} {L : ℕ} (p : ℚ[X]) (hp : IntValued p)
+    (h_nonconst : 1 ≤ p.natDegree) (h_lead_pos : 0 < p.leadingCoeff)
+    (md : MainChoice α L p hp) (gcd : MainGCDData p hp md) :
+    ∃ X_q : ℤ, ∀ X : ℤ, X_q ≤ X →
+      ∃ I : Finset ℕ,
+        (X : ℚ) = ∑ i ∈ I, (qPoly p md.J gcd.g).eval ((i + 1 : ℕ) : ℚ) := by
+  exact roth_szekeres_graham (qPoly p md.J gcd.g)
+    (qPoly_natDegree_pos p md.J gcd.g gcd.hg_pos h_nonconst h_lead_pos)
+    (qPoly_leadingCoeff_pos p md.J gcd.g gcd.hg_pos h_nonconst h_lead_pos)
+    (qPoly_int_pos_on_pos p hp md gcd)
+    gcd.hg_no_prime_fixed_quot
+
 /-! ### Quotient-gcd bridge (sketch — full proof forthcoming)
 
 The most important missing bridge for theorem_1's case neg: if `g` is the
