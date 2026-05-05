@@ -251,10 +251,11 @@ lemma muConst_pos (p : ℚ[X])
 
 /-! ## The set of main-slot increments -/
 
-/-- The set of integer values `A(D j)` for `j ≥ J`. Used to define `g`. -/
-noncomputable def mainValueSet (p : ℚ[X]) (hp : IntValued p) (hA : IntValued (A p))
-    (J : ℕ) : Set ℤ :=
-  { z | ∃ j : ℕ, J ≤ j ∧ z = intEval (A p) hA ((D j : ℕ) : ℤ) }
+/-- The set of integer values `A(D j)` for `j ≥ J`. Used to define `g`. The
+`IntValued (A p)` witness is derived automatically via `A_intValued` so
+callers only need `hp : IntValued p`. -/
+noncomputable def mainValueSet (p : ℚ[X]) (hp : IntValued p) (J : ℕ) : Set ℤ :=
+  { z | ∃ j : ℕ, J ≤ j ∧ z = intEval (A p) (A_intValued p hp) ((D j : ℕ) : ℤ) }
 
 /-! ## The polynomial `Dpoly` and rescaled `q` -/
 
