@@ -596,6 +596,21 @@ theorem theorem_1 (α : ℚ) (hα : 0 < α) (L : ℕ) (hL : 1 ≤ L) (p : ℚ[X]
       rw [hm_succ]
       simp
   case neg =>
+    -- POLYNOMIAL CASE: 1 ≤ p.natDegree (since hd : p.natDegree ≠ 0).
+    have h_nonconst : 1 ≤ p.natDegree := Nat.one_le_iff_ne_zero.mpr hd
+    -- Step 1: choose J via chooseMainChoice (asymptotic threshold).
+    obtain ⟨md⟩ := chooseMainChoice α hα L p hp h_nonconst h_lead_pos
+    -- Step 2: extract g via chooseMainGCDData (gcd of A(D j) values + bridge).
+    obtain ⟨gcd⟩ := chooseMainGCDData p hp h_nonconst h_lead_pos md
+    -- Step 3: apply RSG to qPoly to get the window representation.
+    obtain ⟨X_q, hX_q⟩ := main_window_representation p hp h_nonconst h_lead_pos md gcd
+    -- Steps 4-8 (correction slots, filler denominators, reciprocal identity,
+    -- switch operations, attainable intervals, overlap, final assembly) form
+    -- the remaining content of the §2 proof. They depend on
+    -- `exists_large_correction_denominator` (sorry in `Corrections.lean`)
+    -- and substantial bookkeeping for the switch operations and interval
+    -- overlap argument. The `md`, `gcd`, `X_q`, `hX_q` data above are
+    -- exactly the inputs the assembly consumes.
     sorry
 
 end PolynomialEgyptianSums
