@@ -393,6 +393,19 @@ lemma A_comp_Dpoly_leadingCoeff_pos (p : ℚ[X]) (J : ℕ)
     exact pow_pos this _
   positivity
 
+/-- `(A p).comp (Dpoly J)` evaluated at a positive integer `t` equals the
+integer value `intEval (A p) (D (J + t - 1))`. This is the bridge between the
+rescaled polynomial (used by RSG) and the main-slot value set used to define
+the gcd `g`. -/
+lemma A_comp_Dpoly_eval_at_succ (p : ℚ[X]) (hp : IntValued p) (J t : ℕ)
+    (ht : 1 ≤ t) :
+    ((A p).comp (Dpoly J)).eval (t : ℚ) =
+      ((intEval (A p) (A_intValued p hp) ((D (J + t - 1) : ℕ) : ℤ) : ℤ) : ℚ) := by
+  rw [Polynomial.eval_comp, Dpoly_eval_at_succ J t ht]
+  rw [intEval_spec (A p) (A_intValued p hp) ((D (J + t - 1) : ℕ) : ℤ)]
+  push_cast
+  rfl
+
 /- The rescaled polynomial `q := A ∘ Dpoly / g`, where `g` is the (positive)
 generator of the ideal spanned by the main-value set. Definition deferred —
 depends on the choice of `g` from `Ideal.span (mainValueSet …)`; constructed
