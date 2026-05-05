@@ -338,6 +338,26 @@ lemma A_comp_Dpoly_natDegree (p : ℚ[X]) (J : ℕ)
       Dpoly_natDegree]
   ring
 
+/-- `Dpoly J` is integer-valued (its coefficients are rationals but evaluate to ℤ
+on ℤ inputs since each linear factor is `P·X + integer`). -/
+lemma Dpoly_intValued (J : ℕ) : IntValued (Dpoly J) := by
+  intro z
+  refine ⟨((P : ℤ) * (z + (J : ℤ) - 1) + 1) * ((P : ℤ) * (z + (J : ℤ)) + 1), ?_⟩
+  unfold Dpoly
+  simp only [Polynomial.eval_mul, Polynomial.eval_add, Polynomial.eval_sub,
+             Polynomial.eval_C, Polynomial.eval_X, Polynomial.eval_one]
+  push_cast
+  ring
+
+/-- The composition `(A p).comp (Dpoly J)` is integer-valued whenever `p` is. -/
+lemma A_comp_Dpoly_intValued (p : ℚ[X]) (hp : IntValued p) (J : ℕ) :
+    IntValued ((A p).comp (Dpoly J)) := by
+  intro z
+  obtain ⟨k_D, hk_D⟩ := Dpoly_intValued J z
+  obtain ⟨k_A, hk_A⟩ := A_intValued p hp k_D
+  refine ⟨k_A, ?_⟩
+  rw [Polynomial.eval_comp, ← hk_D, hk_A]
+
 /-- Leading coefficient of the composition: `lc(p) · Θ_r · P^{2r}`. -/
 lemma A_comp_Dpoly_leadingCoeff (p : ℚ[X]) (J : ℕ)
     (h_nonconst : 1 ≤ p.natDegree) (h_lead_pos : 0 < p.leadingCoeff) :
