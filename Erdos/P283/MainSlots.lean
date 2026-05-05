@@ -175,6 +175,80 @@ lemma A_leadingCoeff (p : ℚ[X])
 lemma A_intValued (p : ℚ[X]) (hp : IntValued p) : IntValued (A p) :=
   switchingPoly_intValued p hp E0
 
+/-! ## Asymptotic constants for Theorem 1
+
+`λ`, `μ`, `aΘP^{2r}` bracket the rescaled-polynomial leading term. Theorem 1's
+attainable-interval / overlap argument needs `λ < μ < a Θ_r P^{2r}`; the
+midpoint choice `μ := a P^{2r} (1 + Θ_r) / 2` works in ℚ. -/
+
+/-- `λ p := lc(p) · P^{2r}` where `r = natDegree p`. The interval-step
+constant: `B_{N+1} − B_N = λ N^{2r} + O(N^{2r-1})`. -/
+def lambdaConst (p : ℚ[X]) : ℚ :=
+  p.leadingCoeff * ((P : ℚ) ^ (2 * p.natDegree))
+
+/-- `μ p := lc(p) · P^{2r} · (1 + Θ_r) / 2`. The strict mid-constant
+between `λ p` and `lc(p) · Θ_r · P^{2r}`. Used as the upper-edge slope of
+attainable intervals so consecutive intervals overlap. -/
+def muConst (p : ℚ[X]) : ℚ :=
+  p.leadingCoeff * ((P : ℚ) ^ (2 * p.natDegree)) *
+    ((1 + theta p.natDegree) / 2)
+
+/-- `λ p < μ p` whenever `lc(p) > 0` and `1 ≤ natDegree p`. -/
+lemma lambdaConst_lt_muConst (p : ℚ[X])
+    (h_nonconst : 1 ≤ p.natDegree) (h_lead_pos : 0 < p.leadingCoeff) :
+    lambdaConst p < muConst p := by
+  unfold lambdaConst muConst
+  have hθ : 1 < theta p.natDegree := theta_gt_one _ h_nonconst
+  have hP : (0 : ℚ) < (P : ℚ) ^ (2 * p.natDegree) := by
+    have : (0 : ℚ) < (P : ℚ) := by unfold P; norm_num
+    exact pow_pos this _
+  have hap : 0 < p.leadingCoeff * ((P : ℚ) ^ (2 * p.natDegree)) :=
+    mul_pos h_lead_pos hP
+  have h_factor : 1 < (1 + theta p.natDegree) / 2 := by linarith
+  -- aP^{2r} < aP^{2r} * ((1+Θ)/2)
+  calc p.leadingCoeff * ((P : ℚ) ^ (2 * p.natDegree))
+      = p.leadingCoeff * ((P : ℚ) ^ (2 * p.natDegree)) * 1 := by ring
+    _ < p.leadingCoeff * ((P : ℚ) ^ (2 * p.natDegree)) *
+          ((1 + theta p.natDegree) / 2) :=
+        mul_lt_mul_of_pos_left h_factor hap
+
+/-- `μ p < lc(p) · Θ_r · P^{2r}` whenever `lc(p) > 0` and `1 ≤ natDegree p`. -/
+lemma muConst_lt_a_theta_P (p : ℚ[X])
+    (h_nonconst : 1 ≤ p.natDegree) (h_lead_pos : 0 < p.leadingCoeff) :
+    muConst p < p.leadingCoeff * theta p.natDegree *
+      ((P : ℚ) ^ (2 * p.natDegree)) := by
+  unfold muConst
+  have hθ : 1 < theta p.natDegree := theta_gt_one _ h_nonconst
+  have hP : (0 : ℚ) < (P : ℚ) ^ (2 * p.natDegree) := by
+    have : (0 : ℚ) < (P : ℚ) := by unfold P; norm_num
+    exact pow_pos this _
+  have hap : 0 < p.leadingCoeff * ((P : ℚ) ^ (2 * p.natDegree)) :=
+    mul_pos h_lead_pos hP
+  -- (1+Θ)/2 < Θ ↔ 1+Θ < 2Θ ↔ 1 < Θ
+  have h_factor : (1 + theta p.natDegree) / 2 < theta p.natDegree := by linarith
+  calc p.leadingCoeff * ((P : ℚ) ^ (2 * p.natDegree)) *
+        ((1 + theta p.natDegree) / 2)
+      < p.leadingCoeff * ((P : ℚ) ^ (2 * p.natDegree)) * theta p.natDegree :=
+        mul_lt_mul_of_pos_left h_factor hap
+    _ = p.leadingCoeff * theta p.natDegree *
+          ((P : ℚ) ^ (2 * p.natDegree)) := by ring
+
+/-- `0 < λ p` whenever `lc(p) > 0`. -/
+lemma lambdaConst_pos (p : ℚ[X]) (h_lead_pos : 0 < p.leadingCoeff) :
+    0 < lambdaConst p := by
+  unfold lambdaConst
+  have hP : (0 : ℚ) < (P : ℚ) ^ (2 * p.natDegree) := by
+    have : (0 : ℚ) < (P : ℚ) := by unfold P; norm_num
+    exact pow_pos this _
+  exact mul_pos h_lead_pos hP
+
+/-- `0 < μ p` whenever `lc(p) > 0` and `1 ≤ natDegree p`. -/
+lemma muConst_pos (p : ℚ[X])
+    (h_nonconst : 1 ≤ p.natDegree) (h_lead_pos : 0 < p.leadingCoeff) :
+    0 < muConst p :=
+  lt_trans (lambdaConst_pos p h_lead_pos)
+    (lambdaConst_lt_muConst p h_nonconst h_lead_pos)
+
 /-! ## The set of main-slot increments -/
 
 /-- The set of integer values `A(D j)` for `j ≥ J`. Used to define `g`. -/
