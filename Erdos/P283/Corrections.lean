@@ -38,7 +38,53 @@ theorem duplicated_generators_subset_sum_all_residues
     ∀ r : ZMod g,
       ∃ T : Finset (Fin w × Fin (g - 1)),
         r = ∑ t ∈ T, ρ t.1 := by
-  sorry
+  intro r
+  haveI : NeZero g := ⟨by omega⟩
+  have hr : r ∈ AddSubgroup.closure (Set.range ρ) := by rw [hgen]; trivial
+  obtain ⟨a, ha⟩ := AddSubgroup.exists_of_mem_closure_range ρ r hr
+  have hgZ : (0 : ℤ) < (g : ℤ) := by exact_mod_cast hg
+  -- Reduce each integer coefficient `a i` to its residue `k i ∈ {0, …, g - 1}`.
+  set k : Fin w → ℕ := fun i => ((a i) % (g : ℤ)).toNat with hk_def
+  have hk_lt : ∀ i, k i < g := fun i => by
+    have hnn : (0 : ℤ) ≤ (a i) % (g : ℤ) := Int.emod_nonneg _ hgZ.ne'
+    have hub : (a i) % (g : ℤ) < (g : ℤ) := Int.emod_lt_of_pos _ hgZ
+    rw [hk_def]
+    exact (Int.toNat_lt hnn).mpr hub
+  have hk_le : ∀ i, k i ≤ g - 1 := fun i => by have := hk_lt i; omega
+  -- In `ZMod g`, the natural-number scalar `k i` matches the integer scalar `a i`.
+  have key : ∀ i, (k i : ℕ) • ρ i = a i • ρ i := fun i => by
+    have hnn : (0 : ℤ) ≤ (a i) % (g : ℤ) := Int.emod_nonneg _ hgZ.ne'
+    rw [hk_def]
+    rw [show ((((a i) % (g : ℤ)).toNat : ℕ) • ρ i) = ((((a i) % (g : ℤ)).toNat : ℤ) • ρ i) from
+      (natCast_zsmul (ρ i) _).symm]
+    rw [Int.toNat_of_nonneg hnn]
+    rw [show ((g : ℤ) : ℤ) = (Fintype.card (ZMod g) : ℤ) by simp [ZMod.card]]
+    exact mod_card_zsmul (ρ i) (a i)
+  -- For each `i`, choose the first `k i` elements of `Fin (g - 1)`.
+  let T : Finset (Fin w × Fin (g - 1)) :=
+    ((Finset.univ : Finset (Fin w)) ×ˢ (Finset.univ : Finset (Fin (g - 1)))).filter
+      (fun p => p.2.1 < k p.1)
+  refine ⟨T, ?_⟩
+  show r = ∑ t ∈ T, ρ t.1
+  have hsum : (∑ t ∈ T, ρ t.1) = ∑ i, k i • ρ i := by
+    show (∑ t ∈ ((Finset.univ : Finset (Fin w)) ×ˢ
+            (Finset.univ : Finset (Fin (g - 1)))).filter
+            (fun p => p.2.1 < k p.1), ρ t.1) = ∑ i, k i • ρ i
+    rw [Finset.sum_filter, Finset.sum_product]
+    refine Finset.sum_congr rfl (fun i _ => ?_)
+    show (∑ y : Fin (g - 1), if y.val < k i then ρ i else 0) = k i • ρ i
+    rw [← Finset.sum_filter, Finset.sum_const]
+    congr 1
+    have heq : ((Finset.univ : Finset (Fin (g - 1))).filter
+                  (fun j : Fin (g - 1) => j.val < k i)) =
+               (Finset.range (k i)).attachFin (fun j hj =>
+                 lt_of_lt_of_le (Finset.mem_range.mp hj) (hk_le i)) := by
+      ext ⟨b, hb⟩
+      simp [Finset.mem_attachFin, Finset.mem_range]
+    rw [heq, Finset.card_attachFin]
+    simp
+  rw [hsum, ha]
+  exact Finset.sum_congr rfl (fun i _ => (key i).symm)
 
 /-! ## Correction-denominator existence (density argument) -/
 

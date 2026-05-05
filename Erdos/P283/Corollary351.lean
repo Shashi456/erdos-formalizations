@@ -40,8 +40,53 @@ def IsStronglyComplete (A : Set ℚ) : Prop :=
 
 /-- **Corollary 7, case `p = 0`.** `A_0 = {1/n : n ∈ ℕ}` is strongly complete:
 every positive integer is a sum of distinct unit reciprocals (Lemma 3). -/
-theorem corollary_7_zero : IsStronglyComplete (imageSet 0) := by
-  sorry
+theorem corollary_7_zero : IsStronglyComplete (imageSet (0 : ℚ[X])) := by
+  classical
+  intro B
+  rw [Filter.eventually_atTop]
+  -- Pick `L` large enough that `1/e ∉ B` for all `e > L`.
+  set L := (insert 0 (B.image (fun b => b.den))).max'
+    (Finset.insert_nonempty 0 _) with hL_def
+  have hL_avoid : ∀ e : ℕ, L < e → (1 : ℚ) / e ∉ B := by
+    intro e he hb
+    have he_pos : 1 ≤ e := by omega
+    have h_den : ((1 : ℚ) / e).den = e := by
+      rw [one_div, Rat.inv_natCast_den_of_pos he_pos]
+    have h_mem_image : e ∈ B.image (fun b => b.den) := by
+      rw [Finset.mem_image]
+      exact ⟨(1 : ℚ) / e, hb, h_den⟩
+    have h_mem_insert : e ∈ (insert 0 (B.image (fun b => b.den))) := by
+      rw [Finset.mem_insert]; exact Or.inr h_mem_image
+    have h_le : e ≤ L := Finset.le_max' _ e h_mem_insert
+    omega
+  -- For `m ≥ 1`, apply Lemma 3 with `R = m` and our `L`.
+  refine ⟨1, ?_⟩
+  intro m hm
+  have hm_pos : (0 : ℚ) < (m : ℚ) := by exact_mod_cast hm
+  obtain ⟨K, hK⟩ := egyptian_expansion (m : ℚ) hm_pos L
+  obtain ⟨E, _hE_card, hE_lb, hE_sum⟩ := hK K (le_refl K)
+  -- Build `X = E.image (fun e => 1/e)`.
+  refine ⟨E.image (fun e : ℕ => (1 : ℚ) / (e : ℚ)), ?_, ?_⟩
+  · -- ↑X ⊆ imageSet 0 \ ↑B
+    intro x hx
+    simp only [Finset.coe_image, Set.mem_image, Finset.mem_coe] at hx
+    obtain ⟨e, he, rfl⟩ := hx
+    have he_lb := hE_lb e he
+    refine ⟨?_, ?_⟩
+    · -- 1/e ∈ imageSet 0 since (0 : ℚ[X]).eval e + 1/e = 1/e
+      refine ⟨e, ?_⟩
+      simp [Polynomial.eval_zero]
+    · exact hL_avoid e he_lb
+  · -- ∑ x ∈ X, x = ↑m
+    have h_inj : Set.InjOn (fun e : ℕ => (1 : ℚ) / (e : ℚ)) (E : Set ℕ) := by
+      intro a ha b hb hab
+      have ha_pos : 1 ≤ a := by have := hE_lb a ha; omega
+      have hb_pos : 1 ≤ b := by have := hE_lb b hb; omega
+      simp only [one_div] at hab
+      have h1 : (a : ℚ) = (b : ℚ) := inv_inj.mp hab
+      exact_mod_cast h1
+    rw [Finset.sum_image h_inj]
+    exact hE_sum.symm
 
 /-! ## Case positive leading coefficient -/
 
