@@ -371,6 +371,27 @@ lemma A_comp_Dpoly_leadingCoeff (p : ℚ[X]) (J : ℕ)
   · -- Goal: (Dpoly J).natDegree ≠ 0
     rw [Dpoly_natDegree]; norm_num
 
+/-- `0 < ((A p).comp (Dpoly J)).natDegree` whenever `1 ≤ p.natDegree`,
+`lc(p) > 0`. (RSG's `0 < f.natDegree` hypothesis after `g`-division.) -/
+lemma A_comp_Dpoly_natDegree_pos (p : ℚ[X]) (J : ℕ)
+    (h_nonconst : 1 ≤ p.natDegree) (h_lead_pos : 0 < p.leadingCoeff) :
+    0 < ((A p).comp (Dpoly J)).natDegree := by
+  rw [A_comp_Dpoly_natDegree p J h_nonconst h_lead_pos]
+  omega
+
+/-- `0 < ((A p).comp (Dpoly J)).leadingCoeff` whenever `1 ≤ p.natDegree`,
+`lc(p) > 0`. (RSG's `0 < f.leadingCoeff` hypothesis after `g`-division.) -/
+lemma A_comp_Dpoly_leadingCoeff_pos (p : ℚ[X]) (J : ℕ)
+    (h_nonconst : 1 ≤ p.natDegree) (h_lead_pos : 0 < p.leadingCoeff) :
+    0 < ((A p).comp (Dpoly J)).leadingCoeff := by
+  rw [A_comp_Dpoly_leadingCoeff p J h_nonconst h_lead_pos]
+  have hθ : 0 < theta p.natDegree := by
+    have := theta_gt_one _ h_nonconst; linarith
+  have hP : (0 : ℚ) < (P : ℚ) ^ (2 * p.natDegree) := by
+    have : (0 : ℚ) < (P : ℚ) := by unfold P; norm_num
+    exact pow_pos this _
+  positivity
+
 /- The rescaled polynomial `q := A ∘ Dpoly / g`, where `g` is the (positive)
 generator of the ideal spanned by the main-value set. Definition deferred —
 depends on the choice of `g` from `Ideal.span (mainValueSet …)`; constructed
