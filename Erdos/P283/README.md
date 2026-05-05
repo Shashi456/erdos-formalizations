@@ -3,10 +3,11 @@
 > [erdosproblems.com/283](https://www.erdosproblems.com/283) ·
 > [erdosproblems.com/351](https://www.erdosproblems.com/351)
 >
-> ⚠️ **In progress.** §1 (Egyptian switches) is complete and axiom-free.
-> Theorem 1 (§2) and the density sub-lemma `exists_large_correction_denominator`
-> remain `sorry`. The Corollary 7 zero and negative-leading cases are proved;
-> the positive-leading case awaits Theorem 1. See [§ Current state](#current-state).
+> ⚠️ **In progress.** §1 (Egyptian switches) and the FC wrapper bridges are
+> complete; Theorem 1's constant case is proved; the polynomial case (`case neg`),
+> the density sub-lemma `exists_large_correction_denominator`, and
+> `corollary_7_pos_leading` remain `sorry`. Corollary 7's zero and
+> negative-leading cases are proved. See [§ Current state](#current-state).
 
 The May 3 2026 proof (GPT-5.5 Pro, cleaned up by Liam Price; Kevin Barreto
 noticed #351 follows) resolves both problems simultaneously.
@@ -76,9 +77,9 @@ Per-file sorry counts:
 | `MainSlots.lean` | 0 |
 | `Collision.lean` | 0 |
 | `Corrections.lean` | 1 (`exists_large_correction_denominator`) |
-| `Theorem1.lean` | 1 (`theorem_1`) |
-| `Corollary351.lean` | 1 (`corollary_7_pos_leading`; the zero and negative cases are proven) |
-| `FC.lean` | 2 (`erdos_283`, `erdos_351` — both transitively depend on Theorem 1) |
+| `Theorem1.lean` | 1 (`theorem_1` `case neg`; the constant case is proven) |
+| `Corollary351.lean` | 1 (`corollary_7_pos_leading`; zero and negative cases are proven) |
+| `FC.lean` | 0 (`erdos_283`, `erdos_351` bridges complete; sorries propagate from Theorem1/Corollary351) |
 
 Per-theorem status:
 
@@ -95,12 +96,13 @@ Per-theorem status:
 | `u_coprime_six`, `D_coprime_six`, `main_valuation_profile`, `tau_valuation_profile`, `filler_v2_at_least_three` | ✅ proved |
 | `duplicated_generators_subset_sum_all_residues` | ✅ proved |
 | `exists_large_correction_denominator` (density / sieve argument) | `sorry` |
-| `theorem_1` (main, depends on `roth_szekeres_graham`) | `sorry` |
+| `theorem_1` constant case (deg p = 0; via Lemma 3 + `NoFixedDivisor` ⇒ `p = 1`) | ✅ proved |
+| `theorem_1` polynomial case (1 ≤ deg p; depends on `roth_szekeres_graham`) | `sorry` |
 | `corollary_7_zero` (`p = 0` case via Lemma 3) | ✅ proved |
-| `corollary_7_pos_leading` (positive lead coeff; depends on Theorem 1) | `sorry` |
+| `corollary_7_pos_leading` (positive lead coeff; depends on Theorem 1 polynomial case) | `sorry` |
 | `not_strongly_complete_of_neg_leadingCoeff` | ✅ proved |
-| `Erdos283.erdos_283` (FC iff form) | `sorry` |
-| `Erdos351.erdos_351` (FC iff form) | `sorry` |
+| `Erdos283.erdos_283` (FC iff form) | ✅ proved (sorries propagate from Theorem 1) |
+| `Erdos351.erdos_351` (FC iff form) | ✅ proved (sorries propagate from `corollary_7_pos_leading`) |
 
 ## Target trust boundary
 
