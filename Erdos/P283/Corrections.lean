@@ -120,6 +120,106 @@ theorem exists_large_correction_denominator
       (∀ e ∈ insert 1 Gν, e * c ∉ forbiddenFinite) ∧
       (∀ j, J ≤ j → ∀ h ∈ ({1, 2, 3, 6} : Finset ℕ),
         ∀ e ∈ insert 1 Gν, e * c ≠ h * D j) := by
+  classical
+  -- Notation.
+  set Q : ℚ[X] := switchingPoly p Gν with hQ_def
+  set hQint : IntValued Q := switchingPoly_intValued p hp Gν with hQint_def
+  set EE : Finset ℕ := insert 1 Gν with hEE_def
+  -- All elements of EE are positive (1 or ≥ 2 from Egyptian pattern).
+  have hEE_pos : ∀ e ∈ EE, 1 ≤ e := by
+    intro e he
+    rw [hEE_def] at he
+    rcases Finset.mem_insert.mp he with h1 | h2
+    · omega
+    · exact le_trans (by norm_num) (hGν.1 e h2)
+  -- Pick a uniform upper bound on EE for sqrt-style counting.
+  set maxE : ℕ := (EE.sup id) + 1 with hmaxE_def
+  have hmaxE_ge : ∀ e ∈ EE, e ≤ maxE := by
+    intro e he
+    have := Finset.le_sup (f := id) he
+    simp at this; omega
+  have hmaxE_pos : 1 ≤ maxE := by rw [hmaxE_def]; omega
+  -- Step 1: positivity threshold for Q on naturals.
+  -- Cast Q to ℝ[X], use leading coefficient positivity to find threshold.
+  obtain ⟨Npos, hNpos⟩ : ∃ N : ℕ, ∀ x : ℕ, N ≤ x →
+      0 < intEval Q hQint ((x : ℕ) : ℤ) := by
+    set Qr : ℝ[X] := Q.map (algebraMap ℚ ℝ) with hQr_def
+    have h_inj : Function.Injective ((algebraMap ℚ ℝ) : ℚ →+* ℝ) :=
+      (algebraMap ℚ ℝ).injective
+    have hQr_lc : (0 : ℝ) < Qr.leadingCoeff := by
+      rw [hQr_def, Polynomial.leadingCoeff_map_of_injective h_inj]
+      have : (0 : ℝ) < (Q.leadingCoeff : ℝ) := by exact_mod_cast hQpos
+      simpa [algebraMap] using this
+    by_cases hd : 0 < Qr.degree
+    · have h_tendsto :
+          Filter.Tendsto (fun x : ℝ => Qr.eval x) Filter.atTop Filter.atTop :=
+        Polynomial.tendsto_atTop_of_leadingCoeff_nonneg Qr hd hQr_lc.le
+      obtain ⟨N0, hN0⟩ := Filter.tendsto_atTop_atTop.mp h_tendsto 1
+      refine ⟨Nat.ceil (max N0 0) + 1, ?_⟩
+      intro x hx
+      have hx_real : ((Nat.ceil (max N0 0) : ℕ) : ℝ) + 1 ≤ (x : ℝ) := by
+        exact_mod_cast hx
+      have h_max_le : N0 ≤ ((Nat.ceil (max N0 0) : ℕ) : ℝ) := by
+        have h1 : N0 ≤ max N0 0 := le_max_left _ _
+        have h2 : (max N0 0) ≤ ((Nat.ceil (max N0 0) : ℕ) : ℝ) := Nat.le_ceil _
+        linarith
+      have h_x_ge : N0 ≤ (x : ℝ) := by linarith
+      have h_eval : 1 ≤ Qr.eval ((x : ℕ) : ℝ) := hN0 _ h_x_ge
+      -- Convert to ℚ.
+      have h_eval_cast :
+          Qr.eval ((x : ℕ) : ℝ) = ((Q.eval ((x : ℕ) : ℚ) : ℚ) : ℝ) := by
+        rw [hQr_def]
+        have h1 : ((x : ℕ) : ℝ) = (algebraMap ℚ ℝ) ((x : ℕ) : ℚ) := by
+          simp [algebraMap]
+        rw [h1, Polynomial.eval_map_apply]
+        simp [algebraMap]
+      have h_eval_q : 1 ≤ Q.eval ((x : ℕ) : ℚ) := by
+        have : ((1 : ℚ) : ℝ) ≤ ((Q.eval ((x : ℕ) : ℚ) : ℚ) : ℝ) := by
+          rw [show ((1 : ℚ) : ℝ) = (1 : ℝ) by norm_num]
+          rw [← h_eval_cast]; exact h_eval
+        exact_mod_cast this
+      have h_intEval_eq :
+          ((intEval Q hQint ((x : ℕ) : ℤ) : ℤ) : ℚ) = Q.eval ((x : ℕ) : ℚ) := by
+        rw [intEval_spec]; push_cast; rfl
+      have h_pos_q : 0 < Q.eval ((x : ℕ) : ℚ) := by linarith
+      have h_pos_int : (0 : ℚ) < ((intEval Q hQint ((x : ℕ) : ℤ) : ℤ) : ℚ) := by
+        rw [h_intEval_eq]; exact h_pos_q
+      exact_mod_cast h_pos_int
+    · -- Q has degree ≤ 0. Then Q is constant, equal to its leading coefficient.
+      push_neg at hd
+      have hQr_ne : Qr ≠ 0 := by
+        intro h0; rw [h0] at hQr_lc; simp at hQr_lc
+      have hQr_natDeg : Qr.natDegree = 0 := by
+        have h_deg_eq : Qr.degree = (Qr.natDegree : WithBot ℕ) :=
+          Polynomial.degree_eq_natDegree hQr_ne
+        rw [h_deg_eq] at hd
+        have hle : (Qr.natDegree : WithBot ℕ) ≤ ((0 : ℕ) : WithBot ℕ) := by
+          exact_mod_cast hd
+        exact Nat.le_antisymm (by exact_mod_cast hle) (Nat.zero_le _)
+      have hQ_ne : Q ≠ 0 := by
+        intro h0
+        rw [h0] at hQr_def
+        have : Qr = 0 := by rw [hQr_def]; simp
+        exact hQr_ne this
+      have hQ_natDeg : Q.natDegree = 0 := by
+        rw [hQr_def] at hQr_natDeg
+        rw [Polynomial.natDegree_map_eq_of_injective h_inj] at hQr_natDeg
+        exact hQr_natDeg
+      have hQ_eq : Q = Polynomial.C (Q.coeff 0) :=
+        Polynomial.eq_C_of_natDegree_eq_zero hQ_natDeg
+      have hQ_coeff_eq : Q.coeff 0 = Q.leadingCoeff := by
+        rw [Polynomial.leadingCoeff, hQ_natDeg]
+      refine ⟨0, fun x _ => ?_⟩
+      have h_eval : Q.eval ((x : ℕ) : ℚ) = Q.leadingCoeff := by
+        conv_lhs => rw [hQ_eq]
+        rw [Polynomial.eval_C, hQ_coeff_eq]
+      have h_intEval_eq :
+          ((intEval Q hQint ((x : ℕ) : ℤ) : ℤ) : ℚ) = Q.eval ((x : ℕ) : ℚ) := by
+        rw [intEval_spec]; push_cast; rfl
+      rw [h_eval] at h_intEval_eq
+      have : (0 : ℚ) < ((intEval Q hQint ((x : ℕ) : ℤ) : ℤ) : ℚ) := by
+        rw [h_intEval_eq]; exact hQpos
+      exact_mod_cast this
   sorry
 
 /-! ## Correction slots (assembled)

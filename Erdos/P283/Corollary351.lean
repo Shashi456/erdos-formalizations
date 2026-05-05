@@ -132,6 +132,161 @@ private lemma intValued_C_inv_mul (h : ℕ) (hh_pos : 1 ≤ h) (Dp : ℚ[X])
   rw [← h_eval, hDpk]
   field_simp
 
+/-- **Mahler / finite-differences extension of fixed divisor.** If `q : ℚ[X]` is
+integer-valued and `d ∣ q(n)` for every positive integer `n`, then `d ∣ q(w)` for
+every integer `w`. The proof uses that the `(N+1)`-th forward difference of a
+degree-`N` polynomial vanishes, giving a recurrence that lets us extend
+divisibility from `ℕ_{≥1}` to all of `ℤ`. -/
+private lemma intValued_dvd_extends_to_int (q : ℚ[X]) (hq_int : IntValued q)
+    (d : ℕ)
+    (hdvd_pos : ∀ n : ℕ, 1 ≤ n → (d : ℤ) ∣ intEval q hq_int (n : ℤ)) :
+    ∀ w : ℤ, (d : ℤ) ∣ intEval q hq_int w := by
+  set N : ℕ := q.natDegree
+  -- Step 1: (N+1)-th forward difference recurrence in ℤ at integer points.
+  have h_recur : ∀ y : ℤ,
+      ∑ k ∈ Finset.range (N + 2),
+        ((-1 : ℤ) ^ (N + 1 - k) * ((N + 1).choose k)) •
+          intEval q hq_int (y + (k : ℤ)) = 0 := by
+    intro y
+    -- Apply Polynomial.fwdDiff_iter_eq_zero_of_degree_lt to q.eval at (y : ℚ).
+    have hq_zero : (fwdDiff (1 : ℚ))^[N + 1] (fun x => q.eval x) ((y : ℤ) : ℚ) = 0 := by
+      have hP := Polynomial.fwdDiff_iter_eq_zero_of_degree_lt (P := q) (n := N + 1)
+        (Nat.lt_succ_self _)
+      exact congr_fun hP ((y : ℤ) : ℚ)
+    rw [fwdDiff_iter_eq_sum_shift] at hq_zero
+    -- Each term in ℚ is the cast of an integer term.
+    have hsum_eq :
+        ∑ k ∈ Finset.range (N + 2),
+            ((-1 : ℤ) ^ (N + 1 - k) * ((N + 1).choose k)) •
+              q.eval (((y : ℤ) : ℚ) + k • (1 : ℚ)) =
+        (((∑ k ∈ Finset.range (N + 2),
+            ((-1 : ℤ) ^ (N + 1 - k) * ((N + 1).choose k)) •
+              intEval q hq_int (y + (k : ℤ))) : ℤ) : ℚ) := by
+      rw [Int.cast_sum]
+      apply Finset.sum_congr rfl
+      intro k _
+      have h1 : ((y : ℤ) : ℚ) + k • (1 : ℚ) = ((y + (k : ℤ) : ℤ) : ℚ) := by
+        push_cast; ring
+      rw [h1, ← intEval_spec q hq_int (y + (k : ℤ))]
+      simp only [zsmul_eq_mul, Int.cast_mul, Int.cast_pow, Int.cast_neg,
+        Int.cast_one, Int.cast_natCast]
+    rw [hsum_eq] at hq_zero
+    exact_mod_cast hq_zero
+  -- Step 2: Isolate `intEval q hq_int y` from the recurrence.
+  have h_dvd_smul : ∀ y : ℤ,
+      (∀ k : ℕ, k ∈ Finset.range (N + 1) →
+        (d : ℤ) ∣ intEval q hq_int (y + ((k : ℤ) + 1))) →
+      (d : ℤ) ∣ intEval q hq_int y := by
+    intro y hk_dvd
+    have h_recur_y := h_recur y
+    -- Split sum: k = 0 term and k ≥ 1 terms.
+    rw [Finset.sum_range_succ' _ (N + 1)] at h_recur_y
+    -- Now h_recur_y has form: (sum over k ∈ range (N+1)) + (k=0 term) = 0.
+    -- The (k=0) term: ((-1)^(N+1-0) * (N+1).choose 0) • intEval q hq_int (y + 0).
+    have h_y_simp : intEval q hq_int (y + ((0 : ℕ) : ℤ)) = intEval q hq_int y := by
+      norm_num
+    have h_k_simp : ∀ k : ℕ,
+        intEval q hq_int (y + ((k + 1 : ℕ) : ℤ)) =
+          intEval q hq_int (y + ((k : ℤ) + 1)) := by
+      intro k
+      push_cast
+      rfl
+    -- Rewrite into a uniform form.
+    have h_recur_y' :
+        ∑ k ∈ Finset.range (N + 1),
+            ((-1 : ℤ) ^ (N + 1 - (k + 1)) * ((N + 1).choose (k + 1))) •
+              intEval q hq_int (y + ((k : ℤ) + 1)) +
+        ((-1 : ℤ) ^ (N + 1)) * intEval q hq_int y = 0 := by
+      have := h_recur_y
+      simp only [smul_eq_mul, h_y_simp, Nat.choose_zero_right, Nat.cast_one,
+        mul_one, Nat.sub_zero] at this
+      have hsum_congr :
+          ∑ x ∈ Finset.range (N + 1),
+              (-1 : ℤ) ^ (N + 1 - (x + 1)) * ((N + 1).choose (x + 1)) *
+                intEval q hq_int (y + ((x + 1 : ℕ) : ℤ)) =
+          ∑ k ∈ Finset.range (N + 1),
+              ((-1 : ℤ) ^ (N + 1 - (k + 1)) * ((N + 1).choose (k + 1))) •
+                intEval q hq_int (y + ((k : ℤ) + 1)) := by
+        apply Finset.sum_congr rfl
+        intro k _
+        rw [smul_eq_mul, h_k_simp k]
+      linarith [hsum_congr ▸ this]
+    have h_dvd_sum : (d : ℤ) ∣
+        ∑ k ∈ Finset.range (N + 1),
+          ((-1 : ℤ) ^ (N + 1 - (k + 1)) * ((N + 1).choose (k + 1))) •
+            intEval q hq_int (y + ((k : ℤ) + 1)) := by
+      apply Finset.dvd_sum
+      intro k hk
+      rw [smul_eq_mul]
+      exact dvd_mul_of_dvd_right (hk_dvd k hk) _
+    -- From h_recur_y', (-1)^(N+1) * intEval q hq_int y = -(sum).
+    have h_main : ((-1 : ℤ) ^ (N + 1)) * intEval q hq_int y =
+        - ∑ k ∈ Finset.range (N + 1),
+          ((-1 : ℤ) ^ (N + 1 - (k + 1)) * ((N + 1).choose (k + 1))) •
+            intEval q hq_int (y + ((k : ℤ) + 1)) := by linarith
+    have h_dvd_pow : (d : ℤ) ∣ ((-1 : ℤ) ^ (N + 1)) * intEval q hq_int y := by
+      rw [h_main]
+      exact h_dvd_sum.neg_right
+    -- Multiply by (-1)^(N+1) to extract intEval q hq_int y. ((-1)^(N+1))^2 = 1.
+    have h_sq : ((-1 : ℤ) ^ (N + 1)) * ((-1 : ℤ) ^ (N + 1)) = 1 := by
+      rw [← pow_add, ← two_mul, pow_mul, neg_one_sq, one_pow]
+    have h_recover :
+        ((-1 : ℤ) ^ (N + 1)) * (((-1 : ℤ) ^ (N + 1)) * intEval q hq_int y) =
+          intEval q hq_int y := by
+      rw [← mul_assoc, h_sq, one_mul]
+    rw [← h_recover]
+    exact Dvd.dvd.mul_left h_dvd_pow _
+  -- Step 3: Prove `(d : ℤ) ∣ intEval q hq_int (- (m : ℤ))` by strong induction on m.
+  have h_neg : ∀ m : ℕ, (d : ℤ) ∣ intEval q hq_int (- (m : ℤ)) := by
+    intro m
+    induction m using Nat.strong_induction_on with
+    | _ m ih =>
+      apply h_dvd_smul
+      intro k hk
+      have hk_lt : k < N + 1 := Finset.mem_range.mp hk
+      -- Argument: -m + (k + 1).
+      by_cases h_pos : 1 ≤ -(m : ℤ) + ((k : ℤ) + 1)
+      · -- Argument positive: use hdvd_pos.
+        let n : ℕ := (-(m : ℤ) + ((k : ℤ) + 1)).toNat
+        have hn : (n : ℤ) = -(m : ℤ) + ((k : ℤ) + 1) :=
+          Int.toNat_of_nonneg (by linarith)
+        have hn_pos : 1 ≤ n := by
+          have h_one_le : (1 : ℤ) ≤ (n : ℤ) := by rw [hn]; exact h_pos
+          exact_mod_cast h_one_le
+        rw [show (-(m : ℤ) + ((k : ℤ) + 1) : ℤ) = (n : ℤ) from hn.symm]
+        exact hdvd_pos n hn_pos
+      · -- Argument ≤ 0: write as -(j : ℤ) for some j < m.
+        push_neg at h_pos
+        let j : ℕ := ((m : ℤ) - ((k : ℤ) + 1)).toNat
+        have h_nonneg : 0 ≤ ((m : ℤ) - ((k : ℤ) + 1)) := by linarith
+        have hj_cast : (j : ℤ) = (m : ℤ) - ((k : ℤ) + 1) :=
+          Int.toNat_of_nonneg h_nonneg
+        have hj_eq : -(m : ℤ) + ((k : ℤ) + 1) = -(j : ℤ) := by
+          rw [hj_cast]; ring
+        have hj_lt : j < m := by
+          have hjm : (j : ℤ) < (m : ℤ) := by rw [hj_cast]; linarith
+          exact_mod_cast hjm
+        rw [hj_eq]
+        exact ih j hj_lt
+  -- Step 4: Conclude for arbitrary w : ℤ.
+  intro w
+  by_cases hw_pos : 1 ≤ w
+  · -- w ≥ 1: directly from hdvd_pos.
+    let n : ℕ := w.toNat
+    have hn : (n : ℤ) = w := Int.toNat_of_nonneg (by linarith)
+    have hn_pos : 1 ≤ n := by
+      have h_one_le : (1 : ℤ) ≤ (n : ℤ) := by rw [hn]; exact hw_pos
+      exact_mod_cast h_one_le
+    rw [show w = (n : ℤ) from hn.symm]
+    exact hdvd_pos n hn_pos
+  · -- w ≤ 0: use h_neg.
+    push_neg at hw_pos
+    let m : ℕ := (-w).toNat
+    have hm : (m : ℤ) = -w := Int.toNat_of_nonneg (by linarith)
+    have hw_eq : w = -(m : ℤ) := by linarith
+    rw [hw_eq]
+    exact h_neg m
+
 /-- **Corollary 7, positive-leading case.** For `p` with positive leading
 coefficient, `A_p` is strongly complete.
 
@@ -294,11 +449,9 @@ theorem corollary_7_pos_leading (p : ℚ[X])
     -- If d ∣ q.eval n for all n ≥ 1, then by Mahler/finite-differences, d ∣ q.eval z
     -- for all z ∈ ℤ. Then (d * h) ∣ Dp.eval z for all z, so I ⊆ ⟨d*h⟩, hence d*h ∣ z₀,
     -- but |z₀| = h, forcing d ∣ 1, contradicting d ≥ 2.
-    -- SUB-SORRY (technical lemma): Mahler / finite-differences extension of fixed
-    -- divisor from ℕ_{≥1} to all of ℤ. This requires the Newton interpolation
-    -- formula q(X) = ∑ (Δ^k q)(1) · binom(X-1, k) and that binomials are ℤ-valued.
-    have hdvd_all : ∀ w : ℤ, (d : ℤ) ∣ intEval q hq_int w := by
-      sorry
+    -- Mahler / finite-differences extension of fixed divisor from ℕ_{≥1} to ℤ.
+    have hdvd_all : ∀ w : ℤ, (d : ℤ) ∣ intEval q hq_int w :=
+      intValued_dvd_extends_to_int q hq_int d hdvd
     -- Now (d * h : ℤ) ∣ Dp.eval w for all w.
     have hdh_dvd_all : ∀ w : ℤ, ((d : ℤ) * (h : ℤ)) ∣ intEval Dp hDp_int w := by
       intro w
