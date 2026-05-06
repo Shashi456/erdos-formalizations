@@ -3,11 +3,12 @@
 > [erdosproblems.com/283](https://www.erdosproblems.com/283) ·
 > [erdosproblems.com/351](https://www.erdosproblems.com/351)
 >
-> ⚠️ **In progress.** §1 (Egyptian switches) and the FC wrapper bridges are
-> complete; Theorem 1's constant case is proved; the polynomial case (`case neg`),
-> the density sub-lemma `exists_large_correction_denominator`, and
-> `corollary_7_pos_leading` remain `sorry`. Corollary 7's zero and
-> negative-leading cases are proved. See [§ Current state](#current-state).
+> ⚠️ **Near completion.** Only **1 sorry** remains: `theorem_1` `case neg`
+> final assembly. All sub-lemmas (Lemmas 3-6, switching polynomial,
+> qPoly + asymptotics, valuation profiles, telescoping, density argument
+> via pigeonhole, Mahler ℕ→ℤ extension, MVT eventual injectivity) and all
+> three Corollary 7 cases are fully proven. The remaining work is the
+> integrative §2 assembly. See [§ Current state](#current-state).
 
 The May 3 2026 proof (GPT-5.5 Pro, cleaned up by Liam Price; Kevin Barreto
 noticed #351 follows) resolves both problems simultaneously.
@@ -76,10 +77,12 @@ Per-file sorry counts:
 | `Switching.lean` | 0 |
 | `MainSlots.lean` | 0 |
 | `Collision.lean` | 0 |
-| `Corrections.lean` | 1 (`exists_large_correction_denominator`) |
-| `Theorem1.lean` | 1 (`theorem_1` `case neg`; the constant case is proven) |
-| `Corollary351.lean` | 1 (`corollary_7_pos_leading`; zero and negative cases are proven) |
-| `FC.lean` | 0 (`erdos_283`, `erdos_351` bridges complete; sorries propagate from Theorem1/Corollary351) |
+| `Corrections.lean` | 0 |
+| `Theorem1.lean` | 1 (`theorem_1` `case neg` final assembly; constant case proven, RSG inputs all proven) |
+| `Corollary351.lean` | 0 |
+| `FC.lean` | 0 (`erdos_283`, `erdos_351` bridges complete; sorries propagate from Theorem1) |
+
+**Total: 1 sorry remaining in P283** (the §2 final assembly in `theorem_1` case neg).
 
 Per-theorem status:
 
@@ -100,14 +103,14 @@ Per-theorem status:
 | `MainChoice`, `MainGCDData` records (numerator + gcd-data interface for theorem_1 case neg) | ✅ defined |
 | `u_coprime_six`, `D_coprime_six`, `main_valuation_profile`, `tau_valuation_profile`, `filler_v2_at_least_three` | ✅ proved |
 | `duplicated_generators_subset_sum_all_residues` | ✅ proved |
-| `exists_large_correction_denominator` (density / sieve argument) | `sorry` |
+| `exists_large_correction_denominator` (density / sieve argument via pigeonhole) | ✅ proved |
 | `theorem_1` constant case (deg p = 0; via Lemma 3 + `NoFixedDivisor` ⇒ `p = 1`) | ✅ proved |
-| `theorem_1` polynomial case (1 ≤ deg p; depends on `roth_szekeres_graham`) | `sorry` |
+| `theorem_1` polynomial case final assembly (1 ≤ deg p; RSG inputs proven, integrative assembly remaining) | `sorry` |
 | `corollary_7_zero` (`p = 0` case via Lemma 3) | ✅ proved |
-| `corollary_7_pos_leading` (positive lead coeff; depends on Theorem 1 polynomial case) | `sorry` |
+| `corollary_7_pos_leading` (positive lead coeff; q := D·p/h reduction + Mahler ℕ→ℤ + MVT eventual injectivity) | ✅ proved |
 | `not_strongly_complete_of_neg_leadingCoeff` | ✅ proved |
 | `Erdos283.erdos_283` (FC iff form) | ✅ proved (sorries propagate from Theorem 1) |
-| `Erdos351.erdos_351` (FC iff form) | ✅ proved (sorries propagate from `corollary_7_pos_leading`) |
+| `Erdos351.erdos_351` (FC iff form) | ✅ proved |
 
 ## Target trust boundary
 
