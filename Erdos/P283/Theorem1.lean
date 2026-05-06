@@ -568,12 +568,81 @@ lemma chooseFillerData
     {md : MainChoice α L p hp} {gcd : MainGCDData p hp md}
     (corr : CorrectionData p hp gcd) :
     Nonempty (FillerData p hp corr) := by
-  -- Strategy: choose Λ as a multiple of 8 dominating L, all c_ν, and all
-  -- collision targets up to some bound. Then apply `egyptian_expansion` to
-  -- the rational R₀ * Λ at threshold 1 to get a set F : Finset ℕ of size 1
-  -- with sum equal to R₀ * Λ. Reindex to Λ * f to obtain the recip sum.
-  -- Full collision avoidance + bound work TBD; record sub-sorry for now.
-  sorry
+  -- Step 1: Compute residual mass R₀ in ℚ.
+  set R0 : ℚ := α - (1 : ℚ) / ((P : ℚ) * (u md.J : ℚ)) -
+    (∑ ν : Fin corr.t, (1 : ℚ) / (corr.c ν : ℚ)) with hR0_def
+  -- R₀ > 0 from corr.C0_lt.
+  have hR0_pos : 0 < R0 := by rw [hR0_def]; linarith [corr.C0_lt]
+  -- Step 2: Pick Λ as a multiple of 8 large enough.
+  -- We need: 8 ∣ Λ, Λ > L, Λ > all c_ν.
+  -- Use Λ := 8 * (L + 1 + (∑ ν, c_ν) + 1).
+  set cmax : ℕ := (Finset.univ : Finset (Fin corr.t)).sup (fun ν => corr.c ν) with hcmax_def
+  set Λ : ℕ := 8 * (L + cmax + 2) with hΛ_def
+  have hΛ_div_8 : 8 ∣ Λ := by rw [hΛ_def]; exact ⟨_, rfl⟩
+  have hΛ_pos : 1 ≤ Λ := by rw [hΛ_def]; omega
+  have hΛ_gt_L : L < Λ := by rw [hΛ_def]; omega
+  have hΛ_gt_corr : ∀ ν : Fin corr.t, corr.c ν < Λ := by
+    intro ν
+    have h_le : corr.c ν ≤ cmax := by
+      rw [hcmax_def]; exact Finset.le_sup (Finset.mem_univ ν)
+    rw [hΛ_def]; omega
+  -- Step 3: Apply egyptian_expansion to R₀ at threshold 0.
+  -- We get K : ℕ such that for all k ≥ K, ∃ E with |E| = k, ∀ e ∈ E, 0 < e,
+  -- and R₀ = ∑ 1/e.
+  obtain ⟨K, hK⟩ := egyptian_expansion R0 hR0_pos 0
+  obtain ⟨E_full, _hE_card, hE_lb, hE_sum⟩ := hK K (le_refl K)
+  -- Each e ∈ E_full satisfies 0 < e ⇒ e ≥ 1.
+  have hE_pos : ∀ e ∈ E_full, 1 ≤ e := fun e he => Nat.one_le_iff_ne_zero.mpr
+    (fun h0 => by have := hE_lb e he; omega)
+  -- Step 4: Define F such that for each e ∈ E_full, the denominator is Λ * f
+  -- where f := e (just rename). But we need 1/(Λ*f) = R₀, which would require
+  -- Λ * f = e for ∑ 1/e. We don't have that directly. Instead:
+  -- ∑ 1/e = R₀ ⇒ Λ * ∑ 1/e = Λ * R₀, but we need ∑ 1/(Λ*f) = R₀.
+  -- This requires f := e/Λ, i.e., Λ ∣ e.
+  -- So we instead apply egyptian_expansion to R₀ with denominators ≥ Λ,
+  -- then set f := e/Λ. But the reciprocal sum identity wants
+  -- ∑ 1/(Λ*f) = R₀ ⇒ (1/Λ) ∑ 1/f = R₀, so ∑ 1/f = Λ R₀.
+  -- Apply egyptian_expansion to (Λ R₀) instead, with threshold 0:
+  obtain ⟨K', hK'⟩ := egyptian_expansion ((Λ : ℚ) * R0)
+    (by have hΛ_q : (0 : ℚ) < (Λ : ℚ) := by exact_mod_cast hΛ_pos
+        exact mul_pos hΛ_q hR0_pos) 0
+  obtain ⟨F0, _hF0_card, hF0_lb, hF0_sum⟩ := hK' K' (le_refl K')
+  have hF0_pos : ∀ f ∈ F0, 1 ≤ f := fun f hf => Nat.one_le_iff_ne_zero.mpr
+    (fun h0 => by have := hF0_lb f hf; omega)
+  -- Now F := F0; verify ∑_{f ∈ F0} 1/(Λ*f) = R₀.
+  have hΛ_q_ne : (Λ : ℚ) ≠ 0 := by
+    have : (0 : ℚ) < (Λ : ℚ) := by exact_mod_cast hΛ_pos
+    exact ne_of_gt this
+  have h_recip : (∑ f ∈ F0, (1 : ℚ) / ((Λ * f : ℕ) : ℚ)) = R0 := by
+    have h1 : (∑ f ∈ F0, (1 : ℚ) / ((Λ * f : ℕ) : ℚ)) =
+        (1 / (Λ : ℚ)) * ∑ f ∈ F0, (1 : ℚ) / (f : ℚ) := by
+      rw [Finset.mul_sum]
+      apply Finset.sum_congr rfl
+      intro f hf
+      have hf_pos := hF0_pos f hf
+      have hf_q_ne : (f : ℚ) ≠ 0 := by
+        have : (0 : ℚ) < (f : ℚ) := by exact_mod_cast (Nat.lt_of_lt_of_le Nat.zero_lt_one hf_pos)
+        exact ne_of_gt this
+      push_cast
+      field_simp
+    rw [h1, ← hF0_sum]
+    field_simp
+  refine ⟨{
+    Λ := Λ
+    hΛ_div_8 := hΛ_div_8
+    hΛ_gt_L := hΛ_gt_L
+    hΛ_gt_corr := hΛ_gt_corr
+    F := F0
+    hF_pos := hF0_pos
+    hF_distinct_from_main_corr := ?_
+    hF_recip := h_recip
+  }⟩
+  -- Collision-avoidance: TODO. The main + correction collision-avoidance
+  -- requires choosing Λ much larger to dominate the relevant D j and c_ν
+  -- multiples within a bounded range. Deferred — stub placeholder.
+  refine ⟨?_, ?_⟩
+  · sorry
+  · sorry
 
 /-! ### Quotient-gcd bridge (sketch — full proof forthcoming)
 
