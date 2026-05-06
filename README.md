@@ -7,7 +7,7 @@ Lean 4 / Mathlib formalizations of problems from
 |---|---------|----------|--------------|
 | [694](https://www.erdosproblems.com/694) | Totient fibre extremes | [proof.pdf](Erdos/P694/proof.pdf) | [Proof.lean](Erdos/P694/Proof.lean) · [live](https://live.lean-lang.org/#project=mathlib-v4.28.0&url=https%3A%2F%2Fraw.githubusercontent.com%2FShashi456%2Ferdos-formalizations%2Frefs%2Fheads%2Fmain%2FErdos%2FP694%2FProof.lean) |
 | [750](https://www.erdosproblems.com/750) | Almost-half independent sets in graphs of infinite chromatic number | [proof.pdf](Erdos/P750/proof.pdf) | [Proof.lean](Erdos/P750/Proof.lean) · [live](https://live.lean-lang.org/#project=mathlib-v4.27.0&url=https%3A%2F%2Fraw.githubusercontent.com%2FShashi456%2Ferdos-formalizations%2Frefs%2Fheads%2Fmain%2FErdos%2FP750%2FProof.lean) |
-| [283](https://www.erdosproblems.com/283) + [351](https://www.erdosproblems.com/351) | Polynomial Egyptian sums | [proof.pdf](Erdos/P283/proof.pdf) | [Proof.lean](Erdos/P283/Proof_flat.lean) · [live](https://live.lean-lang.org/#project=mathlib-v4.27.0&url=https%3A%2F%2Fraw.githubusercontent.com%2FShashi456%2Ferdos-formalizations%2Frefs%2Fheads%2Fmain%2FErdos%2FP283%2FProof_flat.lean) |
+| [283](https://www.erdosproblems.com/283) + [351](https://www.erdosproblems.com/351) | Polynomial Egyptian sums | [proof.pdf](Erdos/P283/proof.pdf) | [Proof.lean](Erdos/P283/Proof.lean) |
 | [42](https://www.erdosproblems.com/42) (in progress) | Sidon difference avoidance | [proof.pdf](Erdos/P42/proof.pdf) | [Proof.lean](Erdos/P42/Proof.lean) (sorries) |
 
 See each problem's per-folder README for the full statement, trust boundary,
@@ -23,8 +23,10 @@ Beyond Mathlib core (`propext`, `Classical.choice`, `Quot.sound`):
 |---|--------------|--------|
 | 694 | `mertens_product`, `linnik_dvd` | Both classical and unconditional (Mertens 1874, Linnik 1944). Mathlib has surrounding infrastructure but not these named statements. |
 | 750 | `stiebitz_lower_bound` | Stiebitz's theorem on chromatic number of recursively built generalized Mycielski graphs (Stiebitz 1985 thesis; topological method of Lovász). Mathlib has fragments but not this named result. |
-| 283 + 351 | `roth_szekeres_graham` | Graham's complete-polynomial-values theorem (*Duke Math. J.* 1964) with Roth-Szekeres (*Quart. J. Math.* 1954) as the asymptotic input. Both classical and unconditional. |
+| 283 + 351 | none | Graham's complete-polynomial-values theorem is now formalized in [`Erdos/P283/RSG`](Erdos/P283/RSG/README.md), so P283/P351 depend only on Mathlib core foundations. |
 | 42 (in progress) | `complexity_one_counting_lemma`, `compact_U2_regularity_subsequential_limit` | Green-Tao 2008 generalized von Neumann theorem for complexity-1 linear forms, plus the standard compactness/`U²`-regularity packaging. Both classical. |
+
+The RSG proof roadmap and source list live in [Erdos/P283/RSG/README.md](Erdos/P283/RSG/README.md).
 
 Inspect by enabling the `#print axioms …` block at the bottom of each
 `Proof.lean`, or by reading the per-problem `README.md`. The trust boundaries

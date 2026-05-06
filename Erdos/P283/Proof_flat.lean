@@ -1,21 +1,11 @@
 /-
 **STANDALONE FLAT BUNDLE** of Erdős Problems #283 + #351 — POLYNOMIAL EGYPTIAN SUMS.
 
-This file is the concatenation of the 10-module modular development under
-`Erdos/P283/`, in dependency order:
-
-  Basic, Egyptian, PolynomialPeriod, Switching, MainSlots, Collision,
-  Corrections, Theorem1, Corollary351, FC.
-
-It is suitable for loading into `live.lean-lang.org` (which only resolves
-`import Mathlib`, not project-local imports like `Erdos.P283.Theorem1`).
-For local Lake builds, prefer the modular `Proof.lean` in the same directory
-— this flat file is auto-generated for live-load convenience.
+This file concatenates the P283-local RSG proof plus the 10-module P283/P351 development.
+It is intended as a one-file snapshot: one `import Mathlib`, no project-local imports.
 
 Trust boundary (verify with `#print axioms` at the bottom):
   Mathlib core (propext, Classical.choice, Quot.sound)
-  + PolynomialEgyptianSums.roth_szekeres_graham
-        (Graham 1964 / Roth-Szekeres 1954, the asymptotic input)
 
 The May 3 2026 proof (GPT-5.5 Pro, cleaned up by Liam Price; Kevin Barreto
 noticed #351 follows) — see proof.pdf.
@@ -23,6 +13,3257 @@ noticed #351 follows) — see proof.pdf.
 
 import Mathlib
 
+
+/-! =============================================================
+    Section from: Erdos/P283/RSG/CompleteSequences.lean
+    ============================================================= -/
+
+/-
+Copyright (c) 2026
+
+Basic complete-sequence infrastructure for Graham's theorem on complete
+sequences of polynomial values.
+-/
+
+
+namespace Erdos.P283.RSG
+
+open Filter
+
+/-! ## Finite subset sums -/
+
+/-- Finite `0/1` subset sums of an integer sequence. This is Graham's `P(S)`. -/
+def FS (s : ℕ → ℤ) : Set ℤ :=
+  {x | ∃ I : Finset ℕ, x = ∑ i ∈ I, s i}
+
+/-- Finite `0/1` subset sums of `s` using only indices from `A`. -/
+def FSOf (s : ℕ → ℤ) (A : Finset ℕ) : Set ℤ :=
+  {x | ∃ I : Finset ℕ, I ⊆ A ∧ x = ∑ i ∈ I, s i}
+
+/-- Signed finite subset sums of an integer sequence. This is Graham's `A(S)`. -/
+def SignedFS (s : ℕ → ℤ) : Set ℤ :=
+  {x | ∃ I J : Finset ℕ, Disjoint I J ∧
+      x = (∑ i ∈ I, s i) - (∑ j ∈ J, s j)}
+
+/-- Signed finite subset sums using only indices from `A`. -/
+def SignedFSOf (s : ℕ → ℤ) (A : Finset ℕ) : Set ℤ :=
+  {x | ∃ I J : Finset ℕ, I ⊆ A ∧ J ⊆ A ∧ Disjoint I J ∧
+      x = (∑ i ∈ I, s i) - (∑ j ∈ J, s j)}
+
+/-- A sequence is complete if its finite subset sums contain all sufficiently
+large integers. -/
+def Complete (s : ℕ → ℤ) : Prop :=
+  ∃ C : ℤ, ∀ x : ℤ, C ≤ x → x ∈ FS s
+
+/-- A sequence is nearly complete if finite subset sums contain arbitrarily long
+intervals of consecutive positive integers after a translate. -/
+def NearlyComplete (s : ℕ → ℤ) : Prop :=
+  ∀ k : ℕ, 1 ≤ k →
+    ∃ c : ℤ, ∀ j : ℕ, 1 ≤ j → j ≤ k → c + (j : ℤ) ∈ FS s
+
+/-- Graham's Sigma-sequence condition. The tail is eventually small relative to
+the finite prefix sums that precede it. -/
+def SigmaSeq (s : ℕ → ℤ) : Prop :=
+  ∃ k h : ℕ, 1 ≤ k ∧
+    (∀ m : ℕ, 0 < s (h + m)) ∧
+    ∀ m : ℕ, s (h + m) < (k : ℤ) + ∑ n ∈ Finset.range m, s (h + n)
+
+/-- Finite subset sums of `s` contain every residue class modulo `m`. -/
+def CoversResidues (s : ℕ → ℤ) (m : ℕ) : Prop :=
+  ∀ r : ZMod m, ∃ x ∈ FS s, ((x : ℤ) : ZMod m) = r
+
+/-! ## Elementary API for `FS` and `SignedFS` -/
+
+lemma fs_empty (s : ℕ → ℤ) : (0 : ℤ) ∈ FS s := by
+  refine ⟨∅, ?_⟩
+  simp
+
+lemma fs_singleton (s : ℕ → ℤ) (i : ℕ) : s i ∈ FS s := by
+  refine ⟨{i}, ?_⟩
+  simp
+
+lemma fsOf_subset_fs (s : ℕ → ℤ) (A : Finset ℕ) :
+    FSOf s A ⊆ FS s := by
+  intro x hx
+  rcases hx with ⟨I, _hIA, hI⟩
+  exact ⟨I, hI⟩
+
+lemma fsOf_empty (s : ℕ → ℤ) : (0 : ℤ) ∈ FSOf s ∅ := by
+  refine ⟨∅, ?_, ?_⟩
+  · simp
+  · simp
+
+lemma fsOf_singleton (s : ℕ → ℤ) (i : ℕ) :
+    s i ∈ FSOf s {i} := by
+  refine ⟨{i}, ?_, ?_⟩
+  · simp
+  · simp
+
+lemma fsOf_sum_self (s : ℕ → ℤ) (A : Finset ℕ) :
+    (∑ i ∈ A, s i) ∈ FSOf s A := by
+  exact ⟨A, subset_rfl, rfl⟩
+
+lemma fsOf_mono {s : ℕ → ℤ} {A B : Finset ℕ}
+    (hAB : A ⊆ B) : FSOf s A ⊆ FSOf s B := by
+  intro x hx
+  rcases hx with ⟨I, hIA, hI⟩
+  exact ⟨I, hIA.trans hAB, hI⟩
+
+lemma fsOf_add_index {s : ℕ → ℤ} {A : Finset ℕ} {x : ℤ} {a : ℕ}
+    (haA : a ∉ A) (hx : x ∈ FSOf s A) :
+    x + s a ∈ FSOf s (insert a A) := by
+  classical
+  rcases hx with ⟨I, hIA, hI⟩
+  have haI : a ∉ I := fun hai => haA (hIA hai)
+  refine ⟨insert a I, ?_, ?_⟩
+  · intro i hi
+    rw [Finset.mem_insert] at hi
+    rcases hi with rfl | hi
+    · exact Finset.mem_insert_self _ _
+    · exact Finset.mem_insert_of_mem (hIA hi)
+  · rw [Finset.sum_insert haI, ← hI]
+    abel
+
+lemma fsOf_add_of_disjoint {s : ℕ → ℤ} {A B : Finset ℕ} {x y : ℤ}
+    (hAB : Disjoint A B) (hx : x ∈ FSOf s A) (hy : y ∈ FSOf s B) :
+    x + y ∈ FSOf s (A ∪ B) := by
+  classical
+  rcases hx with ⟨I, hIA, hI⟩
+  rcases hy with ⟨J, hJB, hJ⟩
+  have hIJ : Disjoint I J := hAB.mono hIA hJB
+  refine ⟨I ∪ J, ?_, ?_⟩
+  · intro i hi
+    rw [Finset.mem_union] at hi ⊢
+    rcases hi with hi | hi
+    · exact Or.inl (hIA hi)
+    · exact Or.inr (hJB hi)
+  · rw [Finset.sum_union hIJ, ← hI, ← hJ]
+
+lemma finset_subset_range_sup_succ (A : Finset ℕ) :
+    A ⊆ Finset.range (A.sup id + 1) := by
+  intro i hi
+  rw [Finset.mem_range]
+  exact Nat.lt_succ_of_le (Finset.le_sup (s := A) (f := id) hi)
+
+/-- A predicate that occurs arbitrarily far out has finite subsets of arbitrary
+cardinality all of whose elements satisfy the predicate. -/
+lemma exists_finset_card_eq_of_frequently_atTop {P : ℕ → Prop}
+    (hP : ∀ N : ℕ, ∃ n : ℕ, N ≤ n ∧ P n) :
+    ∀ k : ℕ, ∃ A : Finset ℕ, A.card = k ∧ ∀ n ∈ A, P n := by
+  classical
+  intro k
+  induction k with
+  | zero =>
+      exact ⟨∅, by simp, by simp⟩
+  | succ k ih =>
+      obtain ⟨A, hAcard, hAP⟩ := ih
+      obtain ⟨n, hn_ge, hnP⟩ := hP (A.sup id + 1)
+      have hn_not_mem : n ∉ A := by
+        intro hnA
+        have hn_lt : n < A.sup id + 1 :=
+          Finset.mem_range.mp ((finset_subset_range_sup_succ A) hnA)
+        exact (not_lt_of_ge hn_ge) hn_lt
+      refine ⟨insert n A, ?_, ?_⟩
+      · rw [Finset.card_insert_of_notMem hn_not_mem, hAcard]
+      · intro a ha
+        rw [Finset.mem_insert] at ha
+        rcases ha with rfl | ha
+        · exact hnP
+        · exact hAP a ha
+
+lemma disjoint_range_of_forall_le {A : Finset ℕ} {N : ℕ}
+    (hA : ∀ a ∈ A, N ≤ a) :
+    Disjoint (Finset.range N) A := by
+  rw [Finset.disjoint_left]
+  intro a ha hA_mem
+  have hlt : a < N := Finset.mem_range.mp ha
+  have hle : N ≤ a := hA a hA_mem
+  omega
+
+lemma fs_add_of_disjoint_witness {s : ℕ → ℤ} (I J : Finset ℕ)
+    (hdisj : Disjoint I J) :
+    (∑ i ∈ I, s i) + (∑ j ∈ J, s j) ∈ FS s := by
+  classical
+  refine ⟨I ∪ J, ?_⟩
+  rw [Finset.sum_union hdisj]
+
+lemma signedFS_zero (s : ℕ → ℤ) : (0 : ℤ) ∈ SignedFS s := by
+  refine ⟨∅, ∅, ?_, ?_⟩
+  · simp
+  · simp
+
+lemma signedFSOf_subset_signedFS (s : ℕ → ℤ) (A : Finset ℕ) :
+    SignedFSOf s A ⊆ SignedFS s := by
+  intro x hx
+  rcases hx with ⟨I, J, _hIA, _hJA, hIJ, hsum⟩
+  exact ⟨I, J, hIJ, hsum⟩
+
+lemma signedFSOf_empty (s : ℕ → ℤ) : (0 : ℤ) ∈ SignedFSOf s ∅ := by
+  refine ⟨∅, ∅, ?_, ?_, ?_, ?_⟩ <;> simp
+
+lemma fs_subset_signedFS (s : ℕ → ℤ) : FS s ⊆ SignedFS s := by
+  intro x hx
+  rcases hx with ⟨I, rfl⟩
+  refine ⟨I, ∅, ?_, ?_⟩
+  · simp
+  · simp
+
+lemma signedFS_neg {s : ℕ → ℤ} {x : ℤ} (hx : x ∈ SignedFS s) :
+    -x ∈ SignedFS s := by
+  rcases hx with ⟨I, J, hIJ, rfl⟩
+  refine ⟨J, I, hIJ.symm, ?_⟩
+  abel
+
+lemma signedFS_sub_of_disjoint_witness {s : ℕ → ℤ} (I J : Finset ℕ)
+    (hdisj : Disjoint I J) :
+    (∑ i ∈ I, s i) - (∑ j ∈ J, s j) ∈ SignedFS s := by
+  exact ⟨I, J, hdisj, rfl⟩
+
+/-- A list of signed `±1` terms with no repeated indices gives a bounded
+signed finite subset sum. -/
+lemma signedFSOf_list_sum {s : ℕ → ℤ} :
+    ∀ {l : List (ℤ × ℕ)},
+      (∀ p ∈ l, p.1 = 1 ∨ p.1 = -1) →
+      ((l.map fun p : ℤ × ℕ => p.2).Nodup) →
+      (l.map fun p : ℤ × ℕ => p.1 * s p.2).sum ∈
+        SignedFSOf s ((l.map fun p : ℤ × ℕ => p.2).toFinset)
+  | [], _hsgn, _hnodup => by
+      simpa using signedFSOf_empty s
+  | p :: l, hsgn, hnodup => by
+      have htail_sign : ∀ q ∈ l, q.1 = 1 ∨ q.1 = -1 := by
+        intro q hq
+        exact hsgn q (by simp [hq])
+      have hnodup' :
+          (p.2 :: (l.map fun q : ℤ × ℕ => q.2)).Nodup := by
+        simpa using hnodup
+      have hp_not_tail : p.2 ∉ (l.map fun q : ℤ × ℕ => q.2) := by
+        exact (List.nodup_cons.mp hnodup').1
+      have htail_nodup :
+          ((l.map fun q : ℤ × ℕ => q.2).Nodup) :=
+        (List.nodup_cons.mp hnodup').2
+      rcases signedFSOf_list_sum htail_sign htail_nodup with
+        ⟨I, J, hIA, hJA, hIJ, hsum⟩
+      have hp_not_I : p.2 ∉ I := by
+        intro hpI
+        have : p.2 ∈ (l.map fun q : ℤ × ℕ => q.2) := by
+          simpa using hIA hpI
+        exact hp_not_tail this
+      have hp_not_J : p.2 ∉ J := by
+        intro hpJ
+        have : p.2 ∈ (l.map fun q : ℤ × ℕ => q.2) := by
+          simpa using hJA hpJ
+        exact hp_not_tail this
+      have hI_sub_cons :
+          I ⊆ ((p :: l).map fun q : ℤ × ℕ => q.2).toFinset := by
+        intro x hx
+        simp [hIA hx]
+      have hJ_sub_cons :
+          J ⊆ ((p :: l).map fun q : ℤ × ℕ => q.2).toFinset := by
+        intro x hx
+        simp [hJA hx]
+      rcases hsgn p (by simp) with hp_one | hp_neg
+      · refine ⟨insert p.2 I, J, ?_, hJ_sub_cons, ?_, ?_⟩
+        · intro x hx
+          rw [Finset.mem_insert] at hx
+          rcases hx with rfl | hx
+          · simp
+          · exact hI_sub_cons hx
+        · rw [Finset.disjoint_left]
+          intro x hxI hxJ
+          rw [Finset.mem_insert] at hxI
+          rcases hxI with rfl | hxI
+          · exact hp_not_J hxJ
+          · exact (Finset.disjoint_left.mp hIJ) hxI hxJ
+        · rw [List.map_cons, List.sum_cons, hp_one, one_mul, hsum]
+          rw [Finset.sum_insert hp_not_I]
+          ring
+      · refine ⟨I, insert p.2 J, hI_sub_cons, ?_, ?_, ?_⟩
+        · intro x hx
+          rw [Finset.mem_insert] at hx
+          rcases hx with rfl | hx
+          · simp
+          · exact hJ_sub_cons hx
+        · rw [Finset.disjoint_left]
+          intro x hxI hxJ
+          rw [Finset.mem_insert] at hxJ
+          rcases hxJ with rfl | hxJ
+          · exact hp_not_I hxI
+          · exact (Finset.disjoint_left.mp hIJ) hxI hxJ
+        · rw [List.map_cons, List.sum_cons, hp_neg, hsum]
+          rw [Finset.sum_insert hp_not_J]
+          ring
+
+lemma fs_congr {s t : ℕ → ℤ} (h : ∀ n, s n = t n) : FS s = FS t := by
+  ext x
+  constructor
+  · intro hx
+    rcases hx with ⟨I, hI⟩
+    refine ⟨I, ?_⟩
+    rw [hI]
+    exact Finset.sum_congr rfl (fun n _ => h n)
+  · intro hx
+    rcases hx with ⟨I, hI⟩
+    refine ⟨I, ?_⟩
+    rw [hI]
+    exact Finset.sum_congr rfl (fun n _ => (h n).symm)
+
+lemma signedFS_congr {s t : ℕ → ℤ} (h : ∀ n, s n = t n) :
+    SignedFS s = SignedFS t := by
+  ext x
+  constructor
+  · intro hx
+    rcases hx with ⟨I, J, hIJ, hsum⟩
+    refine ⟨I, J, hIJ, ?_⟩
+    rw [hsum]
+    congr 1 <;> exact Finset.sum_congr rfl (fun n _ => h n)
+  · intro hx
+    rcases hx with ⟨I, J, hIJ, hsum⟩
+    refine ⟨I, J, hIJ, ?_⟩
+    rw [hsum]
+    congr 1 <;> exact Finset.sum_congr rfl (fun n _ => (h n).symm)
+
+/-- Map signed subset-sum witnesses through an injective index map. -/
+lemma signedFS_map_of_injective {s t : ℕ → ℤ} {φ : ℕ → ℕ}
+    (hφ : Function.Injective φ)
+    (hval : ∀ i, t i = s (φ i)) :
+    SignedFS t ⊆ SignedFS s := by
+  classical
+  intro x hx
+  rcases hx with ⟨I, J, hIJ, hsum⟩
+  refine ⟨I.image φ, J.image φ, ?_, ?_⟩
+  · rw [Finset.disjoint_left]
+    intro a ha hb
+    rcases Finset.mem_image.mp ha with ⟨i, hi, rfl⟩
+    rcases Finset.mem_image.mp hb with ⟨j, hj, hij⟩
+    have hji : j = i := hφ hij
+    subst hji
+    exact (Finset.disjoint_left.mp hIJ) hi hj
+  · rw [hsum]
+    rw [Finset.sum_image, Finset.sum_image]
+    · apply congrArg₂ Sub.sub
+      · exact Finset.sum_congr rfl (fun i _ => hval i)
+      · exact Finset.sum_congr rfl (fun j _ => hval j)
+    · intro a _ b _ hab
+      exact hφ hab
+    · intro a _ b _ hab
+      exact hφ hab
+
+/-- Completeness is invariant under pointwise equality of sequences. -/
+lemma Complete.congr {s t : ℕ → ℤ} (h : ∀ n, s n = t n)
+    (hs : Complete s) : Complete t := by
+  rcases hs with ⟨C, hC⟩
+  refine ⟨C, ?_⟩
+  intro x hx
+  rw [← fs_congr h]
+  exact hC x hx
+
+/-- Near-completeness is invariant under pointwise equality of sequences. -/
+lemma NearlyComplete.congr {s t : ℕ → ℤ} (h : ∀ n, s n = t n)
+    (hs : NearlyComplete s) : NearlyComplete t := by
+  intro k hk
+  rcases hs k hk with ⟨c, hc⟩
+  refine ⟨c, ?_⟩
+  intro j hj0 hjk
+  rw [← fs_congr h]
+  exact hc j hj0 hjk
+
+/-- The Sigma-sequence condition is invariant under pointwise equality. -/
+lemma SigmaSeq.congr {s t : ℕ → ℤ} (h : ∀ n, s n = t n)
+    (hs : SigmaSeq s) : SigmaSeq t := by
+  rcases hs with ⟨k, h0, hk, hpos, hsigma⟩
+  refine ⟨k, h0, hk, ?_, ?_⟩
+  · intro m
+    simpa [← h] using hpos m
+  intro m
+  calc
+    t (h0 + m) = s (h0 + m) := (h _).symm
+    _ < (k : ℤ) + ∑ n ∈ Finset.range m, s (h0 + n) := hsigma m
+    _ = (k : ℤ) + ∑ n ∈ Finset.range m, t (h0 + n) := by
+      congr 1
+      exact Finset.sum_congr rfl (fun n _ => h _)
+
+/-- Shift the index set of an `FS` witness by a function that preserves the
+sequence values on that finite set. -/
+lemma fs_map_of_eq_on {s t : ℕ → ℤ} {φ : ℕ → ℕ} {I : Finset ℕ}
+    (hφ : Set.InjOn φ (↑I : Set ℕ))
+    (hval : ∀ i ∈ I, t i = s (φ i)) :
+    (∑ i ∈ I, t i) ∈ FS s := by
+  classical
+  refine ⟨I.image φ, ?_⟩
+  rw [Finset.sum_image]
+  · exact Finset.sum_congr rfl hval
+  · intro a ha b hb hab
+    exact hφ ha hb hab
+
+/-- A sequence whose nonzero terms inject into another sequence has finite
+subset sums contained in the latter sequence's finite subset sums. -/
+lemma fs_subset_of_eq_zero_or_subsequence {s t : ℕ → ℤ} (φ : ℕ → ℕ)
+    (hφ :
+      ∀ ⦃i j : ℕ⦄, t i ≠ 0 → t j ≠ 0 → φ i = φ j → i = j)
+    (hval : ∀ i : ℕ, t i ≠ 0 → t i = s (φ i)) :
+    FS t ⊆ FS s := by
+  classical
+  intro x hx
+  rcases hx with ⟨I, hI⟩
+  let K : Finset ℕ := I.filter fun i => t i ≠ 0
+  refine ⟨K.image φ, ?_⟩
+  rw [hI, Finset.sum_image]
+  · calc
+      ∑ i ∈ I, t i = ∑ i ∈ I with t i ≠ 0, t i := by
+        rw [Finset.sum_filter]
+        exact Finset.sum_congr rfl
+          (fun i _hi => by
+            by_cases hi0 : t i ≠ 0
+            · simp [hi0]
+            · simp [not_not.mp hi0])
+      _ = ∑ i ∈ K, t i := by
+        rfl
+      _ = ∑ i ∈ K, s (φ i) := by
+        exact Finset.sum_congr rfl
+          (fun i hi => hval i (Finset.mem_filter.mp hi).2)
+  · intro a ha b hb hab
+    exact hφ (Finset.mem_filter.mp ha).2 (Finset.mem_filter.mp hb).2 hab
+
+/-- Completeness transfers along inclusion of finite subset-sum sets. -/
+lemma Complete.of_fs_subset {S T : ℕ → ℤ}
+    (hsub : FS S ⊆ FS T)
+    (hcomp : Complete S) :
+    Complete T := by
+  rcases hcomp with ⟨C, hC⟩
+  refine ⟨C, ?_⟩
+  intro x hx
+  exact hsub (hC x hx)
+
+/-- Completeness transfers from an injective subsequence to the ambient
+sequence. -/
+lemma Complete.of_injective_subsequence
+    {s t : ℕ → ℤ}
+    (φ : ℕ → ℕ)
+    (hφ : Function.Injective φ)
+    (ht : ∀ n, t n = s (φ n))
+    (hcomp : Complete t) :
+    Complete s := by
+  rcases hcomp with ⟨C, hC⟩
+  refine ⟨C, ?_⟩
+  intro x hx
+  rcases hC x hx with ⟨I, hI⟩
+  rw [hI]
+  exact fs_map_of_eq_on (fun _ _ _ _ h => hφ h) (fun i _ => ht i)
+
+/-! ## Simple sequence combinators -/
+
+/-- Interleave two sequences, taking `S 0, T 0, S 1, T 1, ...`. -/
+def interleave (S T : ℕ → ℤ) (n : ℕ) : ℤ :=
+  if n % 2 = 0 then S (n / 2) else T (n / 2)
+
+@[simp] lemma interleave_even (S T : ℕ → ℤ) (n : ℕ) :
+    interleave S T (2 * n) = S n := by
+  have hmod : (2 * n) % 2 = 0 := by
+    exact Nat.mul_mod_right 2 n
+  have hdiv : (2 * n) / 2 = n := by
+    exact Nat.mul_div_right n (by decide : 0 < 2)
+  simp [interleave, hmod, hdiv]
+
+@[simp] lemma interleave_odd (S T : ℕ → ℤ) (n : ℕ) :
+    interleave S T (2 * n + 1) = T n := by
+  have hmod : (2 * n + 1) % 2 ≠ 0 := by
+    have h : (2 * n + 1) % 2 = 1 := by
+      rw [Nat.add_comm, Nat.add_mul_mod_self_left]
+    rw [h]
+    norm_num
+  have hdiv : (2 * n + 1) / 2 = n := by
+    have h := Nat.mul_add_div (m := 2) (by decide : 2 > 0) n 1
+    simpa using h
+  simp [interleave, hdiv]
+
+/-- Prefix a finite list in front of a sequence. This is useful for Graham's
+finite residue prefix followed by a tail. -/
+def prefixSeq (pref : List ℤ) (tail : ℕ → ℤ) : ℕ → ℤ :=
+  fun n =>
+    if h : n < pref.length then
+      pref.get ⟨n, h⟩
+    else
+      tail (n - pref.length)
+
+/-- The tail of a sequence starting at offset `N`. -/
+def tail (S : ℕ → ℤ) (N : ℕ) : ℕ → ℤ :=
+  fun n => S (N + n)
+
+@[simp] lemma tail_tail (S : ℕ → ℤ) (N M : ℕ) :
+    tail (tail S N) M = tail S (N + M) := by
+  funext n
+  simp [tail, Nat.add_assoc]
+
+/-- The finite prefix of a sequence, padded by zeros after `N`. -/
+def finitePrefixSeq (S : ℕ → ℤ) (N : ℕ) : ℕ → ℤ :=
+  fun n => if n < N then S n else 0
+
+/-- The sequence obtained by taking the odd/even tails after `2*r` and a
+zero-padded prefix before `2*r`. This is Graham's final disjoint split of the
+original sequence. -/
+def oddEvenPrefixAssembly (S : ℕ → ℤ) (r : ℕ) : ℕ → ℤ :=
+  interleave
+    (fun n : ℕ => S (2 * r + 2 * n))
+    (interleave
+      (fun n : ℕ => S (2 * r + 2 * n + 1))
+      (finitePrefixSeq S (2 * r)))
+
+/-- The intended ambient-sequence index for a term of
+`oddEvenPrefixAssembly`. Terms in the zero-padded part with index beyond the
+prefix are harmless; they will be filtered out by nonzero-term transfer. -/
+def oddEvenPrefixAssemblyIndex (r n : ℕ) : ℕ :=
+  if n % 2 = 0 then
+    2 * r + 2 * (n / 2)
+  else
+    let q := n / 2
+    if q % 2 = 0 then
+      2 * r + 2 * (q / 2) + 1
+    else
+      q / 2
+
+lemma nat_eq_two_mul_div_of_mod_two_eq_zero {n : ℕ} (h : n % 2 = 0) :
+    n = 2 * (n / 2) := by
+  have hdiv := Nat.mod_add_div n 2
+  omega
+
+lemma nat_eq_two_mul_div_add_one_of_mod_two_ne_zero {n : ℕ} (h : n % 2 ≠ 0) :
+    n = 2 * (n / 2) + 1 := by
+  have hdiv := Nat.mod_add_div n 2
+  have hlt : n % 2 < 2 := Nat.mod_lt n (by decide : 0 < 2)
+  omega
+
+lemma oddEvenPrefixAssembly_value_eq_index_of_nonzero
+    (S : ℕ → ℤ) (r n : ℕ)
+    (hnz : oddEvenPrefixAssembly S r n ≠ 0) :
+    oddEvenPrefixAssembly S r n = S (oddEvenPrefixAssemblyIndex r n) := by
+  by_cases hn : n % 2 = 0
+  · simp [oddEvenPrefixAssembly, oddEvenPrefixAssemblyIndex, interleave, hn]
+  · let q : ℕ := n / 2
+    by_cases hq : q % 2 = 0
+    · simp [oddEvenPrefixAssembly, oddEvenPrefixAssemblyIndex, interleave, hn, q, hq]
+    · by_cases hprefix : q / 2 < 2 * r
+      · simp [oddEvenPrefixAssembly, oddEvenPrefixAssemblyIndex, interleave, hn, q, hq,
+          finitePrefixSeq, hprefix]
+      · exfalso
+        exact hnz
+          (by
+            simp [oddEvenPrefixAssembly, interleave, hn, q, hq, finitePrefixSeq, hprefix])
+
+lemma oddEvenPrefixAssemblyIndex_inj_of_nonzero
+    (S : ℕ → ℤ) (r : ℕ) {i j : ℕ}
+    (hi0 : oddEvenPrefixAssembly S r i ≠ 0)
+    (hj0 : oddEvenPrefixAssembly S r j ≠ 0)
+    (hidx : oddEvenPrefixAssemblyIndex r i = oddEvenPrefixAssemblyIndex r j) :
+    i = j := by
+  by_cases hi : i % 2 = 0
+  · by_cases hj : j % 2 = 0
+    · have hii := nat_eq_two_mul_div_of_mod_two_eq_zero hi
+      have hjj := nat_eq_two_mul_div_of_mod_two_eq_zero hj
+      simp [oddEvenPrefixAssemblyIndex, hi, hj] at hidx
+      omega
+    · let qj : ℕ := j / 2
+      by_cases hqj : qj % 2 = 0
+      · simp [oddEvenPrefixAssemblyIndex, hi, hj, qj, hqj] at hidx
+        omega
+      · have hpj : qj / 2 < 2 * r := by
+          by_contra hpj
+          exact hj0
+            (by simp [oddEvenPrefixAssembly, interleave, hj, qj, hqj, finitePrefixSeq, hpj])
+        simp [oddEvenPrefixAssemblyIndex, hi, hj, qj, hqj] at hidx
+        omega
+  · let qi : ℕ := i / 2
+    by_cases hqi : qi % 2 = 0
+    · by_cases hj : j % 2 = 0
+      · simp [oddEvenPrefixAssemblyIndex, hi, qi, hqi, hj] at hidx
+        omega
+      · let qj : ℕ := j / 2
+        by_cases hqj : qj % 2 = 0
+        · have hii := nat_eq_two_mul_div_add_one_of_mod_two_ne_zero hi
+          have hjj := nat_eq_two_mul_div_add_one_of_mod_two_ne_zero hj
+          simp [oddEvenPrefixAssemblyIndex, hi, qi, hqi, hj, qj, hqj] at hidx
+          omega
+        · have hpj : qj / 2 < 2 * r := by
+            by_contra hpj
+            exact hj0
+              (by simp [oddEvenPrefixAssembly, interleave, hj, qj, hqj, finitePrefixSeq, hpj])
+          simp [oddEvenPrefixAssemblyIndex, hi, qi, hqi, hj, qj, hqj] at hidx
+          omega
+    · have hpi : qi / 2 < 2 * r := by
+        by_contra hpi
+        exact hi0
+          (by simp [oddEvenPrefixAssembly, interleave, hi, qi, hqi, finitePrefixSeq, hpi])
+      by_cases hj : j % 2 = 0
+      · simp [oddEvenPrefixAssemblyIndex, hi, qi, hqi, hj] at hidx
+        omega
+      · let qj : ℕ := j / 2
+        by_cases hqj : qj % 2 = 0
+        · simp [oddEvenPrefixAssemblyIndex, hi, qi, hqi, hj, qj, hqj] at hidx
+          omega
+        · have hpj : qj / 2 < 2 * r := by
+            by_contra hpj
+            exact hj0
+              (by simp [oddEvenPrefixAssembly, interleave, hj, qj, hqj, finitePrefixSeq, hpj])
+          have hii := nat_eq_two_mul_div_add_one_of_mod_two_ne_zero hi
+          have hjj := nat_eq_two_mul_div_add_one_of_mod_two_ne_zero hj
+          simp [oddEvenPrefixAssemblyIndex, hi, qi, hqi, hj, qj, hqj] at hidx
+          omega
+
+lemma fs_oddEvenPrefixAssembly_subset (S : ℕ → ℤ) (r : ℕ) :
+    FS (oddEvenPrefixAssembly S r) ⊆ FS S :=
+  fs_subset_of_eq_zero_or_subsequence (s := S) (t := oddEvenPrefixAssembly S r)
+    (oddEvenPrefixAssemblyIndex r)
+    (fun {i j} hi0 hj0 hidx =>
+      oddEvenPrefixAssemblyIndex_inj_of_nonzero S r (i := i) (j := j) hi0 hj0 hidx)
+    (oddEvenPrefixAssembly_value_eq_index_of_nonzero S r)
+
+lemma Complete.of_oddEvenPrefixAssembly {S : ℕ → ℤ} (r : ℕ)
+    (hcomp : Complete (oddEvenPrefixAssembly S r)) :
+    Complete S :=
+  Complete.of_fs_subset (fs_oddEvenPrefixAssembly_subset S r) hcomp
+
+lemma fs_tail_subset (S : ℕ → ℤ) (N : ℕ) :
+    FS (tail S N) ⊆ FS S := by
+  intro x hx
+  rcases hx with ⟨I, hI⟩
+  rw [hI]
+  exact fs_map_of_eq_on (φ := fun n => N + n)
+    (fun _ _ _ _ h => Nat.add_left_cancel h) (fun _ _ => rfl)
+
+lemma signedFS_tail_subset (S : ℕ → ℤ) (N : ℕ) :
+    SignedFS (tail S N) ⊆ SignedFS S :=
+  signedFS_map_of_injective (s := S) (t := tail S N)
+    (φ := fun n => N + n) (fun _ _ h => Nat.add_left_cancel h) (fun _ => rfl)
+
+/-- A later tail has fewer available terms, so its signed finite sums are also
+signed finite sums of any earlier tail. -/
+lemma signedFS_tail_mono {S : ℕ → ℤ} {N M : ℕ} (hNM : N ≤ M) :
+    SignedFS (tail S M) ⊆ SignedFS (tail S N) := by
+  exact signedFS_map_of_injective (s := tail S N) (t := tail S M)
+    (φ := fun i => M - N + i)
+    (fun _ _ h => Nat.add_left_cancel h)
+    (fun i => by
+      dsimp [tail]
+      congr 1
+      omega)
+
+/-- A signed subset-sum witness in a tail can be reindexed as a witness for the
+original sequence whose support lies at or beyond the tail offset. -/
+lemma signedFS_tail_witness {S : ℕ → ℤ} {N : ℕ} {x : ℤ}
+    (hx : x ∈ SignedFS (tail S N)) :
+    ∃ I J : Finset ℕ, Disjoint I J ∧
+      (∀ i ∈ I, N ≤ i) ∧ (∀ j ∈ J, N ≤ j) ∧
+      x = (∑ i ∈ I, S i) - (∑ j ∈ J, S j) := by
+  classical
+  rcases hx with ⟨I, J, hIJ, hsum⟩
+  refine ⟨I.image (fun n => N + n), J.image (fun n => N + n), ?_, ?_, ?_, ?_⟩
+  · rw [Finset.disjoint_left]
+    intro a ha hb
+    rcases Finset.mem_image.mp ha with ⟨i, hi, rfl⟩
+    rcases Finset.mem_image.mp hb with ⟨j, hj, hij⟩
+    have hji : j = i := Nat.add_left_cancel hij
+    subst hji
+    exact (Finset.disjoint_left.mp hIJ) hi hj
+  · intro i hi
+    rcases Finset.mem_image.mp hi with ⟨a, _ha, rfl⟩
+    omega
+  · intro j hj
+    rcases Finset.mem_image.mp hj with ⟨a, _ha, rfl⟩
+    omega
+  · rw [hsum]
+    rw [Finset.sum_image, Finset.sum_image]
+    · rfl
+    · intro a _ b _ hab
+      exact Nat.add_left_cancel hab
+    · intro a _ b _ hab
+      exact Nat.add_left_cancel hab
+
+/-- Bounded inductive form of Graham's arithmetic-progression construction from
+signed tail differences. It produces progressions `c, c + m, ..., c + k*m`
+using only a finite prefix of `S`, while allowing the caller to request that the
+construction starts after an arbitrary lower bound `N0`. -/
+lemma arithmetic_progressions_of_signed_tail_difference_aux {S : ℕ → ℤ} {m : ℤ}
+    (htail : ∀ N : ℕ, m ∈ SignedFS (tail S N)) :
+    ∀ k N0 : ℕ, ∃ B : ℕ, ∃ c : ℤ, N0 ≤ B ∧
+      ∀ j : ℕ, j ≤ k → c + (j : ℤ) * m ∈ FSOf S (Finset.range B)
+  | 0, N0 => by
+      refine ⟨N0, 0, le_rfl, ?_⟩
+      intro j hj
+      have hj0 : j = 0 := by omega
+      subst hj0
+      simpa using
+        (fsOf_mono (s := S) (A := ∅) (B := Finset.range N0)
+          (by intro x hx; cases hx) (fsOf_empty S))
+  | k + 1, N0 => by
+      rcases arithmetic_progressions_of_signed_tail_difference_aux htail k N0 with
+        ⟨B, c, hN0B, hAP⟩
+      rcases signedFS_tail_witness (htail B) with
+        ⟨P, Q, hPQ, hP_ge, hQ_ge, hm_eq⟩
+      let B' : ℕ := max B (max (P.sup id + 1) (Q.sup id + 1))
+      have hBB' : B ≤ B' := by dsimp [B']; omega
+      have hrange_sub : Finset.range B ⊆ Finset.range B' := by
+        intro x hx
+        rw [Finset.mem_range] at hx ⊢
+        omega
+      have hP_sub : P ⊆ Finset.range B' := by
+        intro x hx
+        rw [Finset.mem_range]
+        have hxle : x ≤ P.sup id := Finset.le_sup (s := P) (f := id) hx
+        dsimp [B']
+        omega
+      have hQ_sub : Q ⊆ Finset.range B' := by
+        intro x hx
+        rw [Finset.mem_range]
+        have hxle : x ≤ Q.sup id := Finset.le_sup (s := Q) (f := id) hx
+        dsimp [B']
+        omega
+      have hdisjP : Disjoint (Finset.range B) P :=
+        disjoint_range_of_forall_le hP_ge
+      have hdisjQ : Disjoint (Finset.range B) Q :=
+        disjoint_range_of_forall_le hQ_ge
+      refine ⟨B', c + ∑ q ∈ Q, S q, ?_, ?_⟩
+      · omega
+      intro j hj
+      by_cases hjk : j ≤ k
+      · have hold : c + (j : ℤ) * m ∈ FSOf S (Finset.range B) := hAP j hjk
+        have hneg : (∑ q ∈ Q, S q) ∈ FSOf S Q := fsOf_sum_self S Q
+        have hsum :
+            (c + (j : ℤ) * m) + (∑ q ∈ Q, S q) ∈
+              FSOf S (Finset.range B ∪ Q) :=
+          fsOf_add_of_disjoint hdisjQ hold hneg
+        have hmono : Finset.range B ∪ Q ⊆ Finset.range B' := by
+          intro x hx
+          rw [Finset.mem_union] at hx
+          rcases hx with hx | hx
+          · exact hrange_sub hx
+          · exact hQ_sub hx
+        have htarget :
+            c + (∑ q ∈ Q, S q) + (j : ℤ) * m =
+              (c + (j : ℤ) * m) + (∑ q ∈ Q, S q) := by ring
+        rw [htarget]
+        exact fsOf_mono hmono hsum
+      · have hj_eq : j = k + 1 := by omega
+        subst hj_eq
+        have hold : c + (k : ℤ) * m ∈ FSOf S (Finset.range B) := hAP k le_rfl
+        have hpos : (∑ p ∈ P, S p) ∈ FSOf S P := fsOf_sum_self S P
+        have hsum :
+            (c + (k : ℤ) * m) + (∑ p ∈ P, S p) ∈
+              FSOf S (Finset.range B ∪ P) :=
+          fsOf_add_of_disjoint hdisjP hold hpos
+        have hmono : Finset.range B ∪ P ⊆ Finset.range B' := by
+          intro x hx
+          rw [Finset.mem_union] at hx
+          rcases hx with hx | hx
+          · exact hrange_sub hx
+          · exact hP_sub hx
+        have htarget :
+            c + (∑ q ∈ Q, S q) + ((k + 1 : ℕ) : ℤ) * m =
+              (c + (k : ℕ) * m) + (∑ p ∈ P, S p) := by
+          have hcast : ((k + 1 : ℕ) : ℤ) = (k : ℤ) + 1 := by norm_num
+          rw [hm_eq, hcast]
+          ring
+        rw [htarget]
+        exact fsOf_mono hmono hsum
+
+lemma arbitrary_APs_of_signed_tail_difference {S : ℕ → ℤ} {m : ℤ}
+    (htail : ∀ N : ℕ, m ∈ SignedFS (tail S N)) :
+    ∀ k : ℕ, 1 ≤ k →
+      ∃ c : ℤ, ∀ j : ℕ, 1 ≤ j → j ≤ k →
+        c + (j : ℤ) * m ∈ FS S := by
+  intro k hk
+  rcases arithmetic_progressions_of_signed_tail_difference_aux htail k 0 with
+    ⟨B, c, _hB, hAP⟩
+  refine ⟨c, ?_⟩
+  intro j _hj1 hjk
+  exact fsOf_subset_fs S (Finset.range B) (hAP j hjk)
+
+/-- Completeness of a tail implies completeness of the original sequence. -/
+lemma Complete.of_tail {S : ℕ → ℤ} (N : ℕ)
+    (hcomp : Complete (tail S N)) :
+    Complete S :=
+  Complete.of_injective_subsequence (s := S) (t := tail S N)
+    (fun n => N + n) (fun _ _ h => Nat.add_left_cancel h) (fun _ => rfl) hcomp
+
+/-! ## Residue-cover API -/
+
+lemma exists_eq_add_mul_of_zmod_eq {m : ℕ} {x y : ℤ}
+    (h : (x : ZMod m) = (y : ZMod m)) :
+    ∃ q : ℤ, x = y + (m : ℤ) * q := by
+  have hdvd : (m : ℤ) ∣ y - x :=
+    (ZMod.intCast_eq_intCast_iff_dvd_sub x y m).mp h
+  rcases hdvd with ⟨q, hq⟩
+  refine ⟨-q, ?_⟩
+  have hmul : (m : ℤ) * -q = -((m : ℤ) * q) := by ring
+  rw [hmul, ← hq]
+  ring
+
+lemma CoversResidues.of_fs_subset {S T : ℕ → ℤ} {m : ℕ}
+    (hsub : FS S ⊆ FS T)
+    (hcov : CoversResidues S m) :
+    CoversResidues T m := by
+  intro r
+  rcases hcov r with ⟨x, hx, hxmod⟩
+  exact ⟨x, hsub hx, hxmod⟩
+
+lemma CoversResidues.of_tail {S : ℕ → ℤ} {m : ℕ} (N : ℕ)
+    (hcov : CoversResidues (tail S N) m) :
+    CoversResidues S m :=
+  CoversResidues.of_fs_subset (fs_tail_subset S N) hcov
+
+lemma coversResidues_one (S : ℕ → ℤ) : CoversResidues S 1 := by
+  intro r
+  refine ⟨0, fs_empty S, ?_⟩
+  exact Subsingleton.elim _ _
+
+lemma zmod_addSubgroup_eq_top_of_one_mem {m : ℕ} [NeZero m]
+    {H : AddSubgroup (ZMod m)}
+    (h1 : (1 : ZMod m) ∈ H) :
+    H = ⊤ := by
+  apply eq_top_iff.mpr
+  intro x _hx
+  have hxval : x.val • (1 : ZMod m) ∈ H := H.nsmul_mem h1 x.val
+  simpa [ZMod.natCast_zmod_val] using hxval
+
+lemma sum_zsmul_mem_closure_range {w m : ℕ}
+    (ρ : Fin w → ZMod m) (a : Fin w → ℤ) :
+    (∑ i, a i • ρ i) ∈ AddSubgroup.closure (Set.range ρ) := by
+  apply AddSubgroup.sum_mem
+  intro i _hi
+  apply AddSubgroup.zsmul_mem
+  exact AddSubgroup.subset_closure ⟨i, rfl⟩
+
+lemma zmod_closure_range_eq_top_of_sum_zsmul_eq_one {w m : ℕ} [NeZero m]
+    (ρ : Fin w → ZMod m) (a : Fin w → ℤ)
+    (ha : ∑ i, a i • ρ i = (1 : ZMod m)) :
+    AddSubgroup.closure (Set.range ρ) = ⊤ :=
+  zmod_addSubgroup_eq_top_of_one_mem (by
+    rw [← ha]
+    exact sum_zsmul_mem_closure_range ρ a)
+
+/-! ### Finite Bezout helpers for residue generation -/
+
+/-- The gcd of a finite family of integers indexed by `Fin n`. This recursive
+form is convenient because `Int.gcd_dvd_iff` directly gives Bezout
+coefficients at each step. -/
+def intGcdFin : (n : ℕ) → (Fin n → ℤ) → ℕ
+  | 0, _ => 0
+  | n + 1, v =>
+      Int.gcd (v (Fin.last n)) (intGcdFin n (fun i : Fin n => v i.castSucc))
+
+lemma intGcdFin_linear_combination :
+    ∀ n : ℕ, ∀ v : Fin n → ℤ,
+      ∃ a : Fin n → ℤ, (intGcdFin n v : ℤ) = ∑ i, a i * v i := by
+  intro n
+  induction n with
+  | zero =>
+      intro v
+      refine ⟨fun i => Fin.elim0 i, ?_⟩
+      simp [intGcdFin]
+  | succ n ih =>
+      intro v
+      let tail : Fin n → ℤ := fun i => v i.castSucc
+      obtain ⟨b, hb⟩ := ih tail
+      let gTail : ℕ := intGcdFin n tail
+      have hgcd_dvd :
+          Int.gcd (v (Fin.last n)) (gTail : ℤ) ∣
+            Int.gcd (v (Fin.last n)) (gTail : ℤ) :=
+        dvd_refl _
+      obtain ⟨x, y, hxy⟩ :=
+        (Int.gcd_dvd_iff
+          (a := v (Fin.last n)) (b := (gTail : ℤ))
+          (n := Int.gcd (v (Fin.last n)) (gTail : ℤ))).mp hgcd_dvd
+      let a : Fin (n + 1) → ℤ := Fin.lastCases x (fun i : Fin n => y * b i)
+      refine ⟨a, ?_⟩
+      have hsum :
+          (∑ i : Fin (n + 1), a i * v i) =
+            (∑ i : Fin n, (y * b i) * v i.castSucc) + x * v (Fin.last n) := by
+        rw [Fin.sum_univ_castSucc]
+        simp [a]
+      have htail_sum :
+          (∑ i : Fin n, (y * b i) * v i.castSucc) =
+            (intGcdFin n tail : ℤ) * y := by
+        rw [hb]
+        rw [mul_comm (∑ i : Fin n, b i * tail i) y]
+        rw [Finset.mul_sum]
+        refine Finset.sum_congr rfl ?_
+        intro i _hi
+        simp [tail]
+        ring
+      calc
+        (intGcdFin (n + 1) v : ℤ)
+            = v (Fin.last n) * x + (gTail : ℤ) * y := by
+                simpa [intGcdFin, gTail, tail] using hxy
+        _ = ∑ i : Fin (n + 1), a i * v i := by
+              rw [hsum, htail_sum]
+              simp [gTail, tail]
+              ring
+
+lemma intGcdFin_dvd_entry :
+    ∀ n : ℕ, ∀ v : Fin n → ℤ, ∀ i : Fin n,
+      (intGcdFin n v : ℤ) ∣ v i := by
+  intro n
+  induction n with
+  | zero =>
+      intro v i
+      exact Fin.elim0 i
+  | succ n ih =>
+      intro v i
+      let tail : Fin n → ℤ := fun j => v j.castSucc
+      rcases Fin.eq_castSucc_or_eq_last i with ⟨j, rfl⟩ | rfl
+      · have hwhole_tail :
+            (intGcdFin (n + 1) v : ℤ) ∣ (intGcdFin n tail : ℤ) := by
+          simpa [intGcdFin, tail] using
+            Int.gcd_dvd_right (v (Fin.last n)) (intGcdFin n tail : ℤ)
+        exact dvd_trans hwhole_tail (ih tail j)
+      · simpa [intGcdFin, tail] using
+          Int.gcd_dvd_left (v (Fin.last n)) (intGcdFin n tail : ℤ)
+
+lemma intGcdFin_coprime_of_primeFactors_covered {m w : ℕ}
+    (v : Fin w → ℤ)
+    (hcover : ∀ k : ℕ, k.Prime → k ∣ m →
+      ∃ i : Fin w, ¬ ((k : ℤ) ∣ v i)) :
+    Nat.Coprime m (intGcdFin w v) := by
+  refine Nat.coprime_of_dvd ?_
+  intro k hkprime hkm hkg
+  obtain ⟨i, hi⟩ := hcover k hkprime hkm
+  have hkgZ : ((k : ℤ) ∣ (intGcdFin w v : ℤ)) := by
+    exact_mod_cast hkg
+  exact hi (dvd_trans hkgZ (intGcdFin_dvd_entry w v i))
+
+lemma exists_zmod_sum_zsmul_eq_one_of_intGcdFin_coprime {w m : ℕ}
+    (v : Fin w → ℤ)
+    (hcop : Nat.Coprime m (intGcdFin w v)) :
+    ∃ a : Fin w → ℤ,
+      ∑ i, a i • (((v i : ℤ) : ZMod m)) = (1 : ZMod m) := by
+  obtain ⟨b, hb⟩ := intGcdFin_linear_combination w v
+  let c : ℤ := Nat.gcdB m (intGcdFin w v)
+  refine ⟨fun i => c * b i, ?_⟩
+  have hbez :
+      (((intGcdFin w v : ℤ) * c : ℤ) : ZMod m) = 1 := by
+    have hbezZ :
+        (1 : ℤ) =
+          (m : ℤ) * Nat.gcdA m (intGcdFin w v) +
+            (intGcdFin w v : ℤ) * Nat.gcdB m (intGcdFin w v) := by
+      have h := Nat.gcd_eq_gcd_ab m (intGcdFin w v)
+      rw [Nat.coprime_iff_gcd_eq_one.mp hcop] at h
+      simpa using h
+    have hcast := congrArg (fun z : ℤ => (z : ZMod m)) hbezZ
+    simpa [c] using hcast.symm
+  calc
+    ∑ i, (c * b i) • (((v i : ℤ) : ZMod m))
+        = (((∑ i, (c * b i) * v i : ℤ) : ℤ) : ZMod m) := by
+            simp [zsmul_eq_mul]
+    _ = (((intGcdFin w v : ℤ) * c : ℤ) : ZMod m) := by
+          congr 1
+          rw [hb]
+          rw [mul_comm (∑ i : Fin w, b i * v i) c]
+          rw [Finset.mul_sum]
+          refine Finset.sum_congr rfl ?_
+          intro i _hi
+          ring
+    _ = 1 := hbez
+
+/-- If finitely many residues `ρ : Fin w → ZMod g` generate `ZMod g` as an
+additive group, then duplicating each residue `g - 1` times lets every residue
+be represented as a subset sum. -/
+theorem duplicated_generators_subset_sum_all_residues
+    {w g : ℕ} (hg : 1 ≤ g) (ρ : Fin w → ZMod g)
+    (hgen : AddSubgroup.closure (Set.range ρ) = ⊤) :
+    ∀ r : ZMod g,
+      ∃ T : Finset (Fin w × Fin (g - 1)),
+        r = ∑ t ∈ T, ρ t.1 := by
+  intro r
+  haveI : NeZero g := ⟨by omega⟩
+  have hr : r ∈ AddSubgroup.closure (Set.range ρ) := by
+    rw [hgen]
+    trivial
+  obtain ⟨a, ha⟩ := AddSubgroup.exists_of_mem_closure_range ρ r hr
+  have hgZ : (0 : ℤ) < (g : ℤ) := by exact_mod_cast hg
+  set k : Fin w → ℕ := fun i => ((a i) % (g : ℤ)).toNat with hk_def
+  have hk_lt : ∀ i, k i < g := fun i => by
+    have hnn : (0 : ℤ) ≤ (a i) % (g : ℤ) := Int.emod_nonneg _ hgZ.ne'
+    have hub : (a i) % (g : ℤ) < (g : ℤ) := Int.emod_lt_of_pos _ hgZ
+    rw [hk_def]
+    exact (Int.toNat_lt hnn).mpr hub
+  have hk_le : ∀ i, k i ≤ g - 1 := fun i => by
+    have := hk_lt i
+    omega
+  have key : ∀ i, (k i : ℕ) • ρ i = a i • ρ i := fun i => by
+    have hnn : (0 : ℤ) ≤ (a i) % (g : ℤ) := Int.emod_nonneg _ hgZ.ne'
+    rw [hk_def]
+    rw [show ((((a i) % (g : ℤ)).toNat : ℕ) • ρ i) =
+        ((((a i) % (g : ℤ)).toNat : ℤ) • ρ i) from
+      (natCast_zsmul (ρ i) _).symm]
+    rw [Int.toNat_of_nonneg hnn]
+    rw [show ((g : ℤ) : ℤ) = (Fintype.card (ZMod g) : ℤ) by simp [ZMod.card]]
+    exact mod_card_zsmul (ρ i) (a i)
+  let T : Finset (Fin w × Fin (g - 1)) :=
+    ((Finset.univ : Finset (Fin w)) ×ˢ (Finset.univ : Finset (Fin (g - 1)))).filter
+      (fun p => p.2.1 < k p.1)
+  refine ⟨T, ?_⟩
+  show r = ∑ t ∈ T, ρ t.1
+  have hsum : (∑ t ∈ T, ρ t.1) = ∑ i, k i • ρ i := by
+    show (∑ t ∈ ((Finset.univ : Finset (Fin w)) ×ˢ
+            (Finset.univ : Finset (Fin (g - 1)))).filter
+            (fun p => p.2.1 < k p.1), ρ t.1) = ∑ i, k i • ρ i
+    rw [Finset.sum_filter, Finset.sum_product]
+    refine Finset.sum_congr rfl (fun i _ => ?_)
+    show (∑ y : Fin (g - 1), if y.val < k i then ρ i else 0) = k i • ρ i
+    rw [← Finset.sum_filter, Finset.sum_const]
+    congr 1
+    have heq : ((Finset.univ : Finset (Fin (g - 1))).filter
+                  (fun j : Fin (g - 1) => j.val < k i)) =
+               (Finset.range (k i)).attachFin (fun j hj =>
+                 lt_of_lt_of_le (Finset.mem_range.mp hj) (hk_le i)) := by
+      ext ⟨b, hb⟩
+      simp [Finset.mem_attachFin, Finset.mem_range]
+    rw [heq, Finset.card_attachFin]
+    simp
+  rw [hsum, ha]
+  exact Finset.sum_congr rfl (fun i _ => (key i).symm)
+
+/-- Choose distinct natural indices for a finite family of predicates that each
+occur arbitrarily far out. -/
+lemma exists_injective_indices_fin :
+    ∀ n : ℕ, ∀ P : Fin n → ℕ → Prop,
+      (∀ a N, ∃ j, N ≤ j ∧ P a j) →
+        ∃ idx : Fin n → ℕ, Function.Injective idx ∧ ∀ a, P a (idx a)
+  | 0, _P, _hP => by
+      refine ⟨fun i => Fin.elim0 i, ?_, ?_⟩
+      · intro a
+        exact Fin.elim0 a
+      · intro a
+        exact Fin.elim0 a
+  | n + 1, P, hP => by
+      obtain ⟨idx, hidx, hidxP⟩ :
+          ∃ idx : Fin n → ℕ, Function.Injective idx ∧ ∀ a, P a.castSucc (idx a) :=
+        exists_injective_indices_fin n (fun a N => P a.castSucc N)
+          (fun a N => hP a.castSucc N)
+      let B : ℕ := Finset.univ.sup idx + 1
+      obtain ⟨j, hjB, hjP⟩ := hP (Fin.last n) B
+      let idx' : Fin (n + 1) → ℕ := Fin.lastCases j idx
+      refine ⟨idx', ?_, ?_⟩
+      · intro a b hab
+        rcases Fin.eq_castSucc_or_eq_last a with ⟨a0, rfl⟩ | rfl
+        · rcases Fin.eq_castSucc_or_eq_last b with ⟨b0, rfl⟩ | rfl
+          · simp [idx'] at hab
+            exact congrArg Fin.castSucc (hidx hab)
+          · simp [idx'] at hab
+            have ha_le : idx a0 ≤ Finset.univ.sup idx :=
+              Finset.le_sup (s := Finset.univ) (f := idx) (Finset.mem_univ a0)
+            have : idx a0 < j := by omega
+            omega
+        · rcases Fin.eq_castSucc_or_eq_last b with ⟨b0, rfl⟩ | rfl
+          · simp [idx'] at hab
+            have hb_le : idx b0 ≤ Finset.univ.sup idx :=
+              Finset.le_sup (s := Finset.univ) (f := idx) (Finset.mem_univ b0)
+            have : idx b0 < j := by omega
+            omega
+          · rfl
+      · intro a
+        rcases Fin.eq_castSucc_or_eq_last a with ⟨a0, rfl⟩ | rfl
+        · simpa [idx'] using hidxP a0
+        · simpa [idx'] using hjP
+
+/-- Realizing the duplicated generators by distinct sequence indices upgrades
+the abstract duplicated-generator subset-sum lemma to `CoversResidues`. -/
+lemma coversResidues_of_duplicated_generators {S : ℕ → ℤ} {w m : ℕ}
+    (hm : 1 ≤ m) (ρ : Fin w → ZMod m)
+    (hgen : AddSubgroup.closure (Set.range ρ) = ⊤)
+    (idx : Fin w × Fin (m - 1) → ℕ)
+    (hidx : Function.Injective idx)
+    (hres : ∀ t : Fin w × Fin (m - 1),
+      ((S (idx t) : ℤ) : ZMod m) = ρ t.1) :
+    CoversResidues S m := by
+  classical
+  intro r
+  obtain ⟨T, hT⟩ :=
+    duplicated_generators_subset_sum_all_residues hm ρ hgen r
+  refine ⟨∑ t ∈ T, S (idx t), ?_, ?_⟩
+  · refine ⟨T.image idx, ?_⟩
+    rw [Finset.sum_image]
+    intro a _ha b _hb hab
+    exact hidx hab
+  · calc
+      (((∑ t ∈ T, S (idx t) : ℤ) : ℤ) : ZMod m)
+          = ∑ t ∈ T, ((S (idx t) : ℤ) : ZMod m) := by norm_cast
+      _ = ∑ t ∈ T, ρ t.1 := by
+        exact Finset.sum_congr rfl (fun t _ht => hres t)
+      _ = r := hT.symm
+
+/-- If a finite family of residues generates `ZMod m` and each generator occurs
+arbitrarily far out in the sequence, then finite subset sums cover all residues
+modulo `m`. -/
+lemma coversResidues_of_frequent_generators {S : ℕ → ℤ} {w m : ℕ}
+    (hm : 1 ≤ m) (ρ : Fin w → ZMod m)
+    (hgen : AddSubgroup.closure (Set.range ρ) = ⊤)
+    (hfreq : ∀ i : Fin w, ∀ N : ℕ,
+      ∃ n : ℕ, N ≤ n ∧ ((S n : ℤ) : ZMod m) = ρ i) :
+    CoversResidues S m := by
+  classical
+  let e : Fin w × Fin (m - 1) ≃ Fin (w * (m - 1)) := finProdFinEquiv
+  obtain ⟨idxFlat, hidxFlat, hidxFlat_res⟩ :=
+    exists_injective_indices_fin (w * (m - 1))
+      (fun a n => ((S n : ℤ) : ZMod m) = ρ (e.symm a).1)
+      (fun a N => hfreq (e.symm a).1 N)
+  let idx : Fin w × Fin (m - 1) → ℕ := fun t => idxFlat (e t)
+  refine coversResidues_of_duplicated_generators hm ρ hgen idx ?_ ?_
+  · intro a b hab
+    exact e.injective (hidxFlat hab)
+  · intro t
+    simpa [idx, e] using hidxFlat_res (e t)
+
+/-- A convenient Bezout-style version of
+`coversResidues_of_frequent_generators`: if a finite family of frequently
+occurring residues has an integer linear combination equal to `1`, then it
+covers every residue modulo `m`. -/
+lemma coversResidues_of_frequent_zsmul_eq_one {S : ℕ → ℤ} {w m : ℕ}
+    (hm : 1 ≤ m) (ρ : Fin w → ZMod m) (a : Fin w → ℤ)
+    (ha : ∑ i, a i • ρ i = (1 : ZMod m))
+    (hfreq : ∀ i : Fin w, ∀ N : ℕ,
+      ∃ n : ℕ, N ≤ n ∧ ((S n : ℤ) : ZMod m) = ρ i) :
+    CoversResidues S m := by
+  haveI : NeZero m := ⟨by omega⟩
+  exact coversResidues_of_frequent_generators hm ρ
+    (zmod_closure_range_eq_top_of_sum_zsmul_eq_one ρ a ha)
+    hfreq
+
+/-- If at least `m` distinct terms have the same unit residue modulo `m`, then
+their subset sums cover every residue class. This is the finite cyclic-group
+core used in Graham's residue-system lemma. -/
+lemma coversResidues_of_constant_unit_residue {S : ℕ → ℤ} {m : ℕ}
+    (hm : 0 < m) {u : ZMod m} (hu : IsUnit u) {A : Finset ℕ}
+    (hcard : m ≤ A.card)
+    (hA : ∀ i ∈ A, ((S i : ℤ) : ZMod m) = u) :
+    CoversResidues S m := by
+  classical
+  haveI : NeZero m := ⟨Nat.ne_of_gt hm⟩
+  intro r
+  let v : ZMod m := (↑hu.unit⁻¹ : ZMod m) * r
+  have hv_mul : v * u = r := by
+    change ((↑hu.unit⁻¹ : ZMod m) * r) * u = r
+    have hucoe : (hu.unit : ZMod m) = u := hu.unit_spec
+    calc
+      ((↑hu.unit⁻¹ : ZMod m) * r) * u =
+          ((↑hu.unit⁻¹ : ZMod m) * r) * (↑hu.unit : ZMod m) :=
+        congrArg (fun a : ZMod m => ((↑hu.unit⁻¹ : ZMod m) * r) * a) hucoe.symm
+      _ = r := by
+        calc
+          ((↑hu.unit⁻¹ : ZMod m) * r) * (↑hu.unit : ZMod m) =
+              ((↑hu.unit⁻¹ : ZMod m) * (↑hu.unit : ZMod m)) * r := by ring
+          _ = r := by simp
+  have hv_le_card : v.val ≤ A.card :=
+    (Nat.le_of_lt v.val_lt).trans hcard
+  rcases Finset.exists_subset_card_eq hv_le_card with ⟨K, hKA, hKcard⟩
+  refine ⟨∑ i ∈ K, S i, ⟨K, rfl⟩, ?_⟩
+  calc
+    (((∑ i ∈ K, S i : ℤ) : ℤ) : ZMod m)
+        = ∑ i ∈ K, ((S i : ℤ) : ZMod m) := by norm_cast
+    _ = ∑ _i ∈ K, u := by
+      exact Finset.sum_congr rfl (fun i hi => hA i (hKA hi))
+    _ = (K.card : ℕ) • u := by simp
+    _ = (v.val : ℕ) • u := by rw [hKcard]
+    _ = (v.val : ZMod m) * u := by simp [nsmul_eq_mul]
+    _ = v * u := by rw [ZMod.natCast_zmod_val]
+    _ = r := hv_mul
+
+/-- If at least `m * m` terms are units modulo `m`, then some unit residue
+appears at least `m` times, so finite subset sums cover all residues modulo
+`m`. This is a finite pigeonhole wrapper around
+`coversResidues_of_constant_unit_residue`. -/
+lemma coversResidues_of_many_unit_terms {S : ℕ → ℤ} {m : ℕ}
+    (hm : 0 < m) {A : Finset ℕ}
+    (hcard : m * m ≤ A.card)
+    (hA : ∀ i ∈ A, IsUnit (((S i : ℤ) : ZMod m))) :
+    CoversResidues S m := by
+  classical
+  haveI : NeZero m := ⟨Nat.ne_of_gt hm⟩
+  let f : ℕ → ZMod m := fun i => ((S i : ℤ) : ZMod m)
+  have hmap : ∀ i ∈ A, f i ∈ (Finset.univ : Finset (ZMod m)) := by
+    intro i hi
+    simp
+  have huniv_nonempty : (Finset.univ : Finset (ZMod m)).Nonempty :=
+    Finset.univ_nonempty
+  have hcard' : (Finset.univ : Finset (ZMod m)).card * m ≤ A.card := by
+    simpa [ZMod.card] using hcard
+  obtain ⟨u, _hu_mem, hu_card⟩ :=
+    Finset.exists_le_card_fiber_of_mul_le_card_of_maps_to
+      (s := A) (t := (Finset.univ : Finset (ZMod m))) (f := f)
+      hmap huniv_nonempty hcard'
+  let K : Finset ℕ := A.filter fun i => f i = u
+  have hKcard : m ≤ K.card := by
+    simpa [K] using hu_card
+  have hK_nonempty : K.Nonempty :=
+    Finset.card_pos.mp (hm.trans_le hKcard)
+  obtain ⟨i, hiK⟩ := hK_nonempty
+  have hiA : i ∈ A := (Finset.mem_filter.mp hiK).1
+  have hi_eq : f i = u := (Finset.mem_filter.mp hiK).2
+  have hu : IsUnit u := by
+    simpa [f, ← hi_eq] using hA i hiA
+  exact coversResidues_of_constant_unit_residue hm hu hKcard
+    (by
+      intro j hj
+      exact (Finset.mem_filter.mp hj).2)
+
+/-- A frequently occurring unit residue condition implies residue coverage. -/
+lemma coversResidues_of_frequently_unit_terms {S : ℕ → ℤ} {m : ℕ}
+    (hm : 0 < m)
+    (hunit : ∀ N : ℕ, ∃ n : ℕ, N ≤ n ∧ IsUnit (((S n : ℤ) : ZMod m))) :
+    CoversResidues S m := by
+  obtain ⟨A, hAcard, hA⟩ :=
+    exists_finset_card_eq_of_frequently_atTop hunit (m * m)
+  exact coversResidues_of_many_unit_terms hm (by simp [hAcard]) hA
+
+/-- If all residue classes are covered by arbitrary finite subset sums, then a
+single finite prefix already contains witnesses for every residue class. -/
+lemma CoversResidues.exists_prefix {S : ℕ → ℤ} {m : ℕ}
+    [Fintype (ZMod m)] (hcov : CoversResidues S m) :
+    ∃ N : ℕ, ∀ r : ZMod m,
+      ∃ x ∈ FSOf S (Finset.range N), ((x : ℤ) : ZMod m) = r := by
+  classical
+  let x : ZMod m → ℤ := fun r => Classical.choose (hcov r)
+  have hx : ∀ r : ZMod m, x r ∈ FS S ∧ ((x r : ℤ) : ZMod m) = r := by
+    intro r
+    exact Classical.choose_spec (hcov r)
+  let I : ZMod m → Finset ℕ := fun r => Classical.choose (hx r).1
+  have hI_sum : ∀ r : ZMod m, x r = ∑ i ∈ I r, S i := by
+    intro r
+    exact Classical.choose_spec (hx r).1
+  let A : Finset ℕ := Finset.univ.biUnion I
+  refine ⟨A.sup id + 1, ?_⟩
+  intro r
+  refine ⟨x r, ?_, (hx r).2⟩
+  refine ⟨I r, ?_, hI_sum r⟩
+  intro i hi
+  rw [Finset.mem_range]
+  have hiA : i ∈ A := by
+    change i ∈ Finset.univ.biUnion I
+    rw [Finset.mem_biUnion]
+    exact ⟨r, Finset.mem_univ r, hi⟩
+  exact Nat.lt_succ_of_le (Finset.le_sup (s := A) (f := id) hiA)
+
+lemma fsOf_range_subset_finitePrefixSeq (S : ℕ → ℤ) (N : ℕ) :
+    FSOf S (Finset.range N) ⊆ FS (finitePrefixSeq S N) := by
+  intro x hx
+  rcases hx with ⟨I, hI_sub, hsum⟩
+  refine ⟨I, ?_⟩
+  rw [hsum]
+  exact Finset.sum_congr rfl
+    (fun i hi => by
+      have hiN : i < N := Finset.mem_range.mp (hI_sub hi)
+      simp [finitePrefixSeq, hiN])
+
+lemma fs_finitePrefixSeq_subset (S : ℕ → ℤ) (N : ℕ) :
+    FS (finitePrefixSeq S N) ⊆ FS S := by
+  classical
+  exact fs_subset_of_eq_zero_or_subsequence (s := S) (t := finitePrefixSeq S N)
+    (fun n => n)
+    (fun _ _ _ _ h => h)
+    (fun i hi0 => by
+      by_cases hiN : i < N
+      · simp [finitePrefixSeq, hiN]
+      · exfalso
+        exact hi0 (by simp [finitePrefixSeq, hiN]))
+
+lemma fs_finitePrefixSeq_mono (S : ℕ → ℤ) {N M : ℕ} (hNM : N ≤ M) :
+    FS (finitePrefixSeq S N) ⊆ FS (finitePrefixSeq S M) := by
+  classical
+  exact fs_subset_of_eq_zero_or_subsequence
+    (s := finitePrefixSeq S M) (t := finitePrefixSeq S N)
+    (fun n => n)
+    (fun _ _ _ _ h => h)
+    (fun i hi0 => by
+      by_cases hiN : i < N
+      · have hiM : i < M := hiN.trans_le hNM
+        simp [finitePrefixSeq, hiN, hiM]
+      · exfalso
+        exact hi0 (by simp [finitePrefixSeq, hiN]))
+
+/-- Residue coverage can be witnessed by a finite prefix, padded by zeros. -/
+lemma CoversResidues.exists_finitePrefixSeq {S : ℕ → ℤ} {m : ℕ}
+    [Fintype (ZMod m)] (hcov : CoversResidues S m) :
+    ∃ N : ℕ, CoversResidues (finitePrefixSeq S N) m := by
+  rcases hcov.exists_prefix with ⟨N, hN⟩
+  refine ⟨N, ?_⟩
+  intro r
+  rcases hN r with ⟨x, hx, hxmod⟩
+  exact ⟨x, fsOf_range_subset_finitePrefixSeq S N hx, hxmod⟩
+
+lemma CoversResidues.finitePrefixSeq_mono {S : ℕ → ℤ} {m N M : ℕ}
+    (hNM : N ≤ M)
+    (hcov : CoversResidues (finitePrefixSeq S N) m) :
+    CoversResidues (finitePrefixSeq S M) m :=
+  CoversResidues.of_fs_subset (fs_finitePrefixSeq_mono S hNM) hcov
+
+lemma fs_interleave_left_subset (S T : ℕ → ℤ) :
+    FS S ⊆ FS (interleave S T) := by
+  intro x hx
+  rcases hx with ⟨I, hI⟩
+  refine ⟨I.image (fun n => 2 * n), ?_⟩
+  rw [hI, Finset.sum_image]
+  · apply Finset.sum_congr rfl
+    intro n _
+    simp
+  · intro a _ b _ hab
+    exact Nat.mul_left_cancel (by decide : 0 < 2) hab
+
+lemma fs_interleave_right_subset (S T : ℕ → ℤ) :
+    FS T ⊆ FS (interleave S T) := by
+  intro x hx
+  rcases hx with ⟨I, hI⟩
+  refine ⟨I.image (fun n => 2 * n + 1), ?_⟩
+  rw [hI, Finset.sum_image]
+  · apply Finset.sum_congr rfl
+    intro n _
+    simp
+  · intro a _ b _ hab
+    have h2add : 2 * a + 1 = 2 * b + 1 := hab
+    have hsucc : Nat.succ (2 * a) = Nat.succ (2 * b) := by
+      simpa [Nat.succ_eq_add_one] using h2add
+    have h2 : 2 * a = 2 * b := Nat.succ.inj hsucc
+    exact Nat.mul_left_cancel (by decide : 0 < 2) h2
+
+lemma CoversResidues.interleave_left {S T : ℕ → ℤ} {m : ℕ}
+    (hcov : CoversResidues S m) :
+    CoversResidues (interleave S T) m :=
+  CoversResidues.of_fs_subset (fs_interleave_left_subset S T) hcov
+
+lemma CoversResidues.interleave_right {S T : ℕ → ℤ} {m : ℕ}
+    (hcov : CoversResidues T m) :
+    CoversResidues (interleave S T) m :=
+  CoversResidues.of_fs_subset (fs_interleave_right_subset S T) hcov
+
+lemma even_odd_images_disjoint (I J : Finset ℕ) :
+    Disjoint (I.image fun n => 2 * n) (J.image fun n => 2 * n + 1) := by
+  rw [Finset.disjoint_left]
+  intro a ha hb
+  rcases Finset.mem_image.mp ha with ⟨i, hi, rfl⟩
+  rcases Finset.mem_image.mp hb with ⟨j, _hj, hji⟩
+  omega
+
+/-- A subset sum from each side of an interleaving can be added as a subset sum
+of the interleaved sequence. -/
+lemma fs_interleave_add {S T : ℕ → ℤ} {x y : ℤ}
+    (hx : x ∈ FS S) (hy : y ∈ FS T) :
+    x + y ∈ FS (interleave S T) := by
+  classical
+  rcases hx with ⟨I, hI⟩
+  rcases hy with ⟨J, hJ⟩
+  refine ⟨(I.image fun n => 2 * n) ∪ (J.image fun n => 2 * n + 1), ?_⟩
+  rw [Finset.sum_union (even_odd_images_disjoint I J)]
+  have hIimg :
+      (∑ a ∈ I.image (fun n => 2 * n), interleave S T a) =
+        ∑ i ∈ I, S i := by
+    rw [Finset.sum_image]
+    · apply Finset.sum_congr rfl
+      intro i _
+      simp
+    · intro a _ b _ hab
+      exact Nat.mul_left_cancel (by decide : 0 < 2) hab
+  have hJimg :
+      (∑ a ∈ J.image (fun n => 2 * n + 1), interleave S T a) =
+        ∑ j ∈ J, T j := by
+    rw [Finset.sum_image]
+    · apply Finset.sum_congr rfl
+      intro j _
+      simp
+    · intro a _ b _ hab
+      have h2add : 2 * a + 1 = 2 * b + 1 := hab
+      have hsucc : Nat.succ (2 * a) = Nat.succ (2 * b) := by
+        simpa [Nat.succ_eq_add_one] using h2add
+      have h2 : 2 * a = 2 * b := Nat.succ.inj hsucc
+      exact Nat.mul_left_cancel (by decide : 0 < 2) h2
+  rw [hIimg, hJimg]
+  rw [← hI, ← hJ]
+
+lemma int_le_toNat_cast (z : ℤ) : z ≤ (z.toNat : ℤ) := by
+  by_cases hz : 0 ≤ z
+  · rw [Int.toNat_of_nonneg hz]
+  · have hzle : z ≤ 0 := le_of_not_ge hz
+    exact le_trans hzle (Int.natCast_nonneg _)
+
+lemma neg_le_toNat_neg_cast (z : ℤ) : -z ≤ ((-z).toNat : ℤ) :=
+  int_le_toNat_cast (-z)
+
+/-- Graham's AP-plus-residue glue: if one sequence has arbitrarily long
+arithmetic progressions with step `m` and the other covers all residues modulo
+`m`, then their interleaving is nearly complete. -/
+lemma nearlyComplete_of_APs_and_residues {S T : ℕ → ℤ} {m : ℕ}
+    (_hm : 1 ≤ m)
+    (hAP :
+      ∀ k : ℕ, 1 ≤ k →
+        ∃ c : ℤ, ∀ j : ℕ, 1 ≤ j → j ≤ k →
+          c + (j : ℤ) * (m : ℤ) ∈ FS S)
+    (hres : CoversResidues T m) :
+    NearlyComplete (interleave S T) := by
+  classical
+  intro k hk
+  have hkpos : 0 < k := by omega
+  let r : Fin k → ZMod m := fun a => ((a.1 + 1 : ℕ) : ZMod m)
+  let x : Fin k → ℤ := fun a => Classical.choose (hres (r a))
+  have hx : ∀ a : Fin k, x a ∈ FS T ∧ ((x a : ℤ) : ZMod m) = r a := by
+    intro a
+    exact Classical.choose_spec (hres (r a))
+  have hxmod_int :
+      ∀ a : Fin k, ((x a : ℤ) : ZMod m) = (((a.1 + 1 : ℕ) : ℤ) : ZMod m) := by
+    intro a
+    simpa [r] using (hx a).2
+  let q : Fin k → ℤ := fun a =>
+    Classical.choose (exists_eq_add_mul_of_zmod_eq (hxmod_int a))
+  have hq :
+      ∀ a : Fin k, x a = ((a.1 + 1 : ℕ) : ℤ) + (m : ℤ) * q a := by
+    intro a
+    exact Classical.choose_spec (exists_eq_add_mul_of_zmod_eq (hxmod_int a))
+  let P : ℕ := Finset.univ.sup fun a : Fin k => (q a).toNat
+  let N : ℕ := Finset.univ.sup fun a : Fin k => (-(q a)).toNat
+  let M : ℕ := P + 1
+  let K : ℕ := P + N + 1
+  have hKpos : 1 ≤ K := by
+    dsimp [K]
+    omega
+  rcases hAP K hKpos with ⟨c, hc⟩
+  refine ⟨c + (M : ℤ) * (m : ℤ), ?_⟩
+  intro j hj1 hjk
+  let a : Fin k := ⟨j - 1, by omega⟩
+  have ha_val : a.1 + 1 = j := by
+    dsimp [a]
+    omega
+  have hq_le_P : q a ≤ (P : ℤ) := by
+    calc
+      q a ≤ ((q a).toNat : ℤ) := int_le_toNat_cast (q a)
+      _ ≤ (P : ℤ) := by
+        exact_mod_cast Finset.le_sup (s := Finset.univ) (f := fun a : Fin k => (q a).toNat)
+          (Finset.mem_univ a)
+  have hnegq_le_N : -q a ≤ (N : ℤ) := by
+    calc
+      -q a ≤ (((-q a).toNat) : ℤ) := neg_le_toNat_neg_cast (q a)
+      _ ≤ (N : ℤ) := by
+        exact_mod_cast Finset.le_sup (s := Finset.univ) (f := fun a : Fin k => (-(q a)).toNat)
+          (Finset.mem_univ a)
+  let tZ : ℤ := (M : ℤ) - q a
+  have htZ_pos : 1 ≤ tZ := by
+    dsimp [tZ, M]
+    omega
+  let t : ℕ := tZ.toNat
+  have ht_cast : (t : ℤ) = tZ := Int.toNat_of_nonneg (by omega : 0 ≤ tZ)
+  have ht1 : 1 ≤ t := by
+    have : (1 : ℤ) ≤ (t : ℤ) := by simpa [ht_cast] using htZ_pos
+    exact_mod_cast this
+  have htK : t ≤ K := by
+    have htZ_le : tZ ≤ (K : ℤ) := by
+      dsimp [tZ, M, K]
+      omega
+    have : (t : ℤ) ≤ (K : ℤ) := by simpa [ht_cast] using htZ_le
+    exact_mod_cast this
+  have hS : c + (t : ℤ) * (m : ℤ) ∈ FS S := hc t ht1 htK
+  have hT : x a ∈ FS T := (hx a).1
+  have hsum : (c + (t : ℤ) * (m : ℤ)) + x a ∈ FS (interleave S T) :=
+    fs_interleave_add hS hT
+  have htarget :
+      c + (M : ℤ) * (m : ℤ) + (j : ℤ) =
+        (c + (t : ℤ) * (m : ℤ)) + x a := by
+    rw [ht_cast]
+    dsimp [tZ]
+    rw [hq a, ha_val]
+    ring
+  rw [htarget]
+  exact hsum
+
+/-- Direct Graham glue: signed tail differences of size `m`, together with
+residue coverage modulo `m`, imply near-completeness after interleaving. -/
+lemma nearlyComplete_of_signed_tail_and_residues {S T : ℕ → ℤ} {m : ℕ}
+    (hm : 1 ≤ m)
+    (htail : ∀ N : ℕ, (m : ℤ) ∈ SignedFS (tail S N))
+    (hres : CoversResidues T m) :
+    NearlyComplete (interleave S T) :=
+  nearlyComplete_of_APs_and_residues hm
+    (fun k hk => arbitrary_APs_of_signed_tail_difference htail k hk) hres
+
+/-! ## First Sigma-sequence lemma -/
+
+/-- A concrete tail-doubling criterion for Graham's Sigma-sequence condition.
+
+This is the reusable core of Graham's "eventual doubling gives a Sigma-sequence"
+lemma. A later wrapper can choose `h` and `k` from filter/eventual hypotheses. -/
+lemma sigmaSeq_of_tail_doubling (S : ℕ → ℤ) (h k : ℕ)
+    (hk : 1 ≤ k)
+    (hpos : ∀ m : ℕ, 0 < S (h + m))
+    (hbase : S h < (k : ℤ))
+    (hdbl : ∀ m : ℕ, S (h + (m + 1)) ≤ 2 * S (h + m)) :
+    SigmaSeq S := by
+  refine ⟨k, h, hk, hpos, ?_⟩
+  intro m
+  induction m with
+  | zero =>
+      simpa using hbase
+  | succ m ih =>
+      rw [Finset.sum_range_succ]
+      calc
+        S (h + (m + 1)) ≤ 2 * S (h + m) := hdbl m
+        _ = S (h + m) + S (h + m) := by ring
+        _ < ((k : ℤ) + ∑ n ∈ Finset.range m, S (h + n)) + S (h + m) := by
+          linarith
+        _ = (k : ℤ) + (∑ n ∈ Finset.range m, S (h + n) + S (h + m)) := by
+          ring
+
+/-- Graham's eventual-doubling criterion for Sigma-sequences. -/
+lemma sigma_of_eventually_doubling {S : ℕ → ℤ}
+    (hpos : ∀ᶠ n in Filter.atTop, 0 < S n)
+    (hdbl : ∀ᶠ n in Filter.atTop, S (n + 1) ≤ 2 * S n) :
+    SigmaSeq S := by
+  rw [Filter.eventually_atTop] at hpos hdbl
+  rcases hpos with ⟨Npos, hNpos⟩
+  rcases hdbl with ⟨Ndbl, hNdbl⟩
+  let h : ℕ := max Npos Ndbl
+  let k : ℕ := Int.toNat (S h) + 1
+  have hk : 1 ≤ k := by
+    dsimp [k]
+    omega
+  have hpos_tail : ∀ m : ℕ, 0 < S (h + m) := by
+    intro m
+    exact hNpos (h + m) (by dsimp [h]; omega)
+  have hdbl_tail : ∀ m : ℕ, S (h + (m + 1)) ≤ 2 * S (h + m) := by
+    intro m
+    have hstep := hNdbl (h + m) (by dsimp [h]; omega)
+    simpa [Nat.add_assoc] using hstep
+  have hbase_pos : 0 < S h := by
+    simpa using hpos_tail 0
+  have hbase : S h < (k : ℤ) := by
+    have hnonneg : 0 ≤ S h := le_of_lt hbase_pos
+    dsimp [k]
+    rw [Int.toNat_of_nonneg hnonneg]
+    linarith
+  exact sigmaSeq_of_tail_doubling S h k hk hpos_tail hbase hdbl_tail
+
+/-- Bounded core of Graham's Lemma 1. Starting from `k` consecutive subset sums
+of `T`, the first `m` terms of a positive Sigma-tail of `S` extend this to a
+longer interval. The conclusion is decomposed as a bounded `S`-sum plus a
+`T`-sum; this avoids any hidden reuse of Sigma-tail terms. -/
+lemma sigma_nearly_interval_decomposition
+    (S T : ℕ → ℤ) (h k : ℕ) (c : ℤ)
+    (hpos : ∀ m : ℕ, 0 < S (h + m))
+    (hsigma :
+      ∀ m : ℕ, S (h + m) < (k : ℤ) + ∑ n ∈ Finset.range m, S (h + n))
+    (hnear : ∀ j : ℕ, 1 ≤ j → j ≤ k → c + (j : ℤ) ∈ FS T) :
+    ∀ m : ℕ, ∀ y : ℤ,
+      1 ≤ y →
+      y ≤ (k : ℤ) + ∑ n ∈ Finset.range m, S (h + n) →
+      ∃ a ∈ FSOf (tail S h) (Finset.range m), ∃ b ∈ FS T, c + y = a + b
+  | 0, y, hy1, hyk => by
+      have hy_nonneg : 0 ≤ y := by linarith
+      let j : ℕ := y.toNat
+      have hj_cast : (j : ℤ) = y := Int.toNat_of_nonneg hy_nonneg
+      have hj1 : 1 ≤ j := by
+        have : (1 : ℤ) ≤ (j : ℤ) := by simpa [hj_cast] using hy1
+        exact_mod_cast this
+      have hjk : j ≤ k := by
+        have : (j : ℤ) ≤ (k : ℤ) := by simpa [hj_cast] using hyk
+        exact_mod_cast this
+      refine ⟨0, fsOf_empty (tail S h), c + (j : ℤ), hnear j hj1 hjk, ?_⟩
+      rw [hj_cast]
+      ring
+  | m + 1, y, hy1, hy_upper => by
+      let L : ℤ := (k : ℤ) + ∑ n ∈ Finset.range m, S (h + n)
+      let s : ℤ := S (h + m)
+      have hs_pos : 0 < s := by
+        simpa [s] using hpos m
+      have hs_lt_L : s < L := by
+        simpa [L, s] using hsigma m
+      have hy_upper' : y ≤ L + s := by
+        simpa [L, s, Finset.range_add_one, add_assoc, add_comm, add_left_comm] using hy_upper
+      by_cases hyL : y ≤ L
+      · rcases sigma_nearly_interval_decomposition S T h k c hpos hsigma hnear
+            m y hy1 hyL with ⟨a, ha, b, hb, hsum⟩
+        refine ⟨a, fsOf_mono ?_ ha, b, hb, hsum⟩
+        intro i hi
+        exact Finset.mem_range.mpr (Nat.lt_succ_of_lt (Finset.mem_range.mp hi))
+      · have hy_gt_L : L < y := lt_of_not_ge hyL
+        have hy_sub_low : 1 ≤ y - s := by omega
+        have hy_sub_high : y - s ≤ L := by omega
+        rcases sigma_nearly_interval_decomposition S T h k c hpos hsigma hnear
+            m (y - s) hy_sub_low hy_sub_high with ⟨a, ha, b, hb, hsum⟩
+        refine ⟨a + s, ?_, b, hb, ?_⟩
+        · have hmem :
+              a + tail S h m ∈ FSOf (tail S h) (insert m (Finset.range m)) :=
+            fsOf_add_index (by simp) ha
+          simpa [Finset.range_add_one, tail, s, add_assoc] using hmem
+        · calc
+            c + y = (c + (y - s)) + s := by ring
+            _ = (a + b) + s := by rw [hsum]
+            _ = a + s + b := by ring
+
+/-- Graham's first sequence-combination lemma in the form needed later: a
+Sigma-sequence interleaved with a nearly complete sequence is complete. -/
+lemma complete_of_sigma_nearly {S T : ℕ → ℤ}
+    (hS : SigmaSeq S) (hT : NearlyComplete T) :
+    Complete (interleave S T) := by
+  rcases hS with ⟨k, h, hk, hpos, hsigma⟩
+  rcases hT k hk with ⟨c, hnear⟩
+  refine ⟨c + 1, ?_⟩
+  intro x hx
+  let y : ℤ := x - c
+  have hy1 : 1 ≤ y := by
+    dsimp [y]
+    omega
+  have hy_nonneg : 0 ≤ y := by linarith
+  let m : ℕ := y.toNat
+  have hm_cast : (m : ℤ) = y := Int.toNat_of_nonneg hy_nonneg
+  have hsum_ge :
+      (m : ℤ) ≤ ∑ n ∈ Finset.range m, S (h + n) := by
+    calc
+      (m : ℤ) = ∑ n ∈ Finset.range m, (1 : ℤ) := by simp
+      _ ≤ ∑ n ∈ Finset.range m, S (h + n) := by
+        exact Finset.sum_le_sum (fun n _ => by
+          have hn := hpos n
+          omega)
+  have hy_upper : y ≤ (k : ℤ) + ∑ n ∈ Finset.range m, S (h + n) := by
+    rw [← hm_cast]
+    have hk_nonneg : (0 : ℤ) ≤ (k : ℤ) := by exact_mod_cast Nat.zero_le k
+    linarith
+  rcases sigma_nearly_interval_decomposition S T h k c hpos hsigma hnear
+      m y hy1 hy_upper with ⟨a, ha, b, hb, hsum⟩
+  have ha_tail : a ∈ FS (tail S h) := fsOf_subset_fs (tail S h) (Finset.range m) ha
+  have haS : a ∈ FS S := fs_tail_subset S h ha_tail
+  have hab : a + b ∈ FS (interleave S T) := fs_interleave_add haS hb
+  have hx_eq : x = a + b := by
+    dsimp [y] at hsum
+    omega
+  exact hx_eq.symm ▸ hab
+
+end Erdos.P283.RSG
+
+/-! =============================================================
+    Section from: Erdos/P283/RSG/PolynomialDifferences.lean
+    ============================================================= -/
+
+/-
+Copyright (c) 2026
+
+Finite-difference operators used in Graham's proof of complete polynomial
+sequences.
+-/
+
+
+namespace Erdos.P283.RSG
+
+open Polynomial
+open Filter
+open fwdDiff
+
+/-! ## Graham's fourth-step difference operator -/
+
+/-- The affine polynomial `a * X + b`. -/
+noncomputable def affinePoly (a b : ℚ) : ℚ[X] :=
+  Polynomial.C a * Polynomial.X + Polynomial.C b
+
+/-- Graham's difference operator `Δ f(x) = f(4x + 2) - f(4x)`. -/
+noncomputable def Delta1 (f : ℚ[X]) : ℚ[X] :=
+  f.comp (affinePoly 4 2) - f.comp (affinePoly 4 0)
+
+/-- The `k`-fold iterate of Graham's difference operator. -/
+noncomputable def Delta (k : ℕ) (f : ℚ[X]) : ℚ[X] :=
+  (Delta1^[k]) f
+
+/-- Signed offsets appearing in the expansion of `Delta k`.
+
+An entry `(sgn, off)` represents the term
+`sgn * f(4^k * x + off)`. Graham's base-4 construction keeps all coefficients
+equal to `±1`, which is what later allows conversion to signed subset sums. -/
+def deltaTerms : ℕ → List (ℤ × ℕ)
+  | 0 => [(1, 0)]
+  | k + 1 =>
+      (deltaTerms k).map (fun p => (p.1, 2 * 4 ^ k + p.2)) ++
+      (deltaTerms k).map (fun p => (-p.1, p.2))
+
+noncomputable def deltaTermValue (k : ℕ) (f : ℚ[X]) (x : ℚ) (p : ℤ × ℕ) : ℚ :=
+  (p.1 : ℚ) * f.eval ((4 ^ k : ℚ) * x + (p.2 : ℚ))
+
+/-! ## Elementary structure of the `Delta` expansion -/
+
+@[simp] lemma deltaTerms_length (k : ℕ) :
+    (deltaTerms k).length = 2 ^ k := by
+  induction k with
+  | zero =>
+      simp [deltaTerms]
+  | succ k ih =>
+      simp [deltaTerms, ih, pow_succ]
+      ring
+
+lemma deltaTerms_sign_eq_one_or_neg_one {k : ℕ} {p : ℤ × ℕ}
+    (hp : p ∈ deltaTerms k) :
+    p.1 = 1 ∨ p.1 = -1 := by
+  induction k generalizing p with
+  | zero =>
+      simp [deltaTerms] at hp
+      exact Or.inl (by simp [hp])
+  | succ k ih =>
+      simp only [deltaTerms, List.mem_append, List.mem_map] at hp
+      rcases hp with ⟨q, hq, rfl⟩ | ⟨q, hq, rfl⟩
+      · exact ih (p := q) hq
+      · rcases ih (p := q) hq with hsgn | hsgn
+        · right
+          simp [hsgn]
+        · left
+          simp [hsgn]
+
+lemma deltaTerms_offset_lt_pow_four {k : ℕ} {p : ℤ × ℕ}
+    (hp : p ∈ deltaTerms k) :
+    p.2 < 4 ^ k := by
+  induction k generalizing p with
+  | zero =>
+      simp [deltaTerms] at hp
+      simp [hp]
+  | succ k ih =>
+      simp only [deltaTerms, List.mem_append, List.mem_map] at hp
+      rcases hp with ⟨q, hq, rfl⟩ | ⟨q, hq, rfl⟩
+      · have hq_lt : q.2 < 4 ^ k := ih hq
+        have hpow : 0 < 4 ^ k := pow_pos (by norm_num) k
+        rw [pow_succ]
+        nlinarith
+      · have hq_lt : q.2 < 4 ^ k := ih hq
+        have hpow : 0 < 4 ^ k := pow_pos (by norm_num) k
+        rw [pow_succ]
+        nlinarith
+
+lemma deltaTerms_offset_even {k : ℕ} {p : ℤ × ℕ}
+    (hp : p ∈ deltaTerms k) :
+    ∃ a : ℕ, p.2 = 2 * a := by
+  induction k generalizing p with
+  | zero =>
+      simp [deltaTerms] at hp
+      refine ⟨0, ?_⟩
+      simp [hp]
+  | succ k ih =>
+      simp only [deltaTerms, List.mem_append, List.mem_map] at hp
+      rcases hp with ⟨q, hq, rfl⟩ | ⟨q, hq, rfl⟩
+      · rcases ih (p := q) hq with ⟨a, ha⟩
+        refine ⟨4 ^ k + a, ?_⟩
+        rw [ha]
+        ring
+      · exact ih (p := q) hq
+
+lemma deltaTerms_first_branch_offset_ge (k : ℕ) (p : ℤ × ℕ) :
+    2 * 4 ^ k ≤ (2 * 4 ^ k + p.2 : ℕ) := by
+  omega
+
+lemma deltaTerms_second_branch_offset_lt_half {k : ℕ} {p : ℤ × ℕ}
+    (hp : p ∈ deltaTerms k) :
+    p.2 < 2 * 4 ^ k := by
+  have h := deltaTerms_offset_lt_pow_four hp
+  have hpow : 0 < 4 ^ k := pow_pos (by norm_num) k
+  nlinarith
+
+lemma deltaTerms_branch_disjoint (k : ℕ) :
+    List.Disjoint
+      ((deltaTerms k).map (fun p : ℤ × ℕ => (p.1, 2 * 4 ^ k + p.2)))
+      ((deltaTerms k).map (fun p : ℤ × ℕ => (-p.1, p.2))) := by
+  rw [List.disjoint_left]
+  intro a ha hb
+  simp only [List.mem_map] at ha hb
+  rcases ha with ⟨p, hp, rfl⟩
+  rcases hb with ⟨q, hq, hqeq⟩
+  have hcoord : q.2 = 2 * 4 ^ k + p.2 := by
+    exact congrArg Prod.snd hqeq
+  have hq_lt : q.2 < 2 * 4 ^ k := deltaTerms_second_branch_offset_lt_half hq
+  omega
+
+lemma deltaTerms_nodup (k : ℕ) : (deltaTerms k).Nodup := by
+  induction k with
+  | zero =>
+      simp [deltaTerms]
+  | succ k ih =>
+      simp only [deltaTerms]
+      apply List.Nodup.append
+      · refine ih.map ?_
+        intro p q hpq
+        rcases p with ⟨ps, po⟩
+        rcases q with ⟨qs, qo⟩
+        simp only at hpq
+        simp only [Prod.mk.injEq] at hpq ⊢
+        omega
+      · refine ih.map ?_
+        intro p q hpq
+        rcases p with ⟨ps, po⟩
+        rcases q with ⟨qs, qo⟩
+        simp only [Prod.mk.injEq, neg_inj] at hpq ⊢
+        exact hpq
+      · exact deltaTerms_branch_disjoint k
+
+lemma deltaTerms_offset_injective_on {k : ℕ} :
+    ∀ {p q : ℤ × ℕ}, p ∈ deltaTerms k → q ∈ deltaTerms k → p.2 = q.2 → p = q := by
+  induction k with
+  | zero =>
+      intro p q hp hq hpq
+      simp [deltaTerms] at hp hq
+      simp [hp, hq]
+  | succ k ih =>
+      intro p q hp hq hpq
+      simp only [deltaTerms, List.mem_append, List.mem_map] at hp hq
+      rcases hp with ⟨p₀, hp₀, rfl⟩ | ⟨p₀, hp₀, rfl⟩
+      · rcases hq with ⟨q₀, hq₀, rfl⟩ | ⟨q₀, hq₀, rfl⟩
+        · have hoff : p₀.2 = q₀.2 := by omega
+          have hpq₀ : p₀ = q₀ := ih hp₀ hq₀ hoff
+          simp [hpq₀]
+        · have hq_lt : q₀.2 < 2 * 4 ^ k :=
+            deltaTerms_second_branch_offset_lt_half hq₀
+          omega
+      · rcases hq with ⟨q₀, hq₀, rfl⟩ | ⟨q₀, hq₀, rfl⟩
+        · have hp_lt : p₀.2 < 2 * 4 ^ k :=
+            deltaTerms_second_branch_offset_lt_half hp₀
+          omega
+        · have hpq₀ : p₀ = q₀ := ih hp₀ hq₀ hpq
+          simp [hpq₀]
+
+lemma deltaTerms_offsets_nodup (k : ℕ) :
+    ((deltaTerms k).map fun p : ℤ × ℕ => p.2).Nodup := by
+  refine (deltaTerms_nodup k).map_on ?_
+  intro p hp q hq hpq
+  exact deltaTerms_offset_injective_on hp hq hpq
+
+lemma deltaTerms_signed_sum_mem_signedFS (k : ℕ) (s : ℕ → ℤ) :
+    ((deltaTerms k).map fun p : ℤ × ℕ => p.1 * s p.2).sum ∈ SignedFS s := by
+  exact signedFSOf_subset_signedFS s _
+    (signedFSOf_list_sum
+      (s := s)
+      (l := deltaTerms k)
+      (fun p hp => deltaTerms_sign_eq_one_or_neg_one hp)
+      (deltaTerms_offsets_nodup k))
+
+@[simp] lemma Delta_zero (f : ℚ[X]) : Delta 0 f = f := by
+  rfl
+
+@[simp] lemma Delta_succ (k : ℕ) (f : ℚ[X]) :
+    Delta (k + 1) f = Delta1 (Delta k f) := by
+  simp [Delta, Function.iterate_succ_apply']
+
+@[simp] lemma affinePoly_eval (a b x : ℚ) :
+    (affinePoly a b).eval x = a * x + b := by
+  simp [affinePoly]
+
+lemma affinePoly_natDegree {a b : ℚ} (ha : a ≠ 0) :
+    (affinePoly a b).natDegree = 1 := by
+  unfold affinePoly
+  rw [Polynomial.natDegree_add_eq_left_of_natDegree_lt]
+  · exact Polynomial.natDegree_C_mul_X a ha
+  · rw [Polynomial.natDegree_C_mul_X a ha, Polynomial.natDegree_C]
+    norm_num
+
+lemma affinePoly_leadingCoeff {a b : ℚ} (ha : a ≠ 0) :
+    (affinePoly a b).leadingCoeff = a := by
+  rw [Polynomial.leadingCoeff, affinePoly_natDegree ha]
+  simp [affinePoly]
+
+lemma natDegree_comp_affine (f : ℚ[X]) {a b : ℚ} (ha : a ≠ 0) :
+    (f.comp (affinePoly a b)).natDegree = f.natDegree := by
+  rw [Polynomial.natDegree_comp, affinePoly_natDegree ha, mul_one]
+
+lemma leadingCoeff_comp_affine (f : ℚ[X]) {a b : ℚ} (ha : a ≠ 0) :
+    (f.comp (affinePoly a b)).leadingCoeff =
+      f.leadingCoeff * a ^ f.natDegree := by
+  rw [Polynomial.leadingCoeff_comp]
+  · rw [affinePoly_leadingCoeff ha]
+  · rw [affinePoly_natDegree ha]
+    norm_num
+
+lemma affinePoly_ne_C_coeff_zero {a b : ℚ} (ha : a ≠ 0) :
+    affinePoly a b ≠ Polynomial.C ((affinePoly a b).coeff 0) := by
+  intro h
+  have hc := congr_arg (fun p : ℚ[X] => p.coeff 1) h
+  simp [affinePoly, ha] at hc
+
+lemma comp_affine_ne_zero (f : ℚ[X]) (hf : f ≠ 0) {a b : ℚ} (ha : a ≠ 0) :
+    f.comp (affinePoly a b) ≠ 0 := by
+  intro h
+  rcases Polynomial.comp_eq_zero_iff.mp h with hf0 | ⟨_, hconst⟩
+  · exact hf hf0
+  · exact affinePoly_ne_C_coeff_zero ha hconst
+
+lemma degree_comp_affine (f : ℚ[X]) (hf : f ≠ 0) {a b : ℚ} (ha : a ≠ 0) :
+    (f.comp (affinePoly a b)).degree = f.degree := by
+  rw [Polynomial.degree_eq_natDegree (comp_affine_ne_zero f hf ha),
+    Polynomial.degree_eq_natDegree hf, natDegree_comp_affine f ha]
+
+lemma Delta1_degree_lt (f : ℚ[X]) (hf : f ≠ 0) :
+    (Delta1 f).degree < f.degree := by
+  unfold Delta1
+  have h4 : (4 : ℚ) ≠ 0 := by norm_num
+  have hdeg :
+      (f.comp (affinePoly 4 2)).degree = (f.comp (affinePoly 4 0)).degree := by
+    rw [degree_comp_affine f hf h4, degree_comp_affine f hf h4]
+  have hp0 : f.comp (affinePoly 4 2) ≠ 0 :=
+    comp_affine_ne_zero f hf h4
+  have hlead :
+      (f.comp (affinePoly 4 2)).leadingCoeff =
+        (f.comp (affinePoly 4 0)).leadingCoeff := by
+    rw [leadingCoeff_comp_affine f h4, leadingCoeff_comp_affine f h4]
+  simpa [degree_comp_affine f hf h4] using Polynomial.degree_sub_lt hdeg hp0 hlead
+
+lemma Delta1_natDegree_lt (f : ℚ[X]) (hfdeg : 0 < f.natDegree) :
+    (Delta1 f).natDegree < f.natDegree := by
+  have hf : f ≠ 0 := by
+    intro hf0
+    rw [hf0, Polynomial.natDegree_zero] at hfdeg
+    omega
+  by_cases hD : Delta1 f = 0
+  · rw [hD, Polynomial.natDegree_zero]
+    exact hfdeg
+  · have hdeg := Delta1_degree_lt f hf
+    rw [Polynomial.degree_eq_natDegree hD, Polynomial.degree_eq_natDegree hf] at hdeg
+    exact_mod_cast hdeg
+
+lemma Delta1_eq_zero_of_natDegree_eq_zero (f : ℚ[X]) (hfdeg : f.natDegree = 0) :
+    Delta1 f = 0 := by
+  rw [Polynomial.eq_C_of_natDegree_eq_zero hfdeg]
+  simp [Delta1]
+
+lemma Delta1_natDegree_le_pred (f : ℚ[X]) :
+    (Delta1 f).natDegree ≤ f.natDegree - 1 := by
+  by_cases hfdeg : f.natDegree = 0
+  · rw [hfdeg, Delta1_eq_zero_of_natDegree_eq_zero f hfdeg, Polynomial.natDegree_zero]
+  · have hpos : 0 < f.natDegree := Nat.pos_of_ne_zero hfdeg
+    exact Nat.le_pred_of_lt (Delta1_natDegree_lt f hpos)
+
+lemma Delta_natDegree_le_sub (f : ℚ[X]) :
+    ∀ k : ℕ, (Delta k f).natDegree ≤ f.natDegree - k
+  | 0 => by simp
+  | k + 1 => by
+      rw [Delta_succ]
+      have hstep := Delta1_natDegree_le_pred (Delta k f)
+      have ih := Delta_natDegree_le_sub f k
+      omega
+
+lemma Delta_top_natDegree_eq_zero (f : ℚ[X]) :
+    (Delta f.natDegree f).natDegree = 0 := by
+  have h := Delta_natDegree_le_sub f f.natDegree
+  exact Nat.eq_zero_of_le_zero (by simpa using h)
+
+lemma Delta_top_eq_C (f : ℚ[X]) :
+    Delta f.natDegree f = Polynomial.C ((Delta f.natDegree f).coeff 0) :=
+  Polynomial.eq_C_of_natDegree_eq_zero (Delta_top_natDegree_eq_zero f)
+
+/-! ## Standard forward-difference helpers from Mathlib -/
+
+/-- Mathlib's top forward-difference theorem specialized to rational polynomial
+evaluation. -/
+lemma fwdDiff_top_eval (f : ℚ[X]) (x : ℚ) :
+    (fwdDiff (1 : ℚ))^[f.natDegree] f.eval x =
+      f.leadingCoeff * (Nat.factorial f.natDegree : ℚ) := by
+  have h := congr_fun (Polynomial.fwdDiff_iter_degree_eq_factorial f) x
+  simpa [Pi.smul_apply, smul_eq_mul] using h
+
+lemma fwdDiff_top_eval_pos (f : ℚ[X]) (x : ℚ)
+    (hlead : 0 < f.leadingCoeff) :
+    0 < (fwdDiff (1 : ℚ))^[f.natDegree] f.eval x := by
+  rw [fwdDiff_top_eval]
+  exact mul_pos hlead (by exact_mod_cast Nat.factorial_pos f.natDegree)
+
+/-- Explicit signed expansion of the top standard forward difference. This is
+often the easiest way to connect finite differences to signed finite subset
+sums. -/
+lemma fwdDiff_top_eval_eq_sum_shift (f : ℚ[X]) (x : ℚ) :
+    (fwdDiff (1 : ℚ))^[f.natDegree] f.eval x =
+      ∑ k ∈ Finset.range (f.natDegree + 1),
+        (((-1 : ℤ) ^ (f.natDegree - k) * f.natDegree.choose k : ℤ) : ℚ) *
+          f.eval (x + k) := by
+  have h :=
+    fwdDiff_iter_eq_sum_shift (h := (1 : ℚ)) (f := f.eval) (n := f.natDegree) (y := x)
+  simpa [zsmul_eq_mul, nsmul_eq_mul, one_nsmul] using h
+
+@[simp] lemma Delta1_eval (f : ℚ[X]) (x : ℚ) :
+    (Delta1 f).eval x = f.eval (4 * x + 2) - f.eval (4 * x) := by
+  simp [Delta1, affinePoly]
+
+lemma affinePoly_four_eq_C_mul_X_add_C (b : ℚ) :
+    affinePoly 4 b = Polynomial.C (4 : ℚ) * (Polynomial.X + Polynomial.C (b / 4)) := by
+  rw [affinePoly, mul_add, ← Polynomial.C_mul]
+  congr 1
+  congr 1
+  ring
+
+lemma coeff_affinePoly_four_pow_pred (n : ℕ) (_hn : 0 < n) (b : ℚ) :
+    ((affinePoly 4 b) ^ n).coeff (n - 1) =
+      4 ^ n * ((b / 4) ^ (n - (n - 1)) * (n.choose (n - 1) : ℚ)) := by
+  rw [affinePoly_four_eq_C_mul_X_add_C b, mul_pow, ← Polynomial.C_pow, Polynomial.coeff_C_mul,
+    Polynomial.coeff_X_add_C_pow]
+
+lemma coeff_affinePoly_four_pow_pred_simplified (n : ℕ) (hn : 0 < n) (b : ℚ) :
+    ((affinePoly 4 b) ^ n).coeff (n - 1) =
+      4 ^ (n - 1) * b * (n : ℚ) := by
+  rw [coeff_affinePoly_four_pow_pred n hn b]
+  have hsub : n - (n - 1) = 1 := by omega
+  have hchoose : n.choose (n - 1) = n := by
+    calc
+      n.choose (n - 1) = ((n - 1) + 1).choose (n - 1) := by
+        rw [Nat.sub_add_cancel hn]
+      _ = (n - 1) + 1 := Nat.choose_succ_self_right (n - 1)
+      _ = n := Nat.sub_add_cancel hn
+  rw [hsub, hchoose]
+  have hpow : 4 ^ n = 4 ^ (n - 1) * (4 : ℚ) := by
+    have hsucc : n = (n - 1) + 1 := (Nat.sub_add_cancel hn).symm
+    nth_rewrite 1 [hsucc]
+    rw [pow_succ]
+  rw [hpow]
+  field_simp
+
+@[simp] lemma Delta1_add (f g : ℚ[X]) :
+    Delta1 (f + g) = Delta1 f + Delta1 g := by
+  ext n
+  simp [Delta1, sub_eq_add_neg, add_comm, add_left_comm, add_assoc]
+
+lemma Delta1_C_mul_X_pow_coeff_pred (n : ℕ) (hn : 0 < n) (c : ℚ) :
+    (Delta1 (Polynomial.C c * Polynomial.X ^ n)).coeff (n - 1) =
+      2 * 4 ^ (n - 1) * (n : ℚ) * c := by
+  simp [Delta1, coeff_affinePoly_four_pow_pred_simplified n hn]
+  ring
+
+lemma Delta1_coeff_pred (f : ℚ[X]) (hfdeg : 0 < f.natDegree) :
+    (Delta1 f).coeff (f.natDegree - 1) =
+      2 * 4 ^ (f.natDegree - 1) * (f.natDegree : ℚ) * f.leadingCoeff := by
+  have herase_coeff :
+      (Delta1 f.eraseLead).coeff (f.natDegree - 1) = 0 := by
+    by_cases hEdeg : f.eraseLead.natDegree = 0
+    · rw [Delta1_eq_zero_of_natDegree_eq_zero _ hEdeg]
+      simp
+    · exact Polynomial.coeff_eq_zero_of_natDegree_lt
+        (lt_of_lt_of_le
+          (Delta1_natDegree_lt f.eraseLead (Nat.pos_of_ne_zero hEdeg))
+          (Polynomial.eraseLead_natDegree_le f))
+  calc
+    (Delta1 f).coeff (f.natDegree - 1)
+        = (Delta1
+            (f.eraseLead + Polynomial.C f.leadingCoeff * Polynomial.X ^ f.natDegree)).coeff
+              (f.natDegree - 1) := by
+          rw [Polynomial.eraseLead_add_C_mul_X_pow]
+    _ = (Delta1 f.eraseLead).coeff (f.natDegree - 1) +
+          (Delta1 (Polynomial.C f.leadingCoeff * Polynomial.X ^ f.natDegree)).coeff
+            (f.natDegree - 1) := by
+          rw [Delta1_add, Polynomial.coeff_add]
+    _ = 2 * 4 ^ (f.natDegree - 1) * (f.natDegree : ℚ) * f.leadingCoeff := by
+          rw [herase_coeff, Delta1_C_mul_X_pow_coeff_pred f.natDegree hfdeg f.leadingCoeff]
+          ring
+
+lemma Delta1_natDegree_eq_pred (f : ℚ[X])
+    (hfdeg : 0 < f.natDegree) (hlead : 0 < f.leadingCoeff) :
+    (Delta1 f).natDegree = f.natDegree - 1 := by
+  refine le_antisymm (Delta1_natDegree_le_pred f) ?_
+  apply Polynomial.le_natDegree_of_ne_zero
+  rw [Delta1_coeff_pred f hfdeg]
+  positivity
+
+lemma Delta1_leadingCoeff_pos (f : ℚ[X])
+    (hfdeg : 0 < f.natDegree) (hlead : 0 < f.leadingCoeff) :
+    0 < (Delta1 f).leadingCoeff := by
+  rw [Polynomial.leadingCoeff, Delta1_natDegree_eq_pred f hfdeg hlead,
+    Delta1_coeff_pred f hfdeg]
+  positivity
+
+lemma Delta_natDegree_eq_sub_and_leadingCoeff_pos (f : ℚ[X])
+    (hlead : 0 < f.leadingCoeff) :
+    ∀ k : ℕ, k ≤ f.natDegree →
+      (Delta k f).natDegree = f.natDegree - k ∧
+        0 < (Delta k f).leadingCoeff
+  | 0, _ => by
+      simp [hlead]
+  | k + 1, hk_succ => by
+      have hk : k ≤ f.natDegree := Nat.le_trans (Nat.le_succ k) hk_succ
+      rcases Delta_natDegree_eq_sub_and_leadingCoeff_pos f hlead k hk with
+        ⟨hdeg, hlead_k⟩
+      have hpos_deg : 0 < (Delta k f).natDegree := by
+        rw [hdeg]
+        omega
+      constructor
+      · rw [Delta_succ, Delta1_natDegree_eq_pred (Delta k f) hpos_deg hlead_k, hdeg]
+        omega
+      · rw [Delta_succ]
+        exact Delta1_leadingCoeff_pos (Delta k f) hpos_deg hlead_k
+
+lemma Delta_natDegree_eq_sub (f : ℚ[X]) (hlead : 0 < f.leadingCoeff)
+    {k : ℕ} (hk : k ≤ f.natDegree) :
+    (Delta k f).natDegree = f.natDegree - k :=
+  (Delta_natDegree_eq_sub_and_leadingCoeff_pos f hlead k hk).1
+
+lemma Delta_leadingCoeff_pos (f : ℚ[X]) (hlead : 0 < f.leadingCoeff)
+    {k : ℕ} (hk : k ≤ f.natDegree) :
+    0 < (Delta k f).leadingCoeff :=
+  (Delta_natDegree_eq_sub_and_leadingCoeff_pos f hlead k hk).2
+
+lemma Delta_top_coeff_zero_pos (f : ℚ[X]) (hlead : 0 < f.leadingCoeff) :
+    0 < (Delta f.natDegree f).coeff 0 := by
+  have hlead_top := Delta_leadingCoeff_pos f hlead (k := f.natDegree) le_rfl
+  have hdeg_top := Delta_natDegree_eq_sub f hlead (k := f.natDegree) le_rfl
+  simpa [Polynomial.leadingCoeff, hdeg_top] using hlead_top
+
+lemma Delta_succ_eval (k : ℕ) (f : ℚ[X]) (x : ℚ) :
+    (Delta (k + 1) f).eval x =
+      (Delta k f).eval (4 * x + 2) - (Delta k f).eval (4 * x) := by
+  simp
+
+lemma Delta_eval_eq_deltaTerms (k : ℕ) (f : ℚ[X]) (x : ℚ) :
+    (Delta k f).eval x =
+      ((deltaTerms k).map (deltaTermValue k f x)).sum := by
+  induction k generalizing x with
+  | zero =>
+      simp [deltaTerms, deltaTermValue]
+  | succ k ih =>
+      rw [Delta_succ_eval, ih (4 * x + 2), ih (4 * x)]
+      simp only [deltaTerms, List.map_append, List.sum_append, List.map_map]
+      have hpos_map :
+          List.map (deltaTermValue (k + 1) f x ∘
+              fun p : ℤ × ℕ => (p.1, 2 * 4 ^ k + p.2)) (deltaTerms k) =
+            List.map (deltaTermValue k f (4 * x + 2)) (deltaTerms k) := by
+        apply List.map_congr_left
+        intro p hp
+        dsimp [Function.comp, deltaTermValue]
+        have harg :
+            (4 ^ (k + 1) : ℚ) * x + ((2 * 4 ^ k + p.2 : ℕ) : ℚ) =
+              (4 ^ k : ℚ) * (4 * x + 2) + (p.2 : ℚ) := by
+          norm_num [pow_succ]
+          ring
+        rw [harg]
+      have hneg_map :
+          List.map (deltaTermValue (k + 1) f x ∘
+              fun p : ℤ × ℕ => (-p.1, p.2)) (deltaTerms k) =
+            List.map (fun q => -q) (List.map (deltaTermValue k f (4 * x)) (deltaTerms k)) := by
+        rw [List.map_map]
+        apply List.map_congr_left
+        intro p hp
+        dsimp [Function.comp, deltaTermValue]
+        have harg :
+            (4 ^ (k + 1) : ℚ) * x + (p.2 : ℚ) =
+              (4 ^ k : ℚ) * (4 * x) + (p.2 : ℚ) := by
+          norm_num [pow_succ]
+          ring
+        rw [harg]
+        ring
+      rw [hpos_map, hneg_map, ← List.sum_neg]
+      ring
+
+/-- If all polynomial values in the explicit `Delta` expansion are represented
+by an integer sequence `s`, then any integer representative of the difference is
+a signed finite subset sum of `s`. -/
+lemma Delta_eval_integer_mem_signedFS
+    (k : ℕ) (f : ℚ[X]) (x : ℚ) (s : ℕ → ℤ) (z : ℤ)
+    (hvals :
+      ∀ p ∈ deltaTerms k,
+        (s p.2 : ℚ) = f.eval ((4 ^ k : ℚ) * x + (p.2 : ℚ)))
+    (hz : (z : ℚ) = (Delta k f).eval x) :
+    z ∈ SignedFS s := by
+  let y : ℤ := ((deltaTerms k).map fun p : ℤ × ℕ => p.1 * s p.2).sum
+  have hy_mem : y ∈ SignedFS s := by
+    exact deltaTerms_signed_sum_mem_signedFS k s
+  have hmap :
+      (deltaTerms k).map (fun p : ℤ × ℕ => ((p.1 * s p.2 : ℤ) : ℚ)) =
+        (deltaTerms k).map (deltaTermValue k f x) := by
+    apply List.map_congr_left
+    intro p hp
+    simp [deltaTermValue, hvals p hp]
+  have hy_eval : (y : ℚ) = (Delta k f).eval x := by
+    rw [Delta_eval_eq_deltaTerms]
+    dsimp [y]
+    norm_cast
+    rw [List.map_map]
+    change
+      ((deltaTerms k).map (fun p : ℤ × ℕ => ((p.1 * s p.2 : ℤ) : ℚ))).sum =
+        ((deltaTerms k).map (deltaTermValue k f x)).sum
+    rw [hmap]
+  have hcast : (z : ℚ) = (y : ℚ) := by
+    rw [hz, hy_eval]
+  have hzy : z = y := by
+    exact_mod_cast hcast
+  rw [hzy]
+  exact hy_mem
+
+/-! ## Polynomial ratio limits -/
+
+/-- Equal-degree rational polynomials with the same nonzero leading coefficient
+have evaluation ratio tending to `1` at `+∞`.
+
+This is a small wrapper around Mathlib's
+`Polynomial.div_tendsto_leadingCoeff_div_of_degree_eq`, recorded here because it
+is the analytic input needed to turn Graham's odd tail into a Sigma-sequence. -/
+lemma polynomial_eval_ratio_tendsto_one_of_degree_eq_of_leadingCoeff_eq
+    (P Q : ℚ[X])
+    (hdeg : P.degree = Q.degree)
+    (hlead : P.leadingCoeff = Q.leadingCoeff)
+    (hQ : Q.leadingCoeff ≠ 0) :
+    Tendsto (fun x : ℚ => P.eval x / Q.eval x) atTop (nhds (1 : ℚ)) := by
+  have h := Polynomial.div_tendsto_leadingCoeff_div_of_degree_eq P Q hdeg
+  simpa [hlead, div_self hQ] using h
+
+/-- Ratio limit for one polynomial evaluated along two affine-linear arguments
+with the same nonzero slope. -/
+lemma polynomial_eval_same_slope_ratio_tendsto_one
+    (f : ℚ[X]) {a b c : ℚ}
+    (ha : a ≠ 0)
+    (hflead : f.leadingCoeff ≠ 0) :
+    Tendsto
+      (fun x : ℚ => f.eval (a * x + b) / f.eval (a * x + c))
+      atTop (nhds (1 : ℚ)) := by
+  let P : ℚ[X] := f.comp (affinePoly a b)
+  let Q : ℚ[X] := f.comp (affinePoly a c)
+  have hf : f ≠ 0 := Polynomial.leadingCoeff_ne_zero.mp hflead
+  have hdeg : P.degree = Q.degree := by
+    simp [P, Q, degree_comp_affine f hf ha]
+  have hlead : P.leadingCoeff = Q.leadingCoeff := by
+    simp [P, Q, leadingCoeff_comp_affine f ha]
+  have hQ : Q.leadingCoeff ≠ 0 := by
+    simp [Q, leadingCoeff_comp_affine f ha, hflead, ha]
+  have h :=
+    polynomial_eval_ratio_tendsto_one_of_degree_eq_of_leadingCoeff_eq P Q hdeg hlead hQ
+  simpa [P, Q, affinePoly_eval] using h
+
+end Erdos.P283.RSG
+
+/-! =============================================================
+    Section from: Erdos/P283/RSG/PolynomialResidues.lean
+    ============================================================= -/
+
+/-
+Copyright (c) 2026
+
+Denominator-clearing and residue lemmas for Graham's complete polynomial
+sequence theorem.
+-/
+
+
+namespace Erdos.P283.RSG
+
+open Polynomial
+
+/-! ## Denominator clearing -/
+
+/-- `B p(x) ∈ ℤ[x]`: there is an integer-coefficient polynomial whose rational
+coefficient map is `B * p`. -/
+def HasIntegralMultiple (B : ℕ) (p : ℚ[X]) : Prop :=
+  ∃ P : ℤ[X], P.map (Int.castRingHom ℚ) = Polynomial.C (B : ℚ) * p
+
+/-- Every rational polynomial has a positive integral multiple. -/
+theorem exists_integral_multiple (p : ℚ[X]) :
+    ∃ B : ℕ, 1 ≤ B ∧ HasIntegralMultiple B p := by
+  classical
+  induction p using Polynomial.induction_on' with
+  | add p q hp hq =>
+      obtain ⟨B₁, hB₁, P₁, hP₁⟩ := hp
+      obtain ⟨B₂, hB₂, P₂, hP₂⟩ := hq
+      refine ⟨B₁ * B₂, ?_, ?_⟩
+      · exact Nat.one_le_iff_ne_zero.mpr
+          (mul_ne_zero (Nat.one_le_iff_ne_zero.mp hB₁) (Nat.one_le_iff_ne_zero.mp hB₂))
+      · refine ⟨Polynomial.C (B₂ : ℤ) * P₁ + Polynomial.C (B₁ : ℤ) * P₂, ?_⟩
+        simp [Polynomial.map_add, Polynomial.map_mul, hP₁, hP₂]
+        ring
+  | monomial n c =>
+      refine ⟨c.den, c.den_pos, Polynomial.monomial n c.num, ?_⟩
+      rw [Polynomial.map_monomial, Polynomial.C_mul_monomial]
+      congr 1
+      show (c.num : ℚ) = (c.den : ℚ) * c
+      have h : (c.num : ℚ) / (c.den : ℚ) = c := c.num_div_den
+      field_simp at h
+      linarith
+
+/-! ## Polynomial congruences -/
+
+/-- Integer-coefficient polynomial evaluation respects integer congruence. -/
+lemma int_poly_eval_congr (P : ℤ[X]) {M x y : ℤ}
+    (hxy : x ≡ y [ZMOD M]) :
+    (P.eval x : ℤ) ≡ P.eval y [ZMOD M] := by
+  induction P using Polynomial.induction_on' with
+  | add p q hp hq =>
+      rw [Polynomial.eval_add, Polynomial.eval_add]
+      exact hp.add hq
+  | monomial n c =>
+      rw [Polynomial.eval_monomial, Polynomial.eval_monomial]
+      exact (Int.ModEq.refl c).mul (hxy.pow n)
+
+/-- Denominator-cleared periodicity for rational polynomial values, stated only
+for inputs where the rational values are represented by integers. -/
+theorem polynomial_periodicity_of_integral_values
+    (p : ℚ[X])
+    (B : ℕ) (hBpos : 1 ≤ B) (hB : HasIntegralMultiple B p)
+    (m : ℕ) (_hm : 1 ≤ m) (x y : ℤ) (zx zy : ℤ)
+    (hzx : (zx : ℚ) = p.eval (x : ℚ))
+    (hzy : (zy : ℚ) = p.eval (y : ℚ))
+    (hxy : x ≡ y [ZMOD ((m * B : ℕ) : ℤ)]) :
+    zx ≡ zy [ZMOD ((m : ℕ) : ℤ)] := by
+  obtain ⟨R, hR⟩ := hB
+  have h_R_congr : R.eval x ≡ R.eval y [ZMOD ((m * B : ℕ) : ℤ)] :=
+    int_poly_eval_congr R hxy
+  have h_R_eval : ∀ z : ℤ, ((R.eval z : ℤ) : ℚ) = (B : ℚ) * p.eval (z : ℚ) := by
+    intro z
+    have h1 : ((R.map (Int.castRingHom ℚ)).eval ((z : ℤ) : ℚ)) =
+        (Polynomial.C (B : ℚ) * p).eval ((z : ℚ)) := by
+      rw [hR]
+    rw [Polynomial.eval_map, Polynomial.eval_mul, Polynomial.eval_C] at h1
+    have h2 : Polynomial.eval₂ (Int.castRingHom ℚ) ((z : ℤ) : ℚ) R =
+        ((R.eval z : ℤ) : ℚ) :=
+      Polynomial.eval₂_at_apply (Int.castRingHom ℚ) z
+    rw [h2] at h1
+    exact h1
+  have h_R_x : R.eval x = (B : ℤ) * zx := by
+    have h1 := h_R_eval x
+    have : ((R.eval x : ℤ) : ℚ) = (((B : ℤ) * zx : ℤ) : ℚ) := by
+      push_cast
+      rw [h1, ← hzx]
+    exact_mod_cast this
+  have h_R_y : R.eval y = (B : ℤ) * zy := by
+    have h1 := h_R_eval y
+    have : ((R.eval y : ℤ) : ℚ) = (((B : ℤ) * zy : ℤ) : ℚ) := by
+      push_cast
+      rw [h1, ← hzy]
+    exact_mod_cast this
+  rw [h_R_x, h_R_y] at h_R_congr
+  have hBpos_int : (0 : ℤ) < (B : ℤ) := by exact_mod_cast hBpos
+  have hBne : (B : ℤ) ≠ 0 := ne_of_gt hBpos_int
+  have h_dvd : ((m * B : ℕ) : ℤ) ∣ (B : ℤ) * zy - (B : ℤ) * zx :=
+    Int.modEq_iff_dvd.mp h_R_congr
+  have h_dvd' : ((m * B : ℕ) : ℤ) ∣ (B : ℤ) * (zy - zx) := by
+    have heq : (B : ℤ) * zy - (B : ℤ) * zx = (B : ℤ) * (zy - zx) := by ring
+    rwa [heq] at h_dvd
+  have hmB : ((m * B : ℕ) : ℤ) = (B : ℤ) * (m : ℤ) := by
+    push_cast
+    ring
+  rw [hmB] at h_dvd'
+  have h_m_dvd : (m : ℤ) ∣ zy - zx :=
+    (mul_dvd_mul_iff_left hBne).mp h_dvd'
+  exact Int.modEq_iff_dvd.mpr h_m_dvd
+
+/-! ## Infinitely many nonzero prime residues -/
+
+/-- If every prime misses at least one positive integer value of `p`, then every
+prime misses arbitrarily late positive integer values of `p`. This is the
+denominator-clearing periodicity step in Graham's residue-cover argument. -/
+theorem infinite_nondivisibility_of_no_fixed_prime
+    (p : ℚ[X])
+    (h_int_pos :
+      ∀ n : ℕ, 1 ≤ n →
+        ∃ z : ℤ, 0 < z ∧ (z : ℚ) = p.eval (n : ℚ))
+    (h_gcd_one :
+      ∀ ℓ : ℕ, ℓ.Prime →
+        ∃ n : ℕ, 1 ≤ n ∧ ∃ z : ℤ,
+          (z : ℚ) = p.eval (n : ℚ) ∧ ¬ ((ℓ : ℤ) ∣ z)) :
+    ∀ ℓ : ℕ, ℓ.Prime →
+      ∀ N : ℕ, ∃ n ≥ N,
+        ∃ z : ℤ, (z : ℚ) = p.eval (n : ℚ) ∧ ¬ ((ℓ : ℤ) ∣ z) := by
+  intro ℓ hℓ N
+  obtain ⟨B, hBpos, hB⟩ := exists_integral_multiple p
+  obtain ⟨n₀, hn₀, z₀, hz₀, hz₀_ndvd⟩ := h_gcd_one ℓ hℓ
+  let step : ℕ := ℓ * B
+  let n : ℕ := n₀ + (N + 1) * step
+  have hstep_pos : 0 < step := by
+    exact Nat.mul_pos hℓ.pos (lt_of_lt_of_le Nat.zero_lt_one hBpos)
+  have hn_pos : 1 ≤ n := by
+    dsimp [n]
+    exact hn₀.trans (Nat.le_add_right _ _)
+  have hn_ge : N ≤ n := by
+    have hmul : N + 1 ≤ (N + 1) * step :=
+      Nat.le_mul_of_pos_right _ hstep_pos
+    have hN_mul : N ≤ (N + 1) * step :=
+      (Nat.le_succ N).trans hmul
+    dsimp [n]
+    exact hN_mul.trans (Nat.le_add_left _ _)
+  obtain ⟨z, _hz_pos, hz⟩ := h_int_pos n hn_pos
+  refine ⟨n, hn_ge, z, hz, ?_⟩
+  have hxy : (n : ℤ) ≡ (n₀ : ℤ) [ZMOD ((ℓ * B : ℕ) : ℤ)] := by
+    refine Int.modEq_iff_dvd.mpr ?_
+    refine ⟨-((N + 1 : ℕ) : ℤ), ?_⟩
+    dsimp [n, step]
+    ring
+  have hz_int : (z : ℚ) = p.eval (((n : ℤ) : ℚ)) := by
+    simpa using hz
+  have hz₀_int : (z₀ : ℚ) = p.eval (((n₀ : ℤ) : ℚ)) := by
+    simpa using hz₀
+  have hper : z ≡ z₀ [ZMOD ((ℓ : ℕ) : ℤ)] :=
+    polynomial_periodicity_of_integral_values p B hBpos hB ℓ hℓ.one_le
+      (n : ℤ) (n₀ : ℤ) z z₀ hz_int hz₀_int hxy
+  intro hz_dvd
+  have hdiff : (ℓ : ℤ) ∣ z₀ - z := hper.dvd
+  have hz₀_dvd : (ℓ : ℤ) ∣ z₀ := by
+    have hsum : (ℓ : ℤ) ∣ (z₀ - z) + z := dvd_add hdiff hz_dvd
+    simpa [sub_eq_add_neg, add_assoc] using hsum
+  exact hz₀_ndvd hz₀_dvd
+
+end Erdos.P283.RSG
+
+/-! =============================================================
+    Section from: Erdos/P283/RSG/PolynomialValues.lean
+    ============================================================= -/
+
+/-
+Copyright (c) 2026
+
+Integer-valued polynomial value sequences for Graham's complete polynomial
+sequence theorem.
+-/
+
+
+namespace Erdos.P283.RSG
+
+open Polynomial
+open Filter
+
+/-! ## Chosen integer values of a rational polynomial -/
+
+/-- The integer sequence attached to a rational polynomial whose positive
+integer inputs are positive integers. Index `i` represents the value at
+`i + 1`, matching the RSG wrapper shape used by P283. -/
+noncomputable def polyValueSeq (p : ℚ[X])
+    (h_int_pos :
+      ∀ n : ℕ, 1 ≤ n →
+        ∃ z : ℤ, 0 < z ∧ (z : ℚ) = p.eval (n : ℚ)) :
+    ℕ → ℤ :=
+  fun i =>
+    Classical.choose
+      (h_int_pos (i + 1) (Nat.succ_le_succ (Nat.zero_le i)))
+
+lemma polyValueSeq_pos (p : ℚ[X])
+    (h_int_pos :
+      ∀ n : ℕ, 1 ≤ n →
+        ∃ z : ℤ, 0 < z ∧ (z : ℚ) = p.eval (n : ℚ))
+    (i : ℕ) :
+    0 < polyValueSeq p h_int_pos i := by
+  exact (Classical.choose_spec
+    (h_int_pos (i + 1) (Nat.succ_le_succ (Nat.zero_le i)))).1
+
+lemma polyValueSeq_eval (p : ℚ[X])
+    (h_int_pos :
+      ∀ n : ℕ, 1 ≤ n →
+        ∃ z : ℤ, 0 < z ∧ (z : ℚ) = p.eval (n : ℚ))
+    (i : ℕ) :
+    (polyValueSeq p h_int_pos i : ℚ) =
+      p.eval ((i + 1 : ℕ) : ℚ) := by
+  exact (Classical.choose_spec
+    (h_int_pos (i + 1) (Nat.succ_le_succ (Nat.zero_le i)))).2
+
+lemma eq_polyValueSeq_of_eval {p : ℚ[X]}
+    {h_int_pos :
+      ∀ n : ℕ, 1 ≤ n →
+        ∃ z : ℤ, 0 < z ∧ (z : ℚ) = p.eval (n : ℚ)}
+    {i : ℕ} {z : ℤ}
+    (hz : (z : ℚ) = p.eval ((i + 1 : ℕ) : ℚ)) :
+    z = polyValueSeq p h_int_pos i := by
+  have hz' : (z : ℚ) = (polyValueSeq p h_int_pos i : ℚ) :=
+    hz.trans (polyValueSeq_eval p h_int_pos i).symm
+  exact_mod_cast hz'
+
+/-- A finite subset sum of the chosen integer value sequence is the corresponding
+rational finite subset sum of polynomial evaluations. -/
+lemma polyValueSeq_fs_eval {p : ℚ[X]}
+    {h_int_pos :
+      ∀ n : ℕ, 1 ≤ n →
+        ∃ z : ℤ, 0 < z ∧ (z : ℚ) = p.eval (n : ℚ)}
+    {x : ℤ}
+    (hx : x ∈ FS (polyValueSeq p h_int_pos)) :
+    ∃ I : Finset ℕ,
+      x = ∑ i ∈ I, polyValueSeq p h_int_pos i ∧
+      (x : ℚ) = ∑ i ∈ I, p.eval ((i + 1 : ℕ) : ℚ) := by
+  rcases hx with ⟨I, rfl⟩
+  refine ⟨I, rfl, ?_⟩
+  calc
+    ((∑ i ∈ I, polyValueSeq p h_int_pos i : ℤ) : ℚ)
+        = ∑ i ∈ I, (polyValueSeq p h_int_pos i : ℚ) := by norm_cast
+    _ = ∑ i ∈ I, p.eval ((i + 1 : ℕ) : ℚ) := by
+      exact Finset.sum_congr rfl
+        (fun i _hi => polyValueSeq_eval p h_int_pos i)
+
+/-- Completeness of the chosen integer value sequence unwraps to the rational
+subset-sum conclusion used by the P283 axiom. -/
+lemma complete_polyValueSeq_to_eval_subsets {p : ℚ[X]}
+    {h_int_pos :
+      ∀ n : ℕ, 1 ≤ n →
+        ∃ z : ℤ, 0 < z ∧ (z : ℚ) = p.eval (n : ℚ)}
+    (hcomp : Complete (polyValueSeq p h_int_pos)) :
+    ∃ X_f : ℤ, ∀ X : ℤ, X_f ≤ X →
+      ∃ I : Finset ℕ,
+        (X : ℚ) = ∑ i ∈ I, p.eval ((i + 1 : ℕ) : ℚ) := by
+  rcases hcomp with ⟨C, hC⟩
+  refine ⟨C, ?_⟩
+  intro X hX
+  rcases hC X hX with ⟨I, rfl⟩
+  refine ⟨I, ?_⟩
+  calc
+    ((∑ i ∈ I, polyValueSeq p h_int_pos i : ℤ) : ℚ)
+        = ∑ i ∈ I, (polyValueSeq p h_int_pos i : ℚ) := by norm_cast
+    _ = ∑ i ∈ I, p.eval ((i + 1 : ℕ) : ℚ) := by
+      exact Finset.sum_congr rfl
+        (fun i _hi => polyValueSeq_eval p h_int_pos i)
+
+/-- The positive-input no-fixed-prime condition gives arbitrarily late
+nondivisible terms in the chosen value sequence. -/
+theorem polyValueSeq_infinite_nondivisibility_of_no_fixed_prime
+    (p : ℚ[X])
+    (h_int_pos :
+      ∀ n : ℕ, 1 ≤ n →
+        ∃ z : ℤ, 0 < z ∧ (z : ℚ) = p.eval (n : ℚ))
+    (h_gcd_one :
+      ∀ ℓ : ℕ, ℓ.Prime →
+        ∃ n : ℕ, 1 ≤ n ∧ ∃ z : ℤ,
+          (z : ℚ) = p.eval (n : ℚ) ∧ ¬ ((ℓ : ℤ) ∣ z)) :
+    ∀ ℓ : ℕ, ℓ.Prime →
+      ∀ N : ℕ, ∃ i ≥ N, ¬ ((ℓ : ℤ) ∣ polyValueSeq p h_int_pos i) := by
+  intro ℓ hℓ N
+  obtain ⟨n, hn_ge, z, hz_eval, hz_ndvd⟩ :=
+    infinite_nondivisibility_of_no_fixed_prime p h_int_pos h_gcd_one ℓ hℓ (N + 1)
+  have hn_pos : 1 ≤ n :=
+    (Nat.succ_le_succ (Nat.zero_le N)).trans hn_ge
+  refine ⟨n - 1, Nat.le_sub_one_of_lt (Nat.lt_of_succ_le hn_ge), ?_⟩
+  have hn_sub : n - 1 + 1 = n := Nat.sub_add_cancel hn_pos
+  have hseq_eval :
+      (polyValueSeq p h_int_pos (n - 1) : ℚ) = p.eval (n : ℚ) := by
+    simpa [hn_sub] using polyValueSeq_eval p h_int_pos (n - 1)
+  have hz_eq : z = polyValueSeq p h_int_pos (n - 1) := by
+    have hz' : (z : ℚ) = (polyValueSeq p h_int_pos (n - 1) : ℚ) :=
+      hz_eval.trans hseq_eval.symm
+    exact_mod_cast hz'
+  intro hdiv
+  exact hz_ndvd (by simpa [hz_eq] using hdiv)
+
+/-- Every residue attained by the chosen polynomial value sequence recurs
+arbitrarily far out modulo any positive modulus. This is the denominator-cleared
+periodicity input needed to turn finite Bezout witnesses into frequent
+generators. -/
+theorem polyValueSeq_residue_frequently_equal
+    (p : ℚ[X])
+    (h_int_pos :
+      ∀ n : ℕ, 1 ≤ n →
+        ∃ z : ℤ, 0 < z ∧ (z : ℚ) = p.eval (n : ℚ))
+    (m : ℕ) (hm : 1 ≤ m) (i : ℕ) :
+    ∀ N : ℕ, ∃ j : ℕ, N ≤ j ∧
+      ((polyValueSeq p h_int_pos j : ℤ) : ZMod m) =
+        ((polyValueSeq p h_int_pos i : ℤ) : ZMod m) := by
+  obtain ⟨B, hBpos, hB⟩ := exists_integral_multiple p
+  intro N
+  let step : ℕ := m * B
+  let j : ℕ := i + (N + 1) * step
+  have hstep_pos : 0 < step := by
+    exact Nat.mul_pos (lt_of_lt_of_le Nat.zero_lt_one hm)
+      (lt_of_lt_of_le Nat.zero_lt_one hBpos)
+  refine ⟨j, ?_, ?_⟩
+  · dsimp [j]
+    have hmul : N + 1 ≤ (N + 1) * step := Nat.le_mul_of_pos_right _ hstep_pos
+    omega
+  · have hzx :
+        (polyValueSeq p h_int_pos j : ℚ) =
+          p.eval ((((j + 1 : ℕ) : ℤ) : ℚ)) := by
+      simpa using polyValueSeq_eval p h_int_pos j
+    have hzy :
+        (polyValueSeq p h_int_pos i : ℚ) =
+          p.eval ((((i + 1 : ℕ) : ℤ) : ℚ)) := by
+      simpa using polyValueSeq_eval p h_int_pos i
+    have hxy :
+        ((j + 1 : ℕ) : ℤ) ≡ ((i + 1 : ℕ) : ℤ)
+          [ZMOD ((m * B : ℕ) : ℤ)] := by
+      refine Int.modEq_iff_dvd.mpr ?_
+      refine ⟨-((N + 1 : ℕ) : ℤ), ?_⟩
+      dsimp [j, step]
+      ring
+    have hper :
+        polyValueSeq p h_int_pos j ≡ polyValueSeq p h_int_pos i
+          [ZMOD ((m : ℕ) : ℤ)] :=
+      polynomial_periodicity_of_integral_values p B hBpos hB m hm
+        (((j + 1 : ℕ) : ℤ)) (((i + 1 : ℕ) : ℤ))
+        (polyValueSeq p h_int_pos j) (polyValueSeq p h_int_pos i)
+        hzx hzy hxy
+    exact (ZMod.intCast_eq_intCast_iff_dvd_sub _ _ m).mpr
+      (Int.modEq_iff_dvd.mp hper)
+
+/-! ## Finite differences as signed sums of even tails -/
+
+/-- Every Graham finite difference evaluated at a positive natural input has an
+integer representative, because its explicit expansion is a signed sum of
+positive integer values of `p`. -/
+lemma Delta_eval_integer_polyValueSeq
+    (k : ℕ) (p : ℚ[X])
+    (h_int_pos :
+      ∀ n : ℕ, 1 ≤ n →
+        ∃ z : ℤ, 0 < z ∧ (z : ℚ) = p.eval (n : ℚ))
+    (x : ℕ) (hx : 1 ≤ x) :
+    ∃ z : ℤ, (z : ℚ) = (Delta k p).eval (x : ℚ) := by
+  let y : ℤ :=
+    ((deltaTerms k).map fun q : ℤ × ℕ =>
+      q.1 * polyValueSeq p h_int_pos (4 ^ k * x + q.2 - 1)).sum
+  refine ⟨y, ?_⟩
+  have hval :
+      ∀ q ∈ deltaTerms k,
+        (polyValueSeq p h_int_pos (4 ^ k * x + q.2 - 1) : ℚ) =
+          p.eval ((4 ^ k : ℚ) * (x : ℚ) + (q.2 : ℚ)) := by
+    intro q _hq
+    have harg_pos : 1 ≤ 4 ^ k * x + q.2 := by
+      have hxpos : 0 < x := Nat.lt_of_lt_of_le Nat.zero_lt_one hx
+      have hbase : 0 < 4 ^ k * x :=
+        Nat.mul_pos (pow_pos (by norm_num) k) hxpos
+      omega
+    have hidx_succ : 4 ^ k * x + q.2 - 1 + 1 = 4 ^ k * x + q.2 :=
+      Nat.sub_add_cancel harg_pos
+    rw [polyValueSeq_eval]
+    congr 1
+    rw [hidx_succ]
+    norm_num
+  have hmap :
+      (deltaTerms k).map
+          (fun q : ℤ × ℕ =>
+            ((q.1 * polyValueSeq p h_int_pos (4 ^ k * x + q.2 - 1) : ℤ) : ℚ)) =
+        (deltaTerms k).map (deltaTermValue k p (x : ℚ)) := by
+    apply List.map_congr_left
+    intro q hq
+    simp [deltaTermValue, hval q hq]
+  rw [Delta_eval_eq_deltaTerms]
+  dsimp [y]
+  norm_cast
+  rw [List.map_map]
+  change
+    ((deltaTerms k).map
+      (fun q : ℤ × ℕ =>
+        ((q.1 * polyValueSeq p h_int_pos (4 ^ k * x + q.2 - 1) : ℤ) : ℚ))).sum =
+      ((deltaTerms k).map (deltaTermValue k p (x : ℚ))).sum
+  rw [hmap]
+
+/-- The top Graham finite difference is an integer constant on positive natural
+inputs. The remaining hard analytic/algebraic fact is positivity of this
+constant under positive leading coefficient. -/
+lemma Delta_top_integer_constant
+    (p : ℚ[X])
+    (h_int_pos :
+      ∀ n : ℕ, 1 ≤ n →
+        ∃ z : ℤ, 0 < z ∧ (z : ℚ) = p.eval (n : ℚ)) :
+    ∃ m : ℤ,
+      ∀ x : ℕ, 1 ≤ x → (m : ℚ) = (Delta p.natDegree p).eval (x : ℚ) := by
+  obtain ⟨m, hm⟩ :=
+    Delta_eval_integer_polyValueSeq p.natDegree p h_int_pos 1 (by norm_num)
+  refine ⟨m, ?_⟩
+  intro x _hx
+  calc
+    (m : ℚ) = (Delta p.natDegree p).eval (1 : ℚ) := hm
+    _ = (Delta p.natDegree p).eval (x : ℚ) := by
+      rw [Delta_top_eq_C p]
+      simp
+
+/-- The top Graham finite difference is represented by a positive natural
+constant when `p` has positive leading coefficient. -/
+lemma Delta_top_positive_integer_constant
+    (p : ℚ[X])
+    (h_int_pos :
+      ∀ n : ℕ, 1 ≤ n →
+        ∃ z : ℤ, 0 < z ∧ (z : ℚ) = p.eval (n : ℚ))
+    (hlead : 0 < p.leadingCoeff) :
+    ∃ m : ℕ, 0 < m ∧
+      ∀ x : ℕ, 1 ≤ x → ((m : ℤ) : ℚ) = (Delta p.natDegree p).eval (x : ℚ) := by
+  obtain ⟨mZ, hmZ⟩ := Delta_top_integer_constant p h_int_pos
+  have hmZ_pos : 0 < mZ := by
+    have hq_pos : 0 < (mZ : ℚ) := by
+      calc
+        0 < (Delta p.natDegree p).eval (1 : ℚ) := by
+          rw [Delta_top_eq_C p]
+          simpa using Delta_top_coeff_zero_pos p hlead
+        _ = (mZ : ℚ) := (hmZ 1 (by norm_num)).symm
+    exact_mod_cast hq_pos
+  rcases Int.eq_ofNat_of_zero_le (le_of_lt hmZ_pos) with ⟨m, rfl⟩
+  refine ⟨m, ?_, ?_⟩
+  · exact_mod_cast hmZ_pos
+  · intro x hx
+    exact hmZ x hx
+
+/-- Graham's `Delta` expansion uses only even offsets. Therefore, if an integer
+`z` represents `Delta k p` at a positive natural input `x`, then `z` is a
+signed finite subset sum of the even tail
+`p(4^k*x), p(4^k*x + 2), p(4^k*x + 4), ...`. -/
+lemma Delta_eval_integer_mem_signedFS_even_tail_polyValueSeq
+    (k : ℕ) (p : ℚ[X])
+    (h_int_pos :
+      ∀ n : ℕ, 1 ≤ n →
+        ∃ z : ℤ, 0 < z ∧ (z : ℚ) = p.eval (n : ℚ))
+    (x : ℕ) (hx : 1 ≤ x) (z : ℤ)
+    (hz : (z : ℚ) = (Delta k p).eval (x : ℚ)) :
+    z ∈ SignedFS
+      (fun a : ℕ => polyValueSeq p h_int_pos (4 ^ k * x + 2 * a - 1)) := by
+  classical
+  let S : ℕ → ℤ :=
+    fun a : ℕ => polyValueSeq p h_int_pos (4 ^ k * x + 2 * a - 1)
+  have hhalf_nodup :
+      ((deltaTerms k).map fun q : ℤ × ℕ => q.2 / 2).Nodup := by
+    refine (deltaTerms_nodup k).map_on ?_
+    intro a ha b hb hhalf
+    have hoff : a.2 = b.2 := by
+      rcases deltaTerms_offset_even ha with ⟨aa, haa⟩
+      rcases deltaTerms_offset_even hb with ⟨bb, hbb⟩
+      rw [haa, hbb] at hhalf ⊢
+      norm_num at hhalf ⊢
+      omega
+    exact deltaTerms_offset_injective_on ha hb hoff
+  have hnodup :
+      (((deltaTerms k).map fun q : ℤ × ℕ => (q.1, q.2 / 2)).map
+          fun q : ℤ × ℕ => q.2).Nodup := by
+    simpa [List.map_map] using hhalf_nodup
+  have hsign :
+      ∀ q ∈ (deltaTerms k).map (fun q : ℤ × ℕ => (q.1, q.2 / 2)),
+        q.1 = 1 ∨ q.1 = -1 := by
+    intro q hq
+    rcases List.mem_map.mp hq with ⟨a, ha, rfl⟩
+    exact deltaTerms_sign_eq_one_or_neg_one (p := a) ha
+  have hS_eval :
+      ∀ q ∈ deltaTerms k,
+        (S (q.2 / 2) : ℚ) =
+          p.eval ((4 ^ k : ℚ) * (x : ℚ) + (q.2 : ℚ)) := by
+    intro q hq
+    have harg_nat : 4 ^ k * x + 2 * (q.2 / 2) = 4 ^ k * x + q.2 := by
+      rcases deltaTerms_offset_even hq with ⟨a, ha⟩
+      rw [ha]
+      norm_num
+    have harg_pos : 1 ≤ 4 ^ k * x + q.2 := by
+      have hxpos : 0 < x := Nat.lt_of_lt_of_le Nat.zero_lt_one hx
+      have hbase : 0 < 4 ^ k * x :=
+        Nat.mul_pos (pow_pos (by norm_num) k) hxpos
+      omega
+    have hidx_succ :
+        4 ^ k * x + 2 * (q.2 / 2) - 1 + 1 = 4 ^ k * x + q.2 := by
+      rw [harg_nat]
+      exact Nat.sub_add_cancel harg_pos
+    rw [polyValueSeq_eval]
+    congr 1
+    rw [hidx_succ]
+    norm_num
+  let y : ℤ :=
+    ((deltaTerms k).map fun q : ℤ × ℕ => q.1 * S (q.2 / 2)).sum
+  have hy_mem : y ∈ SignedFS S := by
+    have hy_mem_of :
+        y ∈ SignedFSOf S
+          (((deltaTerms k).map fun q : ℤ × ℕ => (q.1, q.2 / 2)).map
+            fun q : ℤ × ℕ => q.2).toFinset := by
+      simpa [y, List.map_map] using
+        (signedFSOf_list_sum
+          (s := S)
+          (l := (deltaTerms k).map fun q : ℤ × ℕ => (q.1, q.2 / 2))
+          hsign
+          hnodup)
+    exact signedFSOf_subset_signedFS S _
+      hy_mem_of
+  have hmap :
+      (deltaTerms k).map
+          (fun q : ℤ × ℕ => ((q.1 * S (q.2 / 2) : ℤ) : ℚ)) =
+        (deltaTerms k).map (deltaTermValue k p (x : ℚ)) := by
+    apply List.map_congr_left
+    intro q hq
+    simp [deltaTermValue, hS_eval q hq]
+  have hy_eval : (y : ℚ) = (Delta k p).eval (x : ℚ) := by
+    rw [Delta_eval_eq_deltaTerms]
+    dsimp [y]
+    norm_cast
+    rw [List.map_map]
+    change
+      ((deltaTerms k).map
+        (fun q : ℤ × ℕ => ((q.1 * S (q.2 / 2) : ℤ) : ℚ))).sum =
+        ((deltaTerms k).map (deltaTermValue k p (x : ℚ))).sum
+    rw [hmap]
+  have hcast : (z : ℚ) = (y : ℚ) := by
+    rw [hz, hy_eval]
+  have hzy : z = y := by
+    exact_mod_cast hcast
+  rw [hzy]
+  exact hy_mem
+
+/-- The sequence of even positive inputs `p(2), p(4), p(6), ...`. -/
+noncomputable def evenValueSeq (p : ℚ[X])
+    (h_int_pos :
+      ∀ n : ℕ, 1 ≤ n →
+        ∃ z : ℤ, 0 < z ∧ (z : ℚ) = p.eval (n : ℚ)) :
+    ℕ → ℤ :=
+  fun a => polyValueSeq p h_int_pos (2 * a + 1)
+
+/-- If `Delta k p` is represented by a fixed integer `m` at every positive
+natural input, then `m` lies in the signed finite subset sums of every tail of
+the even-value sequence. -/
+lemma Delta_constant_mem_signedFS_evenValueSeq_tail
+    (k : ℕ) (hk : 0 < k) (p : ℚ[X])
+    (h_int_pos :
+      ∀ n : ℕ, 1 ≤ n →
+        ∃ z : ℤ, 0 < z ∧ (z : ℚ) = p.eval (n : ℚ))
+    {m : ℤ}
+    (hm_eval : ∀ x : ℕ, 1 ≤ x → (m : ℚ) = (Delta k p).eval (x : ℚ)) :
+    ∀ N : ℕ, m ∈ SignedFS (tail (evenValueSeq p h_int_pos) N) := by
+  intro N
+  let x : ℕ := N + 1
+  let A : ℕ := 2 * 4 ^ (k - 1) * x
+  let M : ℕ := A - 1
+  have hx : 1 ≤ x := by
+    dsimp [x]
+    omega
+  have hpow_pos : 0 < 4 ^ (k - 1) := pow_pos (by norm_num) _
+  have hA_ge_succ : N + 1 ≤ A := by
+    calc
+      N + 1 ≤ 4 ^ (k - 1) * (N + 1) :=
+        Nat.le_mul_of_pos_left _ hpow_pos
+      _ ≤ 2 * (4 ^ (k - 1) * (N + 1)) :=
+        Nat.le_mul_of_pos_left _ (by norm_num)
+      _ = A := by
+        dsimp [A, x]
+        ring
+  have hA_pos : 1 ≤ A := (Nat.succ_le_succ (Nat.zero_le N)).trans hA_ge_succ
+  have hM_ge : N ≤ M := by
+    exact Nat.le_sub_one_of_lt (Nat.lt_of_succ_le hA_ge_succ)
+  have hbase : 4 ^ k * x = 2 * A := by
+    dsimp [A]
+    have hk_eq : k = (k - 1) + 1 := (Nat.sub_add_cancel hk).symm
+    nth_rewrite 1 [hk_eq]
+    rw [pow_succ]
+    ring
+  have hM_succ : M + 1 = A := by
+    dsimp [M]
+    exact Nat.sub_add_cancel hA_pos
+  have hdelta :
+      m ∈ SignedFS
+        (fun a : ℕ => polyValueSeq p h_int_pos (4 ^ k * x + 2 * a - 1)) :=
+    Delta_eval_integer_mem_signedFS_even_tail_polyValueSeq
+      k p h_int_pos x hx m (hm_eval x hx)
+  have hseq :
+      (fun a : ℕ => polyValueSeq p h_int_pos (4 ^ k * x + 2 * a - 1)) =
+        tail (evenValueSeq p h_int_pos) M := by
+    funext a
+    simp [tail, evenValueSeq]
+    congr 1
+    omega
+  have hM : m ∈ SignedFS (tail (evenValueSeq p h_int_pos) M) := by
+    rw [← signedFS_congr (by intro a; exact congrFun hseq a)]
+    exact hdelta
+  exact signedFS_tail_mono hM_ge hM
+
+/-- Constant top-difference signed tails, together with residue coverage by a
+second sequence, give Graham near-completeness. -/
+lemma nearlyComplete_evenValueSeq_of_Delta_constant_and_residues
+    (k : ℕ) (hk : 0 < k) (p : ℚ[X])
+    (h_int_pos :
+      ∀ n : ℕ, 1 ≤ n →
+        ∃ z : ℤ, 0 < z ∧ (z : ℚ) = p.eval (n : ℚ))
+    (m : ℕ) (hm : 0 < m)
+    (hm_eval :
+      ∀ x : ℕ, 1 ≤ x → ((m : ℤ) : ℚ) = (Delta k p).eval (x : ℚ))
+    {T : ℕ → ℤ} (hres : CoversResidues T m) :
+    NearlyComplete (interleave (evenValueSeq p h_int_pos) T) :=
+  nearlyComplete_of_signed_tail_and_residues hm
+    (Delta_constant_mem_signedFS_evenValueSeq_tail
+      k hk p h_int_pos (m := (m : ℤ)) hm_eval)
+    hres
+
+/-- Tail version of the even-value near-completeness lemma. This is the form
+used after a finite residue prefix has been separated from the later odd/even
+tails. -/
+lemma nearlyComplete_evenValueSeq_tail_of_Delta_constant_and_residues
+    (r k : ℕ) (hk : 0 < k) (p : ℚ[X])
+    (h_int_pos :
+      ∀ n : ℕ, 1 ≤ n →
+        ∃ z : ℤ, 0 < z ∧ (z : ℚ) = p.eval (n : ℚ))
+    (m : ℕ) (hm : 0 < m)
+    (hm_eval :
+      ∀ x : ℕ, 1 ≤ x → ((m : ℤ) : ℚ) = (Delta k p).eval (x : ℚ))
+    {T : ℕ → ℤ} (hres : CoversResidues T m) :
+    NearlyComplete (interleave (tail (evenValueSeq p h_int_pos) r) T) := by
+  refine nearlyComplete_of_signed_tail_and_residues hm ?_ hres
+  intro N
+  rw [tail_tail]
+  exact Delta_constant_mem_signedFS_evenValueSeq_tail
+    k hk p h_int_pos (m := (m : ℤ)) hm_eval (r + N)
+
+/-! ## The odd polynomial tail is a Sigma-sequence -/
+
+/-- Along any fixed odd-tail shape `f(2r + 1), f(2r + 3), ...`, consecutive
+values are eventually within a factor of two. -/
+lemma polyValueSeq_odd_tail_eventually_doubling
+    (p : ℚ[X])
+    (h_int_pos :
+      ∀ n : ℕ, 1 ≤ n →
+        ∃ z : ℤ, 0 < z ∧ (z : ℚ) = p.eval (n : ℚ))
+    (hlead : 0 < p.leadingCoeff) (r : ℕ) :
+    ∀ᶠ k in Filter.atTop,
+      polyValueSeq p h_int_pos (2 * r + 2 * (k + 1)) ≤
+        2 * polyValueSeq p h_int_pos (2 * r + 2 * k) := by
+  have hratioQ :
+      Tendsto
+        (fun x : ℚ =>
+          p.eval (2 * x + (2 * r + 3 : ℚ)) /
+            p.eval (2 * x + (2 * r + 1 : ℚ)))
+        Filter.atTop (nhds (1 : ℚ)) := by
+    simpa using
+      polynomial_eval_same_slope_ratio_tendsto_one
+        (f := p) (a := 2) (b := (2 * r + 3 : ℚ))
+        (c := (2 * r + 1 : ℚ)) (by norm_num) (ne_of_gt hlead)
+  have hratioNat :
+      Tendsto
+        (fun k : ℕ =>
+          p.eval (2 * (k : ℚ) + (2 * r + 3 : ℚ)) /
+            p.eval (2 * (k : ℚ) + (2 * r + 1 : ℚ)))
+        Filter.atTop (nhds (1 : ℚ)) := by
+    simpa using hratioQ.comp (tendsto_natCast_atTop_atTop (R := ℚ))
+  have hlt_event :
+      ∀ᶠ k : ℕ in Filter.atTop,
+        p.eval (2 * (k : ℚ) + (2 * r + 3 : ℚ)) /
+            p.eval (2 * (k : ℚ) + (2 * r + 1 : ℚ)) < (2 : ℚ) :=
+    hratioNat.eventually (eventually_lt_nhds (by norm_num : (1 : ℚ) < 2))
+  filter_upwards [hlt_event] with k hk
+  have hleft_eval :
+      (polyValueSeq p h_int_pos (2 * r + 2 * (k + 1)) : ℚ) =
+        p.eval (2 * (k : ℚ) + (2 * r + 3 : ℚ)) := by
+    rw [polyValueSeq_eval]
+    congr 1
+    norm_num
+    ring
+  have hright_eval :
+      (polyValueSeq p h_int_pos (2 * r + 2 * k) : ℚ) =
+        p.eval (2 * (k : ℚ) + (2 * r + 1 : ℚ)) := by
+    rw [polyValueSeq_eval]
+    congr 1
+    norm_num
+    ring
+  have hk_seq :
+      (polyValueSeq p h_int_pos (2 * r + 2 * (k + 1)) : ℚ) /
+          (polyValueSeq p h_int_pos (2 * r + 2 * k) : ℚ) < (2 : ℚ) := by
+    simpa [hleft_eval, hright_eval] using hk
+  have hden_pos :
+      0 < (polyValueSeq p h_int_pos (2 * r + 2 * k) : ℚ) := by
+    exact_mod_cast polyValueSeq_pos p h_int_pos (2 * r + 2 * k)
+  have hlt_q :
+      (polyValueSeq p h_int_pos (2 * r + 2 * (k + 1)) : ℚ) <
+        2 * (polyValueSeq p h_int_pos (2 * r + 2 * k) : ℚ) :=
+    (div_lt_iff₀ hden_pos).mp hk_seq
+  have hlt_z :
+      polyValueSeq p h_int_pos (2 * r + 2 * (k + 1)) <
+        2 * polyValueSeq p h_int_pos (2 * r + 2 * k) := by
+    exact_mod_cast hlt_q
+  exact le_of_lt hlt_z
+
+/-- The odd tail used in Graham's final split is a Sigma-sequence. -/
+lemma polyValueSeq_odd_tail_sigmaSeq
+    (p : ℚ[X])
+    (h_int_pos :
+      ∀ n : ℕ, 1 ≤ n →
+        ∃ z : ℤ, 0 < z ∧ (z : ℚ) = p.eval (n : ℚ))
+    (hlead : 0 < p.leadingCoeff) (r : ℕ) :
+    SigmaSeq (fun k : ℕ => polyValueSeq p h_int_pos (2 * r + 2 * k)) := by
+  refine sigma_of_eventually_doubling ?_ ?_
+  · exact Filter.Eventually.of_forall
+      (fun k => polyValueSeq_pos p h_int_pos (2 * r + 2 * k))
+  · simpa using polyValueSeq_odd_tail_eventually_doubling p h_int_pos hlead r
+
+/-! ## Conditional Graham assembly -/
+
+/-- Conditional assembly of Graham's final complete sequence from the two
+remaining mathematical inputs: a positive constant top difference and residue
+coverage. This packages the already-formalized Sigma/near-complete glue. -/
+lemma complete_interleaved_values_of_Delta_constant_and_residues
+    (k : ℕ) (hk : 0 < k) (p : ℚ[X])
+    (h_int_pos :
+      ∀ n : ℕ, 1 ≤ n →
+        ∃ z : ℤ, 0 < z ∧ (z : ℚ) = p.eval (n : ℚ))
+    (hlead : 0 < p.leadingCoeff)
+    (m : ℕ) (hm : 0 < m)
+    (hm_eval :
+      ∀ x : ℕ, 1 ≤ x → ((m : ℤ) : ℚ) = (Delta k p).eval (x : ℚ))
+    {T : ℕ → ℤ} (hres : CoversResidues T m) :
+    Complete
+      (interleave
+        (fun n : ℕ => polyValueSeq p h_int_pos (2 * n))
+        (interleave (evenValueSeq p h_int_pos) T)) := by
+  have hsigma :
+      SigmaSeq (fun n : ℕ => polyValueSeq p h_int_pos (2 * n)) := by
+    exact SigmaSeq.congr
+      (fun n => by simp)
+      (polyValueSeq_odd_tail_sigmaSeq p h_int_pos hlead 0)
+  exact complete_of_sigma_nearly
+    hsigma
+    (nearlyComplete_evenValueSeq_of_Delta_constant_and_residues
+      k hk p h_int_pos m hm hm_eval hres)
+
+/-- Shifted conditional assembly: a finite prefix can be reserved for residue
+witnesses, while Graham's odd/even tails begin after that prefix. -/
+lemma complete_interleaved_tail_values_of_Delta_constant_and_residues
+    (r k : ℕ) (hk : 0 < k) (p : ℚ[X])
+    (h_int_pos :
+      ∀ n : ℕ, 1 ≤ n →
+        ∃ z : ℤ, 0 < z ∧ (z : ℚ) = p.eval (n : ℚ))
+    (hlead : 0 < p.leadingCoeff)
+    (m : ℕ) (hm : 0 < m)
+    (hm_eval :
+      ∀ x : ℕ, 1 ≤ x → ((m : ℤ) : ℚ) = (Delta k p).eval (x : ℚ))
+    {T : ℕ → ℤ} (hres : CoversResidues T m) :
+    Complete
+      (interleave
+        (fun n : ℕ => polyValueSeq p h_int_pos (2 * r + 2 * n))
+        (interleave (tail (evenValueSeq p h_int_pos) r) T)) := by
+  exact complete_of_sigma_nearly
+    (polyValueSeq_odd_tail_sigmaSeq p h_int_pos hlead r)
+    (nearlyComplete_evenValueSeq_tail_of_Delta_constant_and_residues
+      r k hk p h_int_pos m hm hm_eval hres)
+
+lemma shifted_interleaved_values_eq_oddEvenPrefixAssembly
+    (p : ℚ[X])
+    (h_int_pos :
+      ∀ n : ℕ, 1 ≤ n →
+        ∃ z : ℤ, 0 < z ∧ (z : ℚ) = p.eval (n : ℚ))
+    (r : ℕ) :
+    (interleave
+        (fun n : ℕ => polyValueSeq p h_int_pos (2 * r + 2 * n))
+        (interleave (tail (evenValueSeq p h_int_pos) r)
+          (finitePrefixSeq (polyValueSeq p h_int_pos) (2 * r)))) =
+      oddEvenPrefixAssembly (polyValueSeq p h_int_pos) r := by
+  have htail :
+      tail (evenValueSeq p h_int_pos) r =
+        fun n : ℕ => polyValueSeq p h_int_pos (2 * r + 2 * n + 1) := by
+    funext n
+    dsimp [tail, evenValueSeq]
+    congr 1
+    ring
+  simp [oddEvenPrefixAssembly, htail]
+
+/-- Shifted conditional assembly transferred back to the original polynomial
+value sequence. The residue witnesses live in the finite prefix before `2*r`;
+the Sigma/AP machinery uses the disjoint odd/even tails after `2*r`. -/
+lemma complete_polyValueSeq_of_shifted_prefix_residues
+    (r k : ℕ) (hk : 0 < k) (p : ℚ[X])
+    (h_int_pos :
+      ∀ n : ℕ, 1 ≤ n →
+        ∃ z : ℤ, 0 < z ∧ (z : ℚ) = p.eval (n : ℚ))
+    (hlead : 0 < p.leadingCoeff)
+    (m : ℕ) (hm : 0 < m)
+    (hm_eval :
+      ∀ x : ℕ, 1 ≤ x → ((m : ℤ) : ℚ) = (Delta k p).eval (x : ℚ))
+    (hres : CoversResidues (finitePrefixSeq (polyValueSeq p h_int_pos) (2 * r)) m) :
+    Complete (polyValueSeq p h_int_pos) := by
+  let shifted : ℕ → ℤ :=
+    interleave
+      (fun n : ℕ => polyValueSeq p h_int_pos (2 * r + 2 * n))
+      (interleave (tail (evenValueSeq p h_int_pos) r)
+        (finitePrefixSeq (polyValueSeq p h_int_pos) (2 * r)))
+  have hshifted : Complete shifted :=
+    complete_interleaved_tail_values_of_Delta_constant_and_residues
+      r k hk p h_int_pos hlead m hm hm_eval hres
+  have hassembly : Complete (oddEvenPrefixAssembly (polyValueSeq p h_int_pos) r) := by
+    exact Complete.congr
+      (fun n => congrFun
+        (shifted_interleaved_values_eq_oddEvenPrefixAssembly p h_int_pos r) n)
+      hshifted
+  exact Complete.of_oddEvenPrefixAssembly r hassembly
+
+/-- Conditional assembly transferred all the way back to the original value
+sequence, assuming residue coverage by the full value sequence. The finite
+prefix needed by Graham is extracted automatically. -/
+lemma complete_polyValueSeq_of_residues
+    (k : ℕ) (hk : 0 < k) (p : ℚ[X])
+    (h_int_pos :
+      ∀ n : ℕ, 1 ≤ n →
+        ∃ z : ℤ, 0 < z ∧ (z : ℚ) = p.eval (n : ℚ))
+    (hlead : 0 < p.leadingCoeff)
+    (m : ℕ) (hm : 0 < m)
+    (hm_eval :
+      ∀ x : ℕ, 1 ≤ x → ((m : ℤ) : ℚ) = (Delta k p).eval (x : ℚ))
+    (hres : CoversResidues (polyValueSeq p h_int_pos) m) :
+    Complete (polyValueSeq p h_int_pos) := by
+  haveI : NeZero m := ⟨Nat.ne_of_gt hm⟩
+  obtain ⟨N, hprefix⟩ := hres.exists_finitePrefixSeq
+  have hprefix_two :
+      CoversResidues (finitePrefixSeq (polyValueSeq p h_int_pos) (2 * N)) m :=
+    CoversResidues.finitePrefixSeq_mono (S := polyValueSeq p h_int_pos)
+      (by omega) hprefix
+  exact complete_polyValueSeq_of_shifted_prefix_residues
+    N k hk p h_int_pos hlead m hm hm_eval hprefix_two
+
+/-- Top-difference version of `complete_polyValueSeq_of_residues`. At this
+point the only remaining mathematical input is residue coverage modulo the
+positive top-difference constant. -/
+lemma exists_complete_polyValueSeq_of_residues
+    (p : ℚ[X])
+    (h_int_pos :
+      ∀ n : ℕ, 1 ≤ n →
+        ∃ z : ℤ, 0 < z ∧ (z : ℚ) = p.eval (n : ℚ))
+    (hdeg : 0 < p.natDegree)
+    (hlead : 0 < p.leadingCoeff) :
+    ∃ m : ℕ, 0 < m ∧
+      (CoversResidues (polyValueSeq p h_int_pos) m →
+        Complete (polyValueSeq p h_int_pos)) := by
+  obtain ⟨m, hm_pos, hm_eval⟩ :=
+    Delta_top_positive_integer_constant p h_int_pos hlead
+  refine ⟨m, hm_pos, ?_⟩
+  intro hres
+  exact complete_polyValueSeq_of_residues
+    p.natDegree hdeg p h_int_pos hlead m hm_pos hm_eval hres
+
+/-- Final assembly in Graham's frequent-generator language, transferred to the
+original polynomial value sequence. This is the target interface for the
+remaining residue-cover proof. -/
+lemma exists_complete_polyValueSeq_of_frequent_generators
+    (p : ℚ[X])
+    (h_int_pos :
+      ∀ n : ℕ, 1 ≤ n →
+        ∃ z : ℤ, 0 < z ∧ (z : ℚ) = p.eval (n : ℚ))
+    (hdeg : 0 < p.natDegree)
+    (hlead : 0 < p.leadingCoeff) :
+    ∃ m : ℕ, 0 < m ∧
+      ∀ {w : ℕ} (ρ : Fin w → ZMod m),
+        AddSubgroup.closure (Set.range ρ) = ⊤ →
+        (∀ i : Fin w, ∀ N : ℕ,
+          ∃ n : ℕ, N ≤ n ∧
+            ((polyValueSeq p h_int_pos n : ℤ) : ZMod m) = ρ i) →
+        Complete (polyValueSeq p h_int_pos) := by
+  obtain ⟨m, hm_pos, hcomplete⟩ :=
+    exists_complete_polyValueSeq_of_residues p h_int_pos hdeg hlead
+  refine ⟨m, hm_pos, ?_⟩
+  intro w ρ hgen hfreq
+  exact hcomplete (coversResidues_of_frequent_generators (by omega) ρ hgen hfreq)
+
+/-- Final assembly reduced to a finite Bezout combination of actual polynomial
+value residues. Periodicity supplies the required frequent recurrence of each
+chosen residue. -/
+lemma exists_complete_polyValueSeq_of_index_zsmul_eq_one
+    (p : ℚ[X])
+    (h_int_pos :
+      ∀ n : ℕ, 1 ≤ n →
+        ∃ z : ℤ, 0 < z ∧ (z : ℚ) = p.eval (n : ℚ))
+    (hdeg : 0 < p.natDegree)
+    (hlead : 0 < p.leadingCoeff) :
+    ∃ m : ℕ, 0 < m ∧
+      ∀ {w : ℕ} (idx : Fin w → ℕ) (a : Fin w → ℤ),
+        (∑ i, a i • (((polyValueSeq p h_int_pos (idx i) : ℤ) : ZMod m)) =
+          (1 : ZMod m)) →
+        Complete (polyValueSeq p h_int_pos) := by
+  obtain ⟨m, hm_pos, hcomplete⟩ :=
+    exists_complete_polyValueSeq_of_residues p h_int_pos hdeg hlead
+  refine ⟨m, hm_pos, ?_⟩
+  intro w idx a ha
+  let ρ : Fin w → ZMod m :=
+    fun i => ((polyValueSeq p h_int_pos (idx i) : ℤ) : ZMod m)
+  have hfreq : ∀ i : Fin w, ∀ N : ℕ,
+      ∃ n : ℕ, N ≤ n ∧
+        ((polyValueSeq p h_int_pos n : ℤ) : ZMod m) = ρ i := by
+    intro i N
+    exact polyValueSeq_residue_frequently_equal p h_int_pos m (by omega) (idx i) N
+  exact hcomplete
+    (coversResidues_of_frequent_zsmul_eq_one (by omega) ρ a (by simpa [ρ] using ha) hfreq)
+
+/-- Graham's no-fixed-prime condition gives the finite Bezout input needed by
+`exists_complete_polyValueSeq_of_index_zsmul_eq_one`, hence completeness of the
+chosen integer value sequence. -/
+lemma complete_polyValueSeq_of_no_fixed_prime
+    (p : ℚ[X])
+    (h_int_pos :
+      ∀ n : ℕ, 1 ≤ n →
+        ∃ z : ℤ, 0 < z ∧ (z : ℚ) = p.eval (n : ℚ))
+    (hdeg : 0 < p.natDegree)
+    (hlead : 0 < p.leadingCoeff)
+    (h_gcd_one :
+      ∀ ℓ : ℕ, ℓ.Prime →
+        ∃ n : ℕ, 1 ≤ n ∧ ∃ z : ℤ,
+          (z : ℚ) = p.eval (n : ℚ) ∧ ¬ ((ℓ : ℤ) ∣ z)) :
+    Complete (polyValueSeq p h_int_pos) := by
+  classical
+  obtain ⟨m, hm_pos, hcomplete⟩ :=
+    exists_complete_polyValueSeq_of_index_zsmul_eq_one p h_int_pos hdeg hlead
+  let P : Finset ℕ := m.primeFactors
+  let e : Fin P.card ≃ P := (Finset.equivFin P).symm
+  let q : Fin P.card → ℕ := fun i => (e i).1
+  have hq_mem : ∀ i : Fin P.card, q i ∈ m.primeFactors := by
+    intro i
+    exact (e i).2
+  have hq_prime : ∀ i : Fin P.card, (q i).Prime := by
+    intro i
+    exact (Nat.mem_primeFactors.mp (hq_mem i)).1
+  let n : Fin P.card → ℕ :=
+    fun i => Classical.choose (h_gcd_one (q i) (hq_prime i))
+  have hn_spec : ∀ i : Fin P.card,
+      1 ≤ n i ∧ ∃ z : ℤ,
+        (z : ℚ) = p.eval (n i : ℚ) ∧ ¬ ((q i : ℤ) ∣ z) := by
+    intro i
+    exact Classical.choose_spec (h_gcd_one (q i) (hq_prime i))
+  let idx : Fin P.card → ℕ := fun i => n i - 1
+  let v : Fin P.card → ℤ := fun i => polyValueSeq p h_int_pos (idx i)
+  have hq_not_dvd : ∀ i : Fin P.card, ¬ ((q i : ℤ) ∣ v i) := by
+    intro i hdiv
+    rcases hn_spec i with ⟨hn_pos, z, hz_eval, hz_not_dvd⟩
+    have hn_sub : n i - 1 + 1 = n i := Nat.sub_add_cancel hn_pos
+    have hz_eq : z = polyValueSeq p h_int_pos (idx i) := by
+      apply eq_polyValueSeq_of_eval
+      simpa [idx, hn_sub] using hz_eval
+    exact hz_not_dvd (by simpa [v, hz_eq] using hdiv)
+  have hcover : ∀ k : ℕ, k.Prime → k ∣ m →
+      ∃ i : Fin P.card, ¬ ((k : ℤ) ∣ v i) := by
+    intro k hkprime hkm
+    have hkmem : k ∈ P := by
+      exact Nat.mem_primeFactors.mpr ⟨hkprime, hkm, Nat.ne_of_gt hm_pos⟩
+    let i : Fin P.card := e.symm ⟨k, hkmem⟩
+    refine ⟨i, ?_⟩
+    have hqi : q i = k := by
+      simp [q, i, e]
+    simpa [hqi] using hq_not_dvd i
+  have hcop : Nat.Coprime m (intGcdFin P.card v) :=
+    intGcdFin_coprime_of_primeFactors_covered v hcover
+  obtain ⟨a, ha⟩ := exists_zmod_sum_zsmul_eq_one_of_intGcdFin_coprime v hcop
+  exact hcomplete idx a (by simpa [v] using ha)
+
+/-- Graham's complete polynomial values theorem, in the positive-input rational
+polynomial shape used by the P283/P351 `roth_szekeres_graham` wrapper. -/
+theorem graham_complete_polynomial_values
+    (f : ℚ[X])
+    (h_nonconst : 0 < f.natDegree)
+    (h_lead_pos : 0 < f.leadingCoeff)
+    (h_int_pos :
+      ∀ n : ℕ, 1 ≤ n →
+        ∃ z : ℤ, 0 < z ∧ (z : ℚ) = f.eval (n : ℚ))
+    (h_gcd_one :
+      ∀ ℓ : ℕ, ℓ.Prime →
+        ∃ n : ℕ, 1 ≤ n ∧ ∃ z : ℤ,
+          (z : ℚ) = f.eval (n : ℚ) ∧ ¬ ((ℓ : ℤ) ∣ z)) :
+    ∃ X_f : ℤ, ∀ X : ℤ, X_f ≤ X →
+      ∃ I : Finset ℕ,
+        (X : ℚ) = ∑ i ∈ I, f.eval ((i + 1 : ℕ) : ℚ) :=
+  complete_polyValueSeq_to_eval_subsets
+    (complete_polyValueSeq_of_no_fixed_prime
+      f h_int_pos h_nonconst h_lead_pos h_gcd_one)
+
+/-- The same conditional assembly with Graham's positive top-difference
+constant chosen from the polynomial. The only remaining external input is
+residue coverage modulo that chosen constant. -/
+lemma exists_complete_interleaved_values_of_residues
+    (p : ℚ[X])
+    (h_int_pos :
+      ∀ n : ℕ, 1 ≤ n →
+        ∃ z : ℤ, 0 < z ∧ (z : ℚ) = p.eval (n : ℚ))
+    (hdeg : 0 < p.natDegree)
+    (hlead : 0 < p.leadingCoeff) :
+    ∃ m : ℕ, 0 < m ∧
+      ∀ {T : ℕ → ℤ}, CoversResidues T m →
+        Complete
+          (interleave
+            (fun n : ℕ => polyValueSeq p h_int_pos (2 * n))
+            (interleave (evenValueSeq p h_int_pos) T)) := by
+  obtain ⟨m, hm_pos, hm_eval⟩ :=
+    Delta_top_positive_integer_constant p h_int_pos hlead
+  refine ⟨m, hm_pos, ?_⟩
+  intro T hres
+  exact complete_interleaved_values_of_Delta_constant_and_residues
+    p.natDegree hdeg p h_int_pos hlead m hm_pos hm_eval hres
+
+/-- Conditional final assembly phrased in Graham's residue-generator language.
+Once the top-difference modulus is fixed, it is enough to find finitely many
+frequently occurring residues whose additive closure is all of `ZMod m`. -/
+lemma exists_complete_interleaved_values_of_frequent_generators
+    (p : ℚ[X])
+    (h_int_pos :
+      ∀ n : ℕ, 1 ≤ n →
+        ∃ z : ℤ, 0 < z ∧ (z : ℚ) = p.eval (n : ℚ))
+    (hdeg : 0 < p.natDegree)
+    (hlead : 0 < p.leadingCoeff) :
+    ∃ m : ℕ, 0 < m ∧
+      ∀ {w : ℕ} (ρ : Fin w → ZMod m),
+        AddSubgroup.closure (Set.range ρ) = ⊤ →
+        (∀ i : Fin w, ∀ N : ℕ,
+          ∃ n : ℕ, N ≤ n ∧
+            ((polyValueSeq p h_int_pos n : ℤ) : ZMod m) = ρ i) →
+        Complete
+          (interleave
+            (fun n : ℕ => polyValueSeq p h_int_pos (2 * n))
+            (interleave (evenValueSeq p h_int_pos) (polyValueSeq p h_int_pos))) := by
+  obtain ⟨m, hm_pos, hcomplete⟩ :=
+    exists_complete_interleaved_values_of_residues p h_int_pos hdeg hlead
+  refine ⟨m, hm_pos, ?_⟩
+  intro w ρ hgen hfreq
+  exact hcomplete
+    (T := polyValueSeq p h_int_pos)
+    (coversResidues_of_frequent_generators (by omega) ρ hgen hfreq)
+
+end Erdos.P283.RSG
 
 /-! =============================================================
     Section from: Erdos/P283/Basic.lean
@@ -39,8 +3280,8 @@ Predicates and helpers used throughout the formalization:
   * `NoFixedDivisor p hp` — no `d ≥ 2` divides every `p(n)` for `n ≥ 1`.
   * `HasIntegralMultiple B p` — `B p(x) ∈ ℤ[x]` (denominator-cleared form).
   * `FS s`                — finite subset sums of a sequence (used by RSG).
-  * `roth_szekeres_graham` — the trust-boundary axiom (with integer-divisibility
-                              gcd hypothesis, fixed from earlier scaffold).
+  * `roth_szekeres_graham` — Graham's complete-polynomial-values theorem,
+                              supplied by `Erdos.P283.RSG`.
 
 This file is imported by every other P283 file.
 -/
@@ -147,7 +3388,7 @@ theorem exists_integral_multiple (p : ℚ[X]) :
     field_simp at h
     linarith
 
-/-! ## Roth–Szekeres–Graham (axiom) -/
+/-! ## Roth–Szekeres–Graham -/
 
 /-- The set of finite subset sums of a sequence `s : ℕ → ℤ`. -/
 def FS (s : ℕ → ℤ) : Set ℤ := { x | ∃ I : Finset ℕ, x = ∑ i ∈ I, s i }
@@ -158,10 +3399,10 @@ with positive leading coefficient that takes positive integer values on
 integer value), all sufficiently large integers `X` admit an expression
 `X = ∑_{i ∈ I} f(i + 1)` for some finite `I ⊆ ℕ`.
 
-Classical (Graham 1964 / Roth-Szekeres 1954); Mathlib has surrounding analytic
-NT infrastructure but not this named result. We postulate it as the single
-trust-boundary axiom for the polynomial-Egyptian-sums proof. -/
-axiom roth_szekeres_graham (f : ℚ[X])
+Classical (Graham 1964 / Roth-Szekeres 1954). This theorem is proved in the
+new `Erdos.P283.RSG` scaffold and re-exported here in the exact shape used by the
+polynomial-Egyptian-sums proof. -/
+theorem roth_szekeres_graham (f : ℚ[X])
     (h_nonconst : 0 < f.natDegree)
     (h_lead_pos : 0 < f.leadingCoeff)
     (h_int_pos :
@@ -173,7 +3414,9 @@ axiom roth_szekeres_graham (f : ℚ[X])
           (z : ℚ) = f.eval (n : ℚ) ∧ ¬ ((ℓ : ℤ) ∣ z)) :
     ∃ X_f : ℤ, ∀ X : ℤ, X_f ≤ X →
       ∃ I : Finset ℕ,
-        (X : ℚ) = ∑ i ∈ I, f.eval ((i + 1 : ℕ) : ℚ)
+        (X : ℚ) = ∑ i ∈ I, f.eval ((i + 1 : ℕ) : ℚ) :=
+  Erdos.P283.RSG.graham_complete_polynomial_values
+    f h_nonconst h_lead_pos h_int_pos h_gcd_one
 
 end PolynomialEgyptianSums
 
@@ -3361,7 +6604,8 @@ Sub-results:
   * `B_diff_tendsto` — `(B_{N+1} - B_N) / N^{2r} → λ` (for explicit `λ`).
   * `intervals_overlap_eventually` — consecutive intervals overlap for large `N`.
 
-Trust boundary: `roth_szekeres_graham` (Basic.lean) only.
+The RSG input is supplied by the proved `roth_szekeres_graham` wrapper in
+`Basic.lean`.
 -/
 
 
@@ -6485,7 +9729,7 @@ The proof combines:
   * `egyptian_pattern_with_period` (Lemma 4) used by Lemma 6
   * `polynomial_periodicity` (Lemma 5) used by Lemma 6 and the correction slots
   * `switching_values_span_top` (Lemma 6) for the residue-correction trick
-  * `roth_szekeres_graham` (axiom) applied to `q := A ∘ Dpoly / g`
+  * `roth_szekeres_graham` applied to `q := A ∘ Dpoly / g`
   * Telescoping `D j` reciprocals via `main_telescoping`
   * Collision avoidance via `padicValNat` profiles
 
@@ -7983,12 +11227,3 @@ theorem erdos_351 :
   exact PolynomialEgyptianSums.corollary_7_pos_leading P hlc
 
 end Erdos351
-
-/-! ## Axiom audit -/
-
--- Uncomment to inspect the trust boundary at build time:
--- #print axioms PolynomialEgyptianSums.theorem_1
--- #print axioms PolynomialEgyptianSums.corollary_7_pos_leading
--- #print axioms PolynomialEgyptianSums.corollary_7
--- #print axioms Erdos283.erdos_283
--- #print axioms Erdos351.erdos_351

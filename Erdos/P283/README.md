@@ -3,9 +3,9 @@
 > [erdosproblems.com/283](https://www.erdosproblems.com/283) ·
 > [erdosproblems.com/351](https://www.erdosproblems.com/351)
 >
-> ✅ **Complete modulo the stated trust boundary.** No executable `sorry` or
-> `admit` remains in the P283 development. The only non-Mathlib postulate is
-> the Roth-Szekeres-Graham theorem recorded in `Basic.lean`.
+> ✅ **Complete without problem-specific axioms.** No executable `sorry` or
+> `admit` remains in the P283 development. The former Roth-Szekeres-Graham
+> trust boundary is now proved in `Erdos/P283/RSG` and re-exported from `Basic.lean`.
 >
 > Lemmas 3-6, switching polynomial, qPoly + asymptotics, valuation profiles,
 > telescoping, density argument via pigeonhole, finite-window RSG conversion,
@@ -42,7 +42,7 @@ The umbrella file `Proof.lean` re-exports everything for convenience.
 
 | File | What |
 |------|------|
-| [`Basic.lean`](Basic.lean) | Foundational defs: `IsEgyptianPattern`, `IntValued`, `intEval`, `NoFixedDivisor`, `HasIntegralMultiple`, `IntValued.{add, sub, sum}`, the RSG axiom, `FS`. |
+| [`Basic.lean`](Basic.lean) | Foundational defs: `IsEgyptianPattern`, `IntValued`, `intEval`, `NoFixedDivisor`, `HasIntegralMultiple`, `IntValued.{add, sub, sum}`, the RSG theorem wrapper, `FS`. |
 | [`Egyptian.lean`](Egyptian.lean) | §1 Lemmas 3 + 4 (`egyptian_expansion`, `egyptian_pattern_with_period`) + greedy helpers. |
 | [`PolynomialPeriod.lean`](PolynomialPeriod.lean) | §1 Lemma 5 (polynomial periodicity). |
 | [`Switching.lean`](Switching.lean) | §1 `switchingPoly`, exact natDegree/leadingCoeff formulas, Lemma 6 (`switching_values_span_top`), `IntValued.comp_nat_mul_X`, `switchingPoly_intValued`, `intEval_switchingPoly_nat`, `scaledPatternDenoms`. |
@@ -68,10 +68,9 @@ lake build Erdos.P283.Proof
 [`Proof_flat.lean`](Proof_flat.lean) in
 [live.lean-lang.org against Mathlib v4.27.0](https://live.lean-lang.org/#project=mathlib-v4.27.0&url=https%3A%2F%2Fraw.githubusercontent.com%2FShashi456%2Ferdos-formalizations%2Frefs%2Fheads%2Fmain%2FErdos%2FP283%2FProof_flat.lean).
 
-`Proof_flat.lean` is the 10-module modular split concatenated into a single
-`import Mathlib` file (~8 000 lines) for browser-loadable use; the modular
-`Proof.lean` umbrella above is the local-build entry. Both have identical
-content and the same trust boundary.
+`Proof_flat.lean` is the P283-local RSG proof plus the 10-module modular split
+concatenated into a single `import Mathlib` file for browser-loadable use. The
+modular `Proof.lean` umbrella above is the canonical local-build entry.
 
 To regenerate `Proof_flat.lean` after editing the modular files:
 
@@ -79,7 +78,9 @@ To regenerate `Proof_flat.lean` after editing the modular files:
 {
   echo '-- header...'
   echo 'import Mathlib'
-  for f in Erdos/P283/{Basic,Egyptian,PolynomialPeriod,Switching,MainSlots,Collision,Corrections,Theorem1,Corollary351,FC}.lean; do
+  for f in \
+    Erdos/P283/RSG/{CompleteSequences,PolynomialDifferences,PolynomialResidues,PolynomialValues}.lean \
+    Erdos/P283/{Basic,Egyptian,PolynomialPeriod,Switching,MainSlots,Collision,Corrections,Theorem1,Corollary351,FC}.lean; do
     grep -v '^import ' "$f"
   done
 } > Erdos/P283/Proof_flat.lean
@@ -120,7 +121,7 @@ Per-theorem status:
 
 | Theorem | Status |
 |---|---|
-| `roth_szekeres_graham` (axiom — Graham 1964 / Roth-Szekeres 1954) | postulated |
+| `roth_szekeres_graham` (Graham 1964 / Roth-Szekeres 1954) | ✅ proved in `Erdos/P283/RSG` |
 | Lemma 3 (`egyptian_expansion`, axiom-free) | ✅ proved |
 | Lemma 4 (`egyptian_pattern_with_period`, axiom-free) | ✅ proved |
 | Lemma 5 (`polynomial_periodicity`, axiom-free) | ✅ proved |
@@ -156,20 +157,19 @@ Per-theorem status:
 | `Erdos283.erdos_283` (FC iff form) | ✅ proved |
 | `Erdos351.erdos_351` (FC iff form) | ✅ proved |
 
-## Target trust boundary
+## Axiom audit
 
 Beyond Mathlib core (`propext`, `Classical.choice`, `Quot.sound`):
 
-| Theorem | Extra axioms (target) |
+| Theorem | Extra axioms |
 |---|---|
 | Lemmas 3-6 | (none — Egyptian-fraction combinatorics) |
-| Theorem 1 (main), Corollary 7, `erdos_283`, `erdos_351` | `roth_szekeres_graham` |
+| `roth_szekeres_graham`, Theorem 1, Corollary 7, `erdos_283`, `erdos_351` | none |
 
 `roth_szekeres_graham` is Graham's complete-polynomial-values theorem
-(*Duke Math. J.* 1964), with Roth-Szekeres (*Quart. J. Math.* 1954) as
-the asymptotic input. Both are classical and unconditional; Mathlib has
-surrounding analytic-number-theory infrastructure but not this named
-result.
+(*Duke Math. J.* 1964), historically preceded by Roth-Szekeres (*Quart. J.
+Math.* 1954). The formalized proof and source roadmap are in
+[`Erdos/P283/RSG`](RSG/README.md).
 
 ## Verifying with SafeVerify
 
@@ -177,10 +177,10 @@ result.
 declaration through the kernel via `Environment.replay`, enforces a hard
 axiom allow-list, and bans `partial` / `unsafe` constants.
 
-Our proof depends on one named axiom beyond `{propext, Quot.sound,
-Classical.choice}` — `PolynomialEgyptianSums.roth_szekeres_graham`.
-SafeVerify's default allow-list needs to be extended with this name; the
-extension is local to this problem.
+The imported proof now depends only on `{propext, Quot.sound,
+Classical.choice}`. SafeVerify's default allow-list is sufficient; no temporary
+allow-list extension for `PolynomialEgyptianSums.roth_szekeres_graham` is
+needed.
 
 **Reproduction** (assumes a clone of SafeVerify pinned to
 `leanprover/lean4:v4.27.0` — the same toolchain this repo uses):
@@ -194,15 +194,7 @@ lake build
 # 2. Build the SafeVerify target spec to .olean.
 lake env lean -o Erdos/P283/safeverify/Spec.olean Erdos/P283/safeverify/Spec.lean
 
-# 3. In your SafeVerify clone, extend `allowedAxioms` (Main.lean line 355)
-#    with the axiom used by this proof:
-#
-#      allowedAxioms := #[`propext, `Quot.sound, `Classical.choice,
-#        `PolynomialEgyptianSums.roth_szekeres_graham]
-#
-#    Then `lake exe cache get && lake build`.
-
-# 4. Run the check (LEAN_PATH must include this repo's .lake build dir
+# 3. Run the check (LEAN_PATH must include this repo's .lake build dir
 #    so SafeVerify can resolve `Erdos.P283.Proof`):
 cd /path/to/SafeVerify
 LEAN_PATH="/path/to/erdos-formalizations/.lake/build/lib/lean:$(lake env printenv LEAN_PATH)" \

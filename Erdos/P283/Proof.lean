@@ -4,7 +4,7 @@ Erdős Problems 283 + 351 — Polynomial Egyptian sums.
 **Umbrella file** that imports the split modules:
 
   Erdos.P283.Basic              — IntValued / NoFixedDivisor / HasIntegralMultiple,
-                                  the `roth_szekeres_graham` axiom.
+                                  the `roth_szekeres_graham` theorem wrapper.
   Erdos.P283.Egyptian           — Lemmas 3, 4 (Egyptian expansions / patterns).
   Erdos.P283.PolynomialPeriod   — Lemma 5 (polynomial periodicity).
   Erdos.P283.Switching          — switchingPoly + Lemma 6.
@@ -19,12 +19,10 @@ Erdős Problems 283 + 351 — Polynomial Egyptian sums.
 Following GPT-5.5 Pro + Liam Price (cleanup) + Kevin Barreto (noticed #351 follows),
 *Polynomial Egyptian Sums*, 3 May 2026 — `proof.pdf` in this directory.
 
-Trust boundary beyond Mathlib core (`propext`, `Quot.sound`, `Classical.choice`):
-  PolynomialEgyptianSums.roth_szekeres_graham — Graham 1964 / Roth-Szekeres 1954.
-
-This umbrella re-exports the split development. The proof is complete modulo
-the stated `roth_szekeres_graham` trust-boundary axiom: no executable `sorry`
-or `admit` remains in the P283 modules.
+This umbrella re-exports the split development. The proof is complete with no
+problem-specific axioms: `roth_szekeres_graham` is now derived from the
+`Erdos.P283.RSG` Graham 1964 formalization. No executable `sorry` or `admit` remains
+in the P283 modules.
 
 The full proof is structured around these named interfaces:
 
@@ -82,7 +80,9 @@ The following theorems are fully axiom-free (only `propext`, `Classical.choice`,
     `main_copy_eq_of_eq`, `main_copy_ne_tau`, `filler_ne_tau`,
     `correctionMultiplierMax`, and same-block injectivity lemmas
 
-The following depend on the trust-boundary axiom `roth_szekeres_graham`:
+The following formerly depended on the trust-boundary axiom
+`roth_szekeres_graham`; after the RSG formalization they also have only Mathlib
+core axioms:
 
   * `PolynomialEgyptianSums.main_window_representation`
   * `PolynomialEgyptianSums.theorem_1`

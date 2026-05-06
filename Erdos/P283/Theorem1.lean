@@ -14,7 +14,8 @@ Sub-results:
   * `B_diff_tendsto` — `(B_{N+1} - B_N) / N^{2r} → λ` (for explicit `λ`).
   * `intervals_overlap_eventually` — consecutive intervals overlap for large `N`.
 
-Trust boundary: `roth_szekeres_graham` (Basic.lean) only.
+The RSG input is supplied by the proved `roth_szekeres_graham` wrapper in
+`Basic.lean`.
 -/
 
 import Erdos.P283.Basic
@@ -3145,7 +3146,7 @@ The proof combines:
   * `egyptian_pattern_with_period` (Lemma 4) used by Lemma 6
   * `polynomial_periodicity` (Lemma 5) used by Lemma 6 and the correction slots
   * `switching_values_span_top` (Lemma 6) for the residue-correction trick
-  * `roth_szekeres_graham` (axiom) applied to `q := A ∘ Dpoly / g`
+  * `roth_szekeres_graham` applied to `q := A ∘ Dpoly / g`
   * Telescoping `D j` reciprocals via `main_telescoping`
   * Collision avoidance via `padicValNat` profiles
 

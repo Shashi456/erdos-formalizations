@@ -9,19 +9,15 @@ replays both files and checks the submission's matching declarations only
 depend on the allow-list:
 
   Mathlib core (`propext`, `Classical.choice`, `Quot.sound`)
-  + `PolynomialEgyptianSums.roth_szekeres_graham`
-        — Graham's complete-polynomial-values theorem (Duke Math. J. 1964)
-          with Roth–Szekeres (Quart. J. Math. 1954) as the asymptotic input.
-          The single classical, unconditional trust-boundary axiom.
 
-The extra axiom name is local to this problem; reproduction recipe in
-`../README.md` § "Verifying with SafeVerify".
+The former `PolynomialEgyptianSums.roth_szekeres_graham` trust boundary is now
+proved in `Erdos.P283.RSG`, so no problem-specific axiom needs to be added to the
+SafeVerify allow-list. Reproduction recipe in `../README.md` §
+"Verifying with SafeVerify".
 
 Lemmas 3-6 (egyptian_expansion, egyptian_pattern_with_period,
-polynomial_periodicity, switching_values_span_top) and the §3 zero and
-negative-leading cases of Corollary 7 do **not** depend on
-`roth_szekeres_graham`; the trust boundary attaches solely to `theorem_1`'s
-polynomial branch (where the asymptotic complete-polynomial result is invoked).
+polynomial_periodicity, switching_values_span_top), Theorem 1, Corollary 7, and
+the FC wrappers now have only Mathlib core axioms.
 -/
 
 import Mathlib
@@ -74,7 +70,7 @@ theorem polynomial_periodicity (p : ℚ[X]) (hp_int : IntValued p)
     (hxy : x ≡ y [ZMOD ((m * B : ℕ) : ℤ)]) :
     intEval p hp_int x ≡ intEval p hp_int y [ZMOD ((m : ℕ) : ℤ)] := sorry
 
-/-! ## §2 Main theorem (depends on `roth_szekeres_graham`) -/
+/-! ## §2 Main theorem -/
 
 /-- **Theorem 1 (PDF Theorem 1).** For `α ∈ ℚ_{>0}`, `L ≥ 1`, and `p ∈ ℚ[x]`
 integer-valued with positive leading coefficient and no fixed divisor on
@@ -99,7 +95,7 @@ theorem not_strongly_complete_of_neg_leadingCoeff
     (p : ℚ[X]) (hp : p.leadingCoeff < 0) :
     ¬ IsStronglyComplete (imageSet p) := sorry
 
-/-- The positive-leading case (depends transitively on `roth_szekeres_graham`). -/
+/-- The positive-leading case. -/
 theorem corollary_7_pos_leading (p : ℚ[X]) (h_lead_pos : 0 < p.leadingCoeff) :
     IsStronglyComplete (imageSet p) := sorry
 

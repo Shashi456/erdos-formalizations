@@ -9,13 +9,14 @@ Predicates and helpers used throughout the formalization:
   * `NoFixedDivisor p hp` — no `d ≥ 2` divides every `p(n)` for `n ≥ 1`.
   * `HasIntegralMultiple B p` — `B p(x) ∈ ℤ[x]` (denominator-cleared form).
   * `FS s`                — finite subset sums of a sequence (used by RSG).
-  * `roth_szekeres_graham` — the trust-boundary axiom (with integer-divisibility
-                              gcd hypothesis, fixed from earlier scaffold).
+  * `roth_szekeres_graham` — Graham's complete-polynomial-values theorem,
+                              supplied by `Erdos.P283.RSG`.
 
 This file is imported by every other P283 file.
 -/
 
 import Mathlib
+import Erdos.P283.RSG.PolynomialValues
 
 namespace PolynomialEgyptianSums
 
@@ -118,7 +119,7 @@ theorem exists_integral_multiple (p : ℚ[X]) :
     field_simp at h
     linarith
 
-/-! ## Roth–Szekeres–Graham (axiom) -/
+/-! ## Roth–Szekeres–Graham -/
 
 /-- The set of finite subset sums of a sequence `s : ℕ → ℤ`. -/
 def FS (s : ℕ → ℤ) : Set ℤ := { x | ∃ I : Finset ℕ, x = ∑ i ∈ I, s i }
@@ -129,10 +130,10 @@ with positive leading coefficient that takes positive integer values on
 integer value), all sufficiently large integers `X` admit an expression
 `X = ∑_{i ∈ I} f(i + 1)` for some finite `I ⊆ ℕ`.
 
-Classical (Graham 1964 / Roth-Szekeres 1954); Mathlib has surrounding analytic
-NT infrastructure but not this named result. We postulate it as the single
-trust-boundary axiom for the polynomial-Egyptian-sums proof. -/
-axiom roth_szekeres_graham (f : ℚ[X])
+Classical (Graham 1964 / Roth-Szekeres 1954). This theorem is proved in the
+new `Erdos.P283.RSG` scaffold and re-exported here in the exact shape used by the
+polynomial-Egyptian-sums proof. -/
+theorem roth_szekeres_graham (f : ℚ[X])
     (h_nonconst : 0 < f.natDegree)
     (h_lead_pos : 0 < f.leadingCoeff)
     (h_int_pos :
@@ -144,6 +145,8 @@ axiom roth_szekeres_graham (f : ℚ[X])
           (z : ℚ) = f.eval (n : ℚ) ∧ ¬ ((ℓ : ℤ) ∣ z)) :
     ∃ X_f : ℤ, ∀ X : ℤ, X_f ≤ X →
       ∃ I : Finset ℕ,
-        (X : ℚ) = ∑ i ∈ I, f.eval ((i + 1 : ℕ) : ℚ)
+        (X : ℚ) = ∑ i ∈ I, f.eval ((i + 1 : ℕ) : ℚ) :=
+  Erdos.P283.RSG.graham_complete_polynomial_values
+    f h_nonconst h_lead_pos h_int_pos h_gcd_one
 
 end PolynomialEgyptianSums

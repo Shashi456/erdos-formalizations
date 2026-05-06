@@ -1,0 +1,135 @@
+[["Erdos750.projFinset",
+  {"targetInfo":
+   {"constInfo": {"kind": "definition"},
+    "axioms": ["propext", "Quot.sound", "sorryAx"]},
+   "solutionInfo":
+   {"constInfo": {"kind": "definition"},
+    "axioms": ["propext", "Quot.sound", "Classical.choice"]},
+   "failureMode": null}],
+ ["Erdos750.oct_genMyc_le",
+  {"targetInfo":
+   {"constInfo": {"kind": "theorem"},
+    "axioms": ["propext", "Quot.sound", "sorryAx"]},
+   "solutionInfo":
+   {"constInfo": {"kind": "theorem"},
+    "axioms": ["propext", "Quot.sound", "Classical.choice"]},
+   "failureMode": null}],
+ ["Erdos750.erdos_750_independence",
+  {"targetInfo":
+   {"constInfo": {"kind": "theorem"},
+    "axioms": ["propext", "Quot.sound", "Classical.choice", "sorryAx"]},
+   "solutionInfo":
+   {"constInfo": {"kind": "theorem"},
+    "axioms":
+    ["propext",
+     "Quot.sound",
+     "Classical.choice",
+     "Erdos750.stiebitz_lower_bound"]},
+   "failureMode": null}],
+ ["Erdos750.genMyc",
+  {"targetInfo": {"constInfo": {"kind": "definition"}, "axioms": ["sorryAx"]},
+   "solutionInfo":
+   {"constInfo": {"kind": "definition"}, "axioms": ["propext", "Quot.sound"]},
+   "failureMode": null}],
+ ["Erdos750.erdos_750_FC",
+  {"targetInfo":
+   {"constInfo": {"kind": "theorem"},
+    "axioms": ["propext", "Quot.sound", "Classical.choice", "sorryAx"]},
+   "solutionInfo":
+   {"constInfo": {"kind": "theorem"},
+    "axioms":
+    ["propext",
+     "Quot.sound",
+     "Classical.choice",
+     "Erdos750.stiebitz_lower_bound"]},
+   "failureMode": null}],
+ ["Erdos750.oct_mono_edges",
+  {"targetInfo":
+   {"constInfo": {"kind": "theorem"},
+    "axioms": ["propext", "Quot.sound", "sorryAx"]},
+   "solutionInfo":
+   {"constInfo": {"kind": "theorem"},
+    "axioms": ["propext", "Quot.sound", "Classical.choice"]},
+   "failureMode": null}],
+ ["Erdos750.oct",
+  {"targetInfo":
+   {"constInfo": {"kind": "definition"},
+    "axioms": ["propext", "Quot.sound", "sorryAx"]},
+   "solutionInfo":
+   {"constInfo": {"kind": "definition"},
+    "axioms": ["propext", "Quot.sound", "Classical.choice"]},
+   "failureMode": null}],
+ ["Erdos750.MycVerts",
+  {"targetInfo": {"constInfo": {"kind": "definition"}, "axioms": []},
+   "solutionInfo": {"constInfo": {"kind": "definition"}, "axioms": []},
+   "failureMode": null}],
+ ["Erdos750.IsRecursivelyBuiltMr",
+  {"targetInfo": {"constInfo": {"kind": "definition"}, "axioms": ["sorryAx"]},
+   "solutionInfo":
+   {"constInfo": {"kind": "definition"},
+    "axioms": ["Quot.sound", "propext", "Classical.choice"]},
+   "failureMode": null}],
+ ["Erdos750.apex",
+  {"targetInfo": {"constInfo": {"kind": "definition"}, "axioms": []},
+   "solutionInfo": {"constInfo": {"kind": "definition"}, "axioms": []},
+   "failureMode": null}],
+ ["Erdos750.infinite_chromatic_local_oct",
+  {"targetInfo":
+   {"constInfo": {"kind": "theorem"},
+    "axioms": ["Quot.sound", "propext", "Classical.choice", "sorryAx"]},
+   "solutionInfo":
+   {"constInfo": {"kind": "theorem"},
+    "axioms":
+    ["Quot.sound",
+     "propext",
+     "Classical.choice",
+     "Erdos750.stiebitz_lower_bound"]},
+   "failureMode": null}],
+ ["Erdos750.erdos_750_independence_FC_form",
+  {"targetInfo":
+   {"constInfo": {"kind": "theorem"},
+    "axioms": ["propext", "Quot.sound", "Classical.choice", "sorryAx"]},
+   "solutionInfo":
+   {"constInfo": {"kind": "theorem"},
+    "axioms":
+    ["propext",
+     "Quot.sound",
+     "Classical.choice",
+     "Erdos750.stiebitz_lower_bound"]},
+   "failureMode": null}],
+ ["Erdos750.genMyc_oddCycle_through_apex_long",
+  {"targetInfo":
+   {"constInfo": {"kind": "theorem"},
+    "axioms": ["propext", "Classical.choice", "Quot.sound", "sorryAx"]},
+   "solutionInfo":
+   {"constInfo": {"kind": "theorem"},
+    "axioms": ["propext", "Classical.choice", "Quot.sound"]},
+   "failureMode": null}],
+ ["Erdos750.genMyc_chromaticNumber_le_succ",
+  {"targetInfo":
+   {"constInfo": {"kind": "theorem"},
+    "axioms": ["propext", "Quot.sound", "Classical.choice", "sorryAx"]},
+   "solutionInfo":
+   {"constInfo": {"kind": "theorem"},
+    "axioms": ["propext", "Quot.sound", "Classical.choice"]},
+   "failureMode": null}],
+ ["Erdos750.finite_oct_profile",
+  {"targetInfo":
+   {"constInfo": {"kind": "theorem"},
+    "axioms": ["Quot.sound", "propext", "sorryAx"]},
+   "solutionInfo":
+   {"constInfo": {"kind": "theorem"},
+    "axioms": ["Quot.sound", "propext", "Classical.choice"]},
+   "failureMode": null}],
+ ["Erdos750.finite_oct_profile_with_chromatic",
+  {"targetInfo":
+   {"constInfo": {"kind": "theorem"},
+    "axioms": ["Quot.sound", "propext", "sorryAx", "Classical.choice"]},
+   "solutionInfo":
+   {"constInfo": {"kind": "theorem"},
+    "axioms":
+    ["Quot.sound",
+     "propext",
+     "Classical.choice",
+     "Erdos750.stiebitz_lower_bound"]},
+   "failureMode": null}]]

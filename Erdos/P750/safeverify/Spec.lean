@@ -46,10 +46,12 @@ lemma oct_mono_edges {V : Type u} [DecidableEq V] {H G : SimpleGraph V}
     (hsub : H ≤ G) (X : Finset V) :
     oct H X ≤ oct G X := sorry
 
+def projFinset {V : Type u} [DecidableEq V] {s : ℕ}
+    (X : Finset (MycVerts s V)) : Finset V := sorry
+
 theorem oct_genMyc_le {V : Type u} [DecidableEq V]
     (s : ℕ) (G : SimpleGraph V) (X : Finset (MycVerts s V)) :
-    oct (genMyc s G) X ≤ s * oct G ((X.biUnion (fun a => match a with
-        | Sum.inl (_, v) => ({v} : Finset V) | Sum.inr () => ∅))) +
+    oct (genMyc s G) X ≤ s * oct G (projFinset X) +
       (if apex s V ∈ X then 1 else 0) := sorry
 
 theorem genMyc_oddCycle_through_apex_long {V : Type u} (s : ℕ) (_hs : 1 ≤ s)

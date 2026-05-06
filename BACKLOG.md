@@ -47,6 +47,12 @@ Work that is **not** the active focus, kept here so it isn't forgotten.
 - Would unblock the other half of P42's trust boundary.
 - Effort: months.
 
+### PR #5 (flagship): Roth-Szekeres-Graham / Graham complete polynomial sequences
+- Would remove the `roth_szekeres_graham` trust-boundary axiom from P283 + P351.
+- Preferred source: Graham, "Complete sequences of polynomial values", Duke Math. J. 31 (1964), 275-285.
+- Working plan and references: [`Erdos/RSG/README.md`](Erdos/RSG/README.md).
+- Effort: 3000-6000 lines, likely weeks. The reusable route formalizes Graham's complete-sequence API rather than only the bespoke P283 `qPoly` instance.
+
 ## Earlier polynomial-Egyptian-fraction work (Woett, August 2025)
 
 `arXiv:2502.02200` — *The binomial case of Graham's conjecture on polynomial representations with prescribed sum of reciprocals*. Reduces the conjecture for `p(x) = a x^d + b` to a finite search.

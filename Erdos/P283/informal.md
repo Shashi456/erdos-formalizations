@@ -42,11 +42,11 @@ Erdős #283 follows by taking `α = 1` and any fixed `L ≥ 1`. This is stronger
 than the original problem because the denominators can be forced to exceed
 an arbitrary prescribed bound.
 
-## Black box: Roth-Szekeres-Graham (Theorem 2 in the PDF)
+## Complete-polynomial input: Roth-Szekeres-Graham (Theorem 2 in the PDF)
 
 > **Theorem 2 (Roth–Szekeres–Graham).** Let `f ∈ ℚ[x]` be nonconstant with positive leading coefficient, satisfying `f(n) ∈ ℤ_{>0}` for `n ≥ 1` and `gcd{f(n) : n ≥ 1} = 1`. Then there is `X_f` such that all integers `X ≥ X_f` belong to `FS(f(1), f(2), f(3), …)` (finite subset sums).
 
-This is **Graham's complete-polynomial-values theorem** (Duke Math. J. 1964), with **Roth–Szekeres** (Quart. J. Math. 1954) as the asymptotic input. We treat it as the single trust-boundary axiom for the proof.
+This is **Graham's complete-polynomial-values theorem** (Duke Math. J. 1964), with **Roth–Szekeres** (Quart. J. Math. 1954) as the historical predecessor. It was formerly the single trust-boundary axiom; it is now formalized in `Erdos/P283/RSG` and re-exported as `roth_szekeres_graham`.
 
 ## Proof outline
 
@@ -133,9 +133,9 @@ r : ℕ := D * m - h * M
 ```
 The `α := r/h` formulation in earlier drafts was incorrect; the PDF uses `r/D`. The union of the `h` resulting `m₀_r` thresholds gives the global `m₀` for `corollary_7_pos_leading`.
 
-## Black-box dependency
+## Former black-box dependency
 
-`roth_szekeres_graham` (= Theorem 2) is the single non-Mathlib axiom. Both Roth-Szekeres (1954) and Graham (1964) are classical, unconditional results. Mathlib has surrounding analytic-NT infrastructure but not this named theorem.
+`roth_szekeres_graham` (= Theorem 2) is no longer a non-Mathlib axiom in the Lean development. The Graham 1964 proof is formalized in `Erdos/P283/RSG`; the imported P283/P351 theorems now report only Mathlib core axioms.
 
 ## Differences from the LaTeX writeup (planned)
 
