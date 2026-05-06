@@ -26,6 +26,42 @@ Egyptian pattern `E`. -/
 noncomputable def switchingPoly (p : ℚ[X]) (E : Finset ℕ) : ℚ[X] :=
   (E.sum fun e => p.comp ((Polynomial.C (e : ℚ)) * Polynomial.X)) - p
 
+/-- Direct evaluation: `Q_E(c) = ∑_{e ∈ E} p(e · c) - p(c)`. The p-increment
+when swapping a denominator `c` for `{e c : e ∈ E}`. -/
+lemma switchingPoly_eval_nat (p : ℚ[X]) (E : Finset ℕ) (c : ℕ) :
+    (switchingPoly p E).eval ((c : ℕ) : ℚ) =
+      (∑ e ∈ E, p.eval (((e * c : ℕ) : ℕ) : ℚ)) - p.eval ((c : ℕ) : ℚ) := by
+  unfold switchingPoly
+  rw [Polynomial.eval_sub, Polynomial.eval_finset_sum]
+  congr 1
+  apply Finset.sum_congr rfl
+  intro e _
+  rw [Polynomial.eval_comp, Polynomial.eval_mul, Polynomial.eval_C,
+      Polynomial.eval_X]
+  push_cast
+  ring_nf
+
+/-- Reciprocal-preservation property: `∑_{e ∈ E} 1/(e c) = 1/c` whenever `E` is
+an Egyptian pattern (`∑ 1/e = 1`) and `c > 0`. The arithmetic core of the
+"switch" operation that preserves the reciprocal sum. -/
+lemma IsEgyptianPattern.sum_scaled_recip
+    {E : Finset ℕ} (hE : IsEgyptianPattern E) (c : ℕ) (hc : 0 < c) :
+    (∑ e ∈ E, (1 : ℚ) / ((e * c : ℕ) : ℚ)) = (1 : ℚ) / (c : ℚ) := by
+  have hc_q : (0 : ℚ) < (c : ℚ) := by exact_mod_cast hc
+  have hc_ne : (c : ℚ) ≠ 0 := ne_of_gt hc_q
+  -- ∑ 1/(e*c) = (1/c) * ∑ 1/e = (1/c) * 1.
+  have h_factor : (∑ e ∈ E, (1 : ℚ) / ((e * c : ℕ) : ℚ)) =
+      (1 / (c : ℚ)) * ∑ e ∈ E, (1 : ℚ) / (e : ℚ) := by
+    rw [Finset.mul_sum]
+    apply Finset.sum_congr rfl
+    intro e he
+    have he_pos : 1 ≤ e := le_of_lt (lt_of_lt_of_le (by norm_num) (hE.1 e he))
+    have he_q : (0 : ℚ) < (e : ℚ) := by exact_mod_cast (Nat.lt_of_lt_of_le Nat.zero_lt_one he_pos)
+    have he_ne : (e : ℚ) ≠ 0 := ne_of_gt he_q
+    push_cast
+    field_simp
+  rw [h_factor, hE.2, mul_one]
+
 /-- The leading coefficient of `Q_E` is `lc(p) · (∑_{e ∈ E} e^r - 1)`, where
 `r := deg p`. Positive whenever `lc(p) > 0` and `E` is non-trivial (since
 `∑ e^r ≥ ∑ e ≥ 2|E| ≥ 2 > 1`). -/

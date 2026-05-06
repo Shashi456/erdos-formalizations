@@ -607,78 +607,79 @@ theorem theorem_1 (α : ℚ) (hα : 0 < α) (L : ℕ) (hL : 1 ≤ L) (p : ℚ[X]
     -- =============================================================================
     -- REMAINING WORK (PDF §2 final assembly).
     --
-    -- All the *atomic* pieces are proven (above are the three setup data: `md`,
-    -- `gcd`, `X_q`/`hX_q`). What remains is the integrative assembly producing
-    -- the witness denominators. The mathematical strategy from `proof.pdf`/§2:
+    -- All atomic pieces are proven (md, gcd, X_q/hX_q above). What remains is
+    -- the integrative assembly producing the witness denominators.
     --
-    --   For each large parameter `N : ℕ`, define base data:
-    --     S_main(N)   := { D j : md.J ≤ j ≤ N }         -- main slots
-    --     B_N         := ∑_{j ∈ [md.J, N]} (A p)(D j)    -- base p-sum from
-    --                                                       leaving every D_j alone
-    --     B_*         := ∑_ν b_ν                          -- correction p-sum
-    --                                                       baseline (b_ν > 0)
-    --     M_0         := X_q                              -- window-rep threshold
+    -- BASE p-SUM (from leaving every slot UNSWITCHED):
+    --   B_N := ∑_{j ∈ Icc J N} p(D j) + p(τ N)
+    --        + ∑_ν p(c_ν) + ∑_{f ∈ F} p(Λ f)         -- (NB: p, not A)
     --
-    --   The "attainable" set, i.e. the set of `m` representable for parameter N:
-    --     I_N := [B_N + B_* + M_0, B_N + μ p · N^{2r}]
-    --   covers every integer m in this range. Specifically:
-    --     (i)  Subtract B_N from m. The residue r_g := (m - B_N) mod gcd.g is
-    --          chosen by adding subset of {b_ν} (uses `duplicated_generators_subset_sum`).
-    --     (ii) After this residue-correction, the remaining (m - B_N - corr_sum)
-    --          is divisible by gcd.g and falls in [M_0, μ N^{2r}], so by `hX_q`
-    --          (window-rep) we have m - B_N - corr_sum = ∑_{i ∈ I} qPoly.eval(i+1) · g
-    --          which (multiplying through) means switching the main-slots indexed
-    --          by I from "leave alone" to "split into {2 D_j, 3 D_j, 6 D_j}",
-    --          adding exactly (A p)(D_j) per switched slot.
-    --     (iii) The reciprocal sum is preserved by switch (`isEgyptianPattern_E0`
-    --           gives 1/D_j = 1/(2 D_j) + 1/(3 D_j) + 1/(6 D_j)).
-    --     (iv) Filler denominators (from `egyptian_expansion` applied to
-    --          `α - 1/(P · u_J) - 1/(τ N) - C_0` for `C_0 := ∑_ν 1/c_ν`)
-    --          give the missing reciprocal mass; collision-free by `8 ∣ Λ`
-    --          (from `Collision.filler_v2_at_least_three`).
+    -- SWITCH INCREMENTS (added when swapping a slot for its E-multiples):
+    --   Main slot j: switching D j ↦ {2 D j, 3 D j, 6 D j} adds A(D j).
+    --   Correction slot ν: switching c_ν ↦ {e c_ν : e ∈ G_ν} adds
+    --     b_ν := Q_{G_ν}(c_ν).
+    -- These are NOT part of B_N.
     --
-    --   Consecutive intervals I_N, I_{N+1} overlap once N is large because
-    --     B_{N+1} - B_N = (A p)(D_{N+1}) ≈ λ p · N^{2r}  (asymptotic)
-    --     while  μ p · N^{2r} > λ p · N^{2r}    (`lambdaConst_lt_muConst`)
-    --   so I_N's right endpoint exceeds I_{N+1}'s left endpoint for large N,
-    --   hence ⋃_N I_N covers all sufficiently large integers.
+    -- FIXED FILLER MASS (independent of N — does NOT subtract 1/τ_N):
+    --   R₀ := α - 1/(P · u_J) - C₀,  with C₀ := ∑_ν 1/c_ν.
+    --   The 1/τ_N term is already absorbed by main_telescoping:
+    --     ∑_{j=J}^N 1/D_j + 1/τ_N = 1/(P · u_J).
     --
-    -- MISSING LEAN LEMMAS (each is a substantial proof in its own right):
+    -- ATTAINABLE INTERVAL:
+    --   I_N := [B_N + B_* + M_0, B_N + μ p · N^{2r}]
+    --   where B_* := ∑_ν b_ν (full correction p-sum)
+    --   and M_0 := max 0 (g · X_q) (lower-edge offset; X_q : ℤ from RSG, scaled by g
+    --              since RSG indexes the *quotient* polynomial; the natural-variable
+    --              threshold is g times that).
     --
-    --   1. `correction_slots_constructed`
-    --        Given `md`, `gcd`, choose finite `(c_ν, G_ν, b_ν)_ν` with:
-    --          - c_ν ≡ a_σ (mod T_g) using `exists_large_correction_denominator`
-    --          - {b_ν} duplicated covers all residues mod gcd.g (uses
-    --            `switching_values_span_top` + `duplicated_generators_...`)
-    --          - 0 < ∑_ν 1/c_ν < α/2 (made small by sequential largeness)
-    --          - ∀ ν,μ. c_ν ≠ c_μ + collision-free with main slots
+    -- BUILDING WITNESS FOR m ∈ I_N:
+    --   (i)  Choose correction subset T ⊆ Fin t via residue cover for
+    --        ((m - B_N : ℤ) mod g) using `duplicated_generators_subset_sum`.
+    --        Δ := ∑_{ν ∈ T} b_ν.
+    --   (ii) Set M := (m : ℤ) - B_N - Δ. Verify g ∣ M, M0 ≤ M, M ≤ μ N^{2r}.
+    --        Then by RSG (window-rep, finite consequence: see main_window_finite
+    --        below), get S ⊆ Icc J N with M = ∑_{j ∈ S} A(D j).
+    --   (iii) Final denominator set:
+    --          - For j ∈ Icc J N \ S: D j unchanged.
+    --          - For j ∈ S: replace D j by {2 D j, 3 D j, 6 D j}.
+    --          - Always include τ N.
+    --          - For ν ∈ Fin t \ T: c_ν unchanged.
+    --          - For ν ∈ T: replace c_ν by {e c_ν : e ∈ G_ν}.
+    --          - Always include all filler {Λ f : f ∈ F}.
+    --   (iv) Reciprocal sum: telescope D's via main_telescoping, with τ_N
+    --        absorbing the trailing 1/u_{N+1} term, plus C₀ from corrections,
+    --        plus R₀ from fillers. Switches preserve via 1/x = ∑_{e ∈ E} 1/(ex).
+    --   (v)  p-sum: ∑_{slots leave alone} p(slot) + ∑_{slots switched} (p_split)
+    --        = B_N + ∑_{j ∈ S} A(D j) + Δ = B_N + M + Δ = m.
     --
-    --   2. `B_diff_eventually_lt_mu`
-    --        For sufficiently large N, (A p)(D_{N+1}) < μ p · (N+1)^{2r}.
-    --        Standard polynomial-asymptotics: leading term is λ N^{2r} < μ N^{2r}
-    --        with O(N^{2r-1}) error, dominated for large N. Uses
-    --        `A_leadingCoeff_eq` + `lambdaConst_lt_muConst`.
+    -- OVERLAP STEP (consecutive I_N covers all m ≥ m_0):
+    --   B_{N+1} - B_N = p(D (N+1)) + p(τ (N+1)) - p(τ N).      -- (NB: p, not A)
+    --   Asymptotically this is ≈ p.lc · D(N+1)^r ≈ λ p · N^{2r}, since
+    --   D(N+1) ~ P² N². The overlap condition is
+    --     B_{N+1} - B_N < μ p · (N+1)^{2r} - μ p · N^{2r} + (something for B_*+M_0)
+    --   which is implied by B_{N+1} - B_N < μ p · N^{2r} (lambdaConst_lt_muConst,
+    --   plus polynomial asymptotics with O(N^{2r-1}) error term).
     --
-    --   3. `attainable_interval`
-    --        For each N (with the chosen correction data), every m ∈ I_N is
-    --        representable. This is the bulk of §2: builds the explicit
-    --        denominator list, proves StrictMono via collision avoidance
-    --        (`main_valuation_profile`, `tau_valuation_profile`,
-    --        `filler_v2_at_least_three`), and verifies both sums.
+    -- NEXT-STEP ARCHITECTURE (per architectural review):
     --
-    --   4. `intervals_overlap_eventually`
-    --        For large N, I_N ∪ I_{N+1} is an interval (right(I_N) ≥ left(I_{N+1})).
-    --        Direct from `B_diff_eventually_lt_mu`.
+    --   Don't write the assembly inline here. Build named interface lemmas:
     --
-    --   5. Final union argument: pick m₀ such that I_N covers m for some N ≥ N_0
-    --      whenever m ≥ m₀; then `attainable_interval` gives the witness.
+    --   1. IsEgyptianPattern.sum_scaled_recip — ∑_{e ∈ E} 1/(e c) = 1/c.
+    --   2. switchingPoly_eval_nat — Q_E(c) = ∑_{e ∈ E} p(e c) - p(c).
+    --   3. CorrectionData record + constructCorrectionData lemma.
+    --   4. main_window_finite — finite-window consequence of RSG, with
+    --      M0 := max 0 (g * X_q) and M0 ≤ M ≤ μ N^{2r} ⇒ S ⊆ Icc J N exists.
+    --   5. FillerData record (uses egyptian_expansion on Λ * R₀ for fixed F).
+    --   6. baseInt definition, Bstar, M0.
+    --   7. all_denominators_pairwise_disjoint master collision lemma.
+    --   8. attainable_interval (the bulk).
+    --   9. base_step_tendsto / B_diff_eventually_lt_mu.
+    --  10. intervals_cover_eventually.
+    --  11. theorem_1 case neg final glue: ~20-40 lines.
     --
-    -- Each of these is doable; together they form ~600-1000 lines of Lean. The
-    -- raw shape of the conclusion (existential of `(k, n, hMono, hL, hα, hm)`)
-    -- comes from `attainable_interval` once it's in hand: just feed in the
-    -- N := smallest N with m ∈ I_N (well-defined by overlap), unpack the
-    -- denominator list as a `Finset ℕ`, enumerate via `orderEmbOfFin`, and
-    -- finish exactly as in the constant case (lines 569-597 above).
+    -- In the `g = 1` sub-case, CorrectionData can use `Fin 0`, eliminating
+    -- B_* and the residue-cover step entirely. This is the easier sub-case
+    -- and could be a separate first attempt before the full `g ≥ 2` machinery.
     -- =============================================================================
     sorry
 
