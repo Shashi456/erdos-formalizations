@@ -565,6 +565,7 @@ noncomputable def switchValueSet (p : ℚ[X]) (hp : IntValued p) : Set ℤ :=
       z = (∑ e ∈ E, intEval p hp ((e * n : ℕ) : ℤ))
             - intEval p hp ((n : ℕ) : ℤ) }
 
+set_option linter.unusedVariables false in
 /-- **Lemma 6 (PDF §1, corrected).** If `p` has degree `≥ 1`, positive leading
 coefficient, and no fixed divisor on positive integers, then the integer values
 of all switching polynomials `Q_E(n)` (over Egyptian patterns `E` and positive

@@ -257,7 +257,7 @@ theorem exists_large_correction_denominator
     have h1 : X₀ - 1 ∈ (badFinSet ∪ {X₀ - 1}) := by
       apply Finset.mem_union_right; exact Finset.mem_singleton.mpr rfl
     have h2 : X₀ - 1 ≤ (badFinSet ∪ {X₀ - 1}).sup id := by
-      have := Finset.le_sup (f := id) h1; simpa using this
+      exact Finset.le_sup (f := id) h1
     rw [hXbadMax_def]
     -- X₀ - 1 + 1 ≤ ... + 1, and X₀ ≤ X₀ - 1 + 1 (since X₀ ≥ 1 from hX₀_lower)
     have hX₀_ge_1 : 1 ≤ X₀ := by omega
@@ -266,7 +266,7 @@ theorem exists_large_correction_denominator
     intro c hc hmem
     have h1 : c ∈ (badFinSet ∪ {X₀ - 1}) := Finset.mem_union_left _ hmem
     have h2 : c ≤ (badFinSet ∪ {X₀ - 1}).sup id := by
-      have := Finset.le_sup (f := id) h1; simpa using this
+      exact Finset.le_sup (f := id) h1
     rw [hXbadMax_def] at hc; omega
   -- Step 5: The remaining counting/density step.
   --
@@ -354,7 +354,7 @@ theorem exists_large_correction_denominator
         have h := Nat.lt_succ_sqrt (maxE * UpperC)
         -- h : maxE * UpperC < (maxE*UpperC).sqrt.succ * (maxE*UpperC).sqrt.succ
         show maxE * UpperC < (Nat.sqrt (maxE * UpperC) + 1) * (Nat.sqrt (maxE * UpperC) + 1)
-        convert h using 2 <;> rfl
+        convert h using 2
       have h3 : (Nat.sqrt (maxE * UpperC) + 1) * (Nat.sqrt (maxE * UpperC) + 1) ≤ (j + 1) * (j + 1) := by
         have hjp : Nat.sqrt (maxE * UpperC) + 1 ≤ j + 1 := by omega
         exact Nat.mul_le_mul hjp hjp
@@ -406,8 +406,8 @@ theorem exists_large_correction_denominator
       -- Now k ∈ HE_set.filter(...).image(...).
       refine Finset.mem_image.mpr ⟨(h, e), ?_, ?_⟩
       · rw [Finset.mem_filter]
-        -- Goals are about (h, e).1 = h and (h, e).2 = e; simplify pair projections.
-        simp only [Prod.fst, Prod.snd]
+        show (h, e) ∈ HE_set ∧ h * D j ≥ e * aσ ∧
+             e ∣ h * D j - e * aσ ∧ e * Tg ∣ h * D j - e * aσ
         refine ⟨?_, ?_, ?_, ?_⟩
         · rw [hHE_def]; exact Finset.mem_product.mpr ⟨hh, he⟩
         · -- h * D j ≥ e * aσ since h * D j = e * (aσ + k * Tg) ≥ e * aσ.
@@ -430,7 +430,7 @@ theorem exists_large_correction_denominator
           -- e * Tg ∣ e * (k * Tg) = e * Tg * k
           refine ⟨k, ?_⟩; ring
       · -- the image element equals k
-        simp only [Prod.fst, Prod.snd]
+        show (h * D j - e * aσ) / (e * Tg) = k
         have : h * D j - e * aσ = e * (k * Tg) := by
           have h2 : e * aσ + e * (k * Tg) = h * D j := by
             have := heq

@@ -62,6 +62,12 @@ lake build Erdos.P283.Proof
 **Online (no Lake required):** open in
 [live.lean-lang.org against Mathlib v4.27.0](https://live.lean-lang.org/#project=mathlib-v4.27.0&url=https%3A%2F%2Fraw.githubusercontent.com%2FShashi456%2Ferdos-formalizations%2Frefs%2Fheads%2Fmain%2FErdos%2FP283%2FProof.lean).
 
+`lake build Erdos.P283.Proof` succeeds with **zero P283 lint warnings**.
+Public-API hypotheses that the current proof body doesn't use (e.g. `hm` in
+`polynomial_periodicity`, `h_nonconst`/`h_lead_pos` in `switching_values_span_top`)
+are kept named for documentation and have local `set_option
+linter.unusedVariables false in` annotations.
+
 ## Current state
 
 Theorem statements wired to FC's

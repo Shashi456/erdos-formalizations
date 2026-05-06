@@ -234,6 +234,7 @@ lemma chooseMainChoice (α : ℚ) (hα : 0 < α) (L : ℕ) (p : ℚ[X]) (hp : In
             apply Nat.mul_le_mul_right; omega
     omega
 
+set_option linter.unusedVariables false in
 /-- Constructor for `MainGCDData`: given a fixed `MainChoice md` (so `J` is
 chosen and `A(D j) > 0` for `j ≥ J`), extract the gcd `g` of the integer
 values `A(D j) : j ≥ J` (as the natAbs of the generator of
@@ -847,7 +848,7 @@ lemma exists_ordered_correction_slots
             have hne_old : ν' ≠ μ' := by
               intro h
               apply hne
-              simpa [h]
+              simp [h]
             exact hcorr_old ν' μ' hne_old e he e' he' h_eq
       · intro ν j hj h hh
         refine Fin.lastCases ?_ (fun ν' => ?_) ν
@@ -1003,8 +1004,9 @@ lemma chooseFillerData
   have hΛ_gt_corr : ∀ ν : Fin corr.t, corr.c ν < Λ := by
     intro ν
     have h_inner : corr.c ν ≤ (insert 1 (corr.G ν)).sup (fun e => e * corr.c ν) := by
-      simpa using (Finset.le_sup (f := fun e => e * corr.c ν)
-        (Finset.mem_insert_self 1 (corr.G ν)))
+      have h := Finset.le_sup (f := fun e => e * corr.c ν)
+        (Finset.mem_insert_self 1 (corr.G ν))
+      simp only [one_mul] at h; exact h
     have h_outer : (insert 1 (corr.G ν)).sup (fun e => e * corr.c ν) ≤ corrMax := by
       rw [hcorrMax_def]
       exact Finset.le_sup (f := fun ν => (insert 1 (corr.G ν)).sup (fun e => e * corr.c ν))
@@ -1426,7 +1428,7 @@ lemma const_mul_pow_eventually_le_polynomial (R : ℚ[X]) {d : ℕ} {c : ℚ}
 /-- Since `(N - J + 1) / N → 1`, any strict coefficient gap `β < c`
 eventually gives `β N^d < c (N - J + 1)^d`. -/
 lemma shifted_power_eventually_mul_lt (J d : ℕ) {β c : ℚ}
-    (hd_pos : 0 < d) (hβ_pos : 0 < β) (hβc : β < c) :
+    (_hd_pos : 0 < d) (hβ_pos : 0 < β) (hβc : β < c) :
     ∃ N₀ : ℕ, ∀ N : ℕ, N₀ ≤ N →
       β * (N : ℚ) ^ d < c * ((N - J + 1 : ℕ) : ℚ) ^ d := by
   classical
@@ -3132,6 +3134,7 @@ def mainQuot_no_prime_fixed_stmt (md : MainChoice α L p hp) (g : ℕ)
 
 end MainQuotBridge
 
+set_option linter.unusedVariables false in
 /-- **Main theorem (PDF Theorem 1).** For `α ∈ ℚ_{>0}`, `L ≥ 1`, and a polynomial
 `p ∈ ℚ[x]` integer-valued with positive leading coefficient and no fixed
 divisor on positive integers, all sufficiently large integers `m` admit an

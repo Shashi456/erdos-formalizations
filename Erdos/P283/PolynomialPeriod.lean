@@ -30,6 +30,7 @@ lemma int_poly_eval_congr (P : ℤ[X]) {M x y : ℤ}
     rw [Polynomial.eval_monomial, Polynomial.eval_monomial]
     exact (Int.ModEq.refl c).mul (hxy.pow n)
 
+set_option linter.unusedVariables false in
 /-- **Lemma 5 (PDF §1).** If `B p(x) ∈ ℤ[x]` and `x ≡ y (mod m B)`, then
 `p(x) ≡ p(y) (mod m)`. So `m B` is a period of the integer values of `p` modulo
 `m`. -/
