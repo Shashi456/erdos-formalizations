@@ -90,6 +90,8 @@ theorem corollary_7_zero : IsStronglyComplete (imageSet 0) := by
 
 /-! ## Case positive leading coefficient -/
 
+set_option maxHeartbeats 800000
+
 /-! ### Helper lemmas for `corollary_7_pos_leading` -/
 
 /-- `IntValued (C D * p)` whenever `D · p` has integer coefficients. The
@@ -569,25 +571,81 @@ theorem corollary_7_pos_leading (p : ℚ[X])
         rw [hpr_def, Polynomial.leadingCoeff_map_of_injective h_inj_qr]
         have : (0 : ℝ) < (p.leadingCoeff : ℝ) := by exact_mod_cast h_lead_pos
         simpa [algebraMap] using this
-      have hpr_deg_pos : 0 < pr.degree := by
-        have hnat : 0 < pr.natDegree := by
-          rw [hpr_def, Polynomial.natDegree_map_eq_of_injective h_inj_qr]
-          exact hd_pos
-        exact Polynomial.natDegree_pos_iff_degree_pos.mp hnat
+      have hpr_natDeg_pos : 0 < pr.natDegree := by
+        rw [hpr_def, Polynomial.natDegree_map_eq_of_injective h_inj_qr]
+        exact hd_pos
+      have hpr_deg_pos : 0 < pr.degree :=
+        Polynomial.natDegree_pos_iff_degree_pos.mp hpr_natDeg_pos
       have h_tendsto : Filter.Tendsto (fun x : ℝ => pr.eval x) Filter.atTop Filter.atTop :=
         Polynomial.tendsto_atTop_of_leadingCoeff_nonneg pr hpr_deg_pos hpr_lead.le
       set Bmax : ℝ := if hB : B.Nonempty then ((B.image fun b : ℚ => (b : ℝ)).max' (Finset.Nonempty.image hB _)) else 0
       obtain ⟨N₀, hN₀⟩ := Filter.tendsto_atTop_atTop.mp h_tendsto (Bmax + 2)
-      let L : ℕ := max 1 (Nat.ceil (max N₀ 0) + 1)
-      refine ⟨L, le_max_left _ _, ?_, ?_⟩
+      -- Strict monotonicity threshold via derivative bound.
+      -- We seek N₁ such that pr.derivative.eval x ≥ pr.leadingCoeff/2 for x ≥ N₁.
+      set c_half : ℝ := pr.leadingCoeff / 2 with hc_half_def
+      have hc_half_pos : 0 < c_half := by rw [hc_half_def]; linarith
+      have h_deriv_natDeg : pr.derivative.natDegree = pr.natDegree - 1 := by
+        rw [show pr.derivative = (Polynomial.hasseDeriv 1) pr from
+              (Polynomial.hasseDeriv_one' pr).symm]
+        exact Polynomial.natDegree_hasseDeriv pr 1
+      have h_deriv_lb : ∃ N₁ : ℝ, ∀ x ≥ N₁, c_half ≤ pr.derivative.eval x := by
+        by_cases h_nd1 : pr.natDegree = 1
+        · -- pr.derivative is the constant pr.leadingCoeff.
+          refine ⟨0, fun x _ => ?_⟩
+          have hd_natDeg : pr.derivative.natDegree = 0 := by
+            rw [h_deriv_natDeg, h_nd1]
+          have h_pr_deriv_C : pr.derivative = Polynomial.C pr.derivative.leadingCoeff := by
+            have := Polynomial.eq_C_of_natDegree_eq_zero hd_natDeg
+            convert this using 1
+            rw [Polynomial.leadingCoeff, hd_natDeg]
+          have h_lead_eq : pr.derivative.leadingCoeff = pr.leadingCoeff := by
+            rw [Polynomial.leadingCoeff, hd_natDeg, Polynomial.coeff_derivative,
+                Polynomial.leadingCoeff, h_nd1]
+            ring
+          rw [h_pr_deriv_C, Polynomial.eval_C, h_lead_eq, hc_half_def]
+          linarith
+        · -- pr.natDegree ≥ 2; use tendsto.
+          have h_nd_ge_two : 2 ≤ pr.natDegree := by omega
+          have h_deriv_natDeg_pos : 0 < pr.derivative.natDegree := by
+            rw [h_deriv_natDeg]; omega
+          have h_deriv_deg_pos : 0 < pr.derivative.degree :=
+            Polynomial.natDegree_pos_iff_degree_pos.mp h_deriv_natDeg_pos
+          have h_deriv_lead_pos : 0 < pr.derivative.leadingCoeff := by
+            rw [Polynomial.leadingCoeff, h_deriv_natDeg, Polynomial.coeff_derivative]
+            have h1 : pr.natDegree - 1 + 1 = pr.natDegree := by omega
+            rw [h1, Polynomial.coeff_natDegree]
+            have h2 : (0 : ℝ) < ((pr.natDegree - 1 : ℕ) : ℝ) + 1 := by
+              have : (0 : ℝ) ≤ ((pr.natDegree - 1 : ℕ) : ℝ) := by
+                exact_mod_cast Nat.zero_le _
+              linarith
+            exact mul_pos hpr_lead h2
+          have h_deriv_t : Filter.Tendsto (fun x : ℝ => pr.derivative.eval x)
+              Filter.atTop Filter.atTop :=
+            Polynomial.tendsto_atTop_of_leadingCoeff_nonneg pr.derivative
+              h_deriv_deg_pos h_deriv_lead_pos.le
+          obtain ⟨N₁, hN₁⟩ := Filter.tendsto_atTop_atTop.mp h_deriv_t c_half
+          exact ⟨N₁, hN₁⟩
+      obtain ⟨N₁, hN₁⟩ := h_deriv_lb
+      -- For n₁, n₂ > L (with L large enough), the strict comparison holds.
+      -- We need L ≥ ⌈max N₀ 0⌉ + 1 (for the avoid part)
+      --        L ≥ ⌈max N₁ 0⌉ + 1 (so [L, ∞) ⊂ [N₁, ∞), where deriv ≥ c_half)
+      --        L ≥ ⌈1/c_half⌉ + 1 (so for n₁, n₂ > L, n₁ * n₂ > 1/c_half, hence
+      --           c_half * (n₂ - n₁) > (n₂ - n₁)/(n₁ n₂) = 1/n₁ - 1/n₂).
+      let L : ℕ := max (max 1 (Nat.ceil (max N₀ 0) + 1))
+                       (max (Nat.ceil (max N₁ 0) + 1) (Nat.ceil (1/c_half) + 1))
+      refine ⟨L, ?_, ?_, ?_⟩
+      · -- 1 ≤ L
+        have h1 : 1 ≤ max 1 (Nat.ceil (max N₀ 0) + 1) := le_max_left _ _
+        have h2 : max 1 (Nat.ceil (max N₀ 0) + 1) ≤ L := le_max_left _ _
+        omega
       · intro n hn hb
+        have h_part1 : max 1 (Nat.ceil (max N₀ 0) + 1) ≤ L := le_max_left _ _
         have hn_ge : (Nat.ceil (max N₀ 0) + 1) ≤ n := by
-          have h_max_right : Nat.ceil (max N₀ 0) + 1 ≤ L := le_max_right _ _
+          have h_max_right : Nat.ceil (max N₀ 0) + 1 ≤ max 1 (Nat.ceil (max N₀ 0) + 1) :=
+            le_max_right _ _
           omega
         have hn_pos : 0 < n := by
-          have : 1 ≤ n := by
-            have : 1 ≤ L := le_max_left _ _
-            omega
+          have h1L : 1 ≤ max 1 (Nat.ceil (max N₀ 0) + 1) := le_max_left _ _
           omega
         have h1 : (Nat.ceil (max N₀ 0) : ℝ) ≥ N₀ := by
           have hN0_le_max : N₀ ≤ max N₀ 0 := le_max_left _ _
@@ -630,14 +688,136 @@ theorem corollary_7_pos_leading (p : ℚ[X])
         rw [h_split] at hb_le_Bmax
         linarith
       · -- Injectivity for n > L, nonconstant case.
-        -- SUB-SORRY: For nonconstant `p` with positive leading coefficient,
-        -- the function `f(n) = p(n) + 1/n` is strictly monotone for sufficiently
-        -- large `n`. Specifically, `f(n+1) - f(n) = (p(n+1) - p(n)) - 1/(n(n+1))`,
-        -- where `p(n+1) - p(n) → ∞` (degree ≥ 1) while `1/(n(n+1)) → 0`. Hence
-        -- eventually `f` is strictly increasing, so injective. We can enlarge `L`
-        -- to include this monotonicity threshold.
+        -- For a < b, both > L, we show p.eval a + 1/a ≠ p.eval b + 1/b.
+        -- Mean-value gives pr.eval b - pr.eval a ≥ c_half * (b - a).
+        -- Meanwhile 1/a - 1/b = (b - a)/(a * b), and a * b > 1/c_half so
+        -- 1/(a * b) < c_half, hence (b - a)/(a * b) < c_half * (b - a).
+        -- Therefore pr.eval a + 1/a < pr.eval b + 1/b, contradicting equality.
+        have hL_lb_N₁ : (Nat.ceil (max N₁ 0) + 1) ≤ L := by
+          have h1 : Nat.ceil (max N₁ 0) + 1 ≤
+              max (Nat.ceil (max N₁ 0) + 1) (Nat.ceil (1/c_half) + 1) := le_max_left _ _
+          have h2 : max (Nat.ceil (max N₁ 0) + 1) (Nat.ceil (1/c_half) + 1) ≤ L := le_max_right _ _
+          omega
+        have hL_lb_inv : (Nat.ceil (1/c_half) + 1) ≤ L := by
+          have h1 : Nat.ceil (1/c_half) + 1 ≤
+              max (Nat.ceil (max N₁ 0) + 1) (Nat.ceil (1/c_half) + 1) := le_max_right _ _
+          have h2 : max (Nat.ceil (max N₁ 0) + 1) (Nat.ceil (1/c_half) + 1) ≤ L := le_max_right _ _
+          omega
+        have hL_lb_one : 1 ≤ L := by
+          have h1 : 1 ≤ max 1 (Nat.ceil (max N₀ 0) + 1) := le_max_left _ _
+          have h2 : max 1 (Nat.ceil (max N₀ 0) + 1) ≤ L := le_max_left _ _
+          omega
+        -- Helper: for a < b, both > L, evaluation values differ.
+        have helper : ∀ a b : ℕ, L < a → L < b → a < b →
+            p.eval ((a : ℕ) : ℚ) + 1 / ((a : ℕ) : ℚ) ≠
+              p.eval ((b : ℕ) : ℚ) + 1 / ((b : ℕ) : ℚ) := by
+          intro a b ha hb hab heq
+          have ha_pos : 1 ≤ a := by omega
+          have hb_pos : 1 ≤ b := by omega
+          have ha_real_pos : (0 : ℝ) < (a : ℝ) := by exact_mod_cast ha_pos
+          have hb_real_pos : (0 : ℝ) < (b : ℝ) := by exact_mod_cast hb_pos
+          have ha_le_b_real : (a : ℝ) ≤ (b : ℝ) := by exact_mod_cast hab.le
+          have h_ceil_ge_N₁ : (Nat.ceil (max N₁ 0) : ℝ) ≥ N₁ := by
+            have h1 : N₁ ≤ max N₁ 0 := le_max_left _ _
+            have h2 : (max N₁ 0) ≤ (Nat.ceil (max N₁ 0) : ℝ) := Nat.le_ceil _
+            linarith
+          have h_a_ge_N₁ : N₁ ≤ (a : ℝ) := by
+            have h1 : (Nat.ceil (max N₁ 0) + 1 : ℕ) ≤ a := by omega
+            have h2 : ((Nat.ceil (max N₁ 0) + 1 : ℕ) : ℝ) ≤ (a : ℝ) := by exact_mod_cast h1
+            push_cast at h2
+            linarith
+          have h_b_ge_N₁ : N₁ ≤ (b : ℝ) := by
+            have h1 : (Nat.ceil (max N₁ 0) + 1 : ℕ) ≤ b := by omega
+            have h2 : ((Nat.ceil (max N₁ 0) + 1 : ℕ) : ℝ) ≤ (b : ℝ) := by exact_mod_cast h1
+            push_cast at h2
+            linarith
+          have h_deriv_lb_real : ∀ x ∈ interior (Set.Ici N₁),
+              c_half ≤ Polynomial.eval x pr.derivative := by
+            intro x hx
+            simp only [interior_Ici, Set.mem_Ioi] at hx
+            exact hN₁ x hx.le
+          have h_pr_diffOn_int : DifferentiableOn ℝ (fun x : ℝ => pr.eval x)
+              (interior (Set.Ici N₁)) := pr.differentiable.differentiableOn
+          have h_pr_contOn : ContinuousOn (fun x : ℝ => pr.eval x) (Set.Ici N₁) :=
+            pr.continuous.continuousOn
+          have h_deriv_eq : ∀ x : ℝ, deriv (fun x : ℝ => pr.eval x) x = pr.derivative.eval x :=
+            fun x => pr.deriv
+          -- Mean-value: c_half * (b - a) ≤ pr.eval b - pr.eval a.
+          have h_mvt : c_half * ((b : ℝ) - (a : ℝ)) ≤
+              pr.eval (b : ℝ) - pr.eval (a : ℝ) := by
+            apply (convex_Ici N₁).mul_sub_le_image_sub_of_le_deriv
+                h_pr_contOn h_pr_diffOn_int
+            · intro x hx
+              rw [h_deriv_eq]
+              exact h_deriv_lb_real x hx
+            · exact h_a_ge_N₁
+            · exact h_b_ge_N₁
+            · exact ha_le_b_real
+          -- Cast heq to ℝ.
+          have h_eq_real : pr.eval (a : ℝ) + 1/(a : ℝ) = pr.eval (b : ℝ) + 1/(b : ℝ) := by
+            have h_eval_cast_a : pr.eval ((a : ℕ) : ℝ) = ((p.eval ((a : ℕ) : ℚ) : ℚ) : ℝ) := by
+              rw [hpr_def]
+              have h1 : ((a : ℕ) : ℝ) = (algebraMap ℚ ℝ) ((a : ℕ) : ℚ) := by simp [algebraMap]
+              rw [h1, Polynomial.eval_map_apply]; simp [algebraMap]
+            have h_eval_cast_b : pr.eval ((b : ℕ) : ℝ) = ((p.eval ((b : ℕ) : ℚ) : ℚ) : ℝ) := by
+              rw [hpr_def]
+              have h1 : ((b : ℕ) : ℝ) = (algebraMap ℚ ℝ) ((b : ℕ) : ℚ) := by simp [algebraMap]
+              rw [h1, Polynomial.eval_map_apply]; simp [algebraMap]
+            have h_lhs : pr.eval ((a : ℕ) : ℝ) + 1/((a : ℕ) : ℝ) =
+                ((p.eval ((a : ℕ) : ℚ) + 1/((a : ℕ) : ℚ) : ℚ) : ℝ) := by
+              rw [h_eval_cast_a]; push_cast; ring
+            have h_rhs : pr.eval ((b : ℕ) : ℝ) + 1/((b : ℕ) : ℝ) =
+                ((p.eval ((b : ℕ) : ℚ) + 1/((b : ℕ) : ℚ) : ℚ) : ℝ) := by
+              rw [h_eval_cast_b]; push_cast; ring
+            rw [h_lhs, h_rhs]
+            exact_mod_cast heq
+          -- pr.eval b - pr.eval a = 1/a - 1/b.
+          have h_diff_eq : pr.eval (b : ℝ) - pr.eval (a : ℝ) = 1/(a : ℝ) - 1/(b : ℝ) := by
+            linarith
+          -- 1/a - 1/b = (b - a) / (a * b).
+          have h_inv_diff : 1/(a : ℝ) - 1/(b : ℝ) =
+              ((b : ℝ) - (a : ℝ)) / ((a : ℝ) * (b : ℝ)) := by field_simp
+          -- a * b > 1/c_half (since a > Nat.ceil (1/c_half) ≥ 1/c_half and b ≥ 1).
+          have h_a_ge_inv_c : 1 / c_half < (a : ℝ) := by
+            have h1 : (Nat.ceil (1/c_half) : ℝ) ≥ 1/c_half := Nat.le_ceil _
+            have h2 : (Nat.ceil (1/c_half) + 1 : ℕ) ≤ a := by omega
+            have h3 : ((Nat.ceil (1/c_half) + 1 : ℕ) : ℝ) ≤ (a : ℝ) := by exact_mod_cast h2
+            push_cast at h3
+            linarith
+          have h_a_b_pos : 0 < (a : ℝ) * (b : ℝ) := mul_pos ha_real_pos hb_real_pos
+          have h_a_b_gt : 1 / c_half < (a : ℝ) * (b : ℝ) := by
+            have hb_ge_one : (1 : ℝ) ≤ (b : ℝ) := by exact_mod_cast hb_pos
+            have h1 : (a : ℝ) ≤ (a : ℝ) * (b : ℝ) := by
+              calc (a : ℝ) = (a : ℝ) * 1 := by ring
+                _ ≤ (a : ℝ) * (b : ℝ) :=
+                  mul_le_mul_of_nonneg_left hb_ge_one ha_real_pos.le
+            linarith
+          have h_inv_lt_c : 1 / ((a : ℝ) * (b : ℝ)) < c_half := by
+            rw [div_lt_iff₀ h_a_b_pos]
+            rw [div_lt_iff₀ hc_half_pos] at h_a_b_gt
+            linarith
+          -- Strict: (b - a) / (a * b) < c_half * (b - a).
+          have h_diff_pos : 0 < (b : ℝ) - (a : ℝ) := by
+            have : (a : ℝ) < (b : ℝ) := by exact_mod_cast hab
+            linarith
+          have h_strict : ((b : ℝ) - (a : ℝ)) / ((a : ℝ) * (b : ℝ)) <
+              c_half * ((b : ℝ) - (a : ℝ)) := by
+            have h1 := mul_lt_mul_of_pos_right h_inv_lt_c h_diff_pos
+            have h2 : 1 / ((a : ℝ) * (b : ℝ)) * ((b : ℝ) - (a : ℝ)) =
+                ((b : ℝ) - (a : ℝ)) / ((a : ℝ) * (b : ℝ)) := by ring
+            linarith
+          -- Combine: c_half * (b - a) ≤ (b - a)/(a*b) < c_half * (b - a) — contradiction.
+          have h_contra : c_half * ((b : ℝ) - (a : ℝ)) ≤
+              ((b : ℝ) - (a : ℝ)) / ((a : ℝ) * (b : ℝ)) := by
+            rw [← h_inv_diff]
+            linarith
+          linarith
+        -- Now apply trichotomy.
         intro n₁ n₂ hn₁ hn₂ h_eq
-        sorry
+        rcases lt_trichotomy n₁ n₂ with h_lt | h_neq | h_gt
+        · exact absurd h_eq (helper n₁ n₂ hn₁ hn₂ h_lt)
+        · exact h_neq
+        · exact absurd h_eq.symm (helper n₂ n₁ hn₂ hn₁ h_gt)
   obtain ⟨L, hL_pos, hL_avoid, hL_inj⟩ := hL_exists
   -- Step 6: For each residue r ∈ {1, …, h}, get m₀_r from theorem_1 with α := (r : ℚ)/D.
   have hα_pos : ∀ r : ℕ, 1 ≤ r → r ≤ h → (0 : ℚ) < (r : ℚ) / (D : ℚ) := by
