@@ -22,9 +22,14 @@ expressible as `p(n_1) + ⋯ + p(n_k)` with distinct `n_i` satisfying
 `1/n_1 + ⋯ + 1/n_k = 1`. The proof in fact holds for any rational `α > 0`
 in place of `1` — this is **Theorem 1** in the PDF.
 
-**Erdős #351.** For non-zero `p ∈ ℚ[x]` with positive leading coefficient,
-the set `{ p(n) + 1/n : n ∈ ℕ }` is strongly complete. **Corollary 7** in
-the PDF.
+**Erdős #351.** The set `{ p(n) + 1/n : n ∈ ℕ }` is strongly complete iff
+`p = 0` or `p` has positive leading coefficient (negative leading coefficient
+is impossible — the set is bounded above). The corrected **Corollary 7** in
+the PDF, formalized as `corollary_7` and `not_strongly_complete_of_neg_leadingCoeff`.
+
+The narrower upstream `formal-conjectures` target asks only the nonconstant
+positive-leading case; the broader corrected statement is what we actually
+prove.
 
 The proof combines the **Roth-Szekeres-Graham theorem** on complete
 polynomial sequences with reciprocal-preserving switches (the identity
