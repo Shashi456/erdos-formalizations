@@ -3,12 +3,18 @@
 > [erdosproblems.com/283](https://www.erdosproblems.com/283) ·
 > [erdosproblems.com/351](https://www.erdosproblems.com/351)
 >
-> ⚠️ **Near completion.** Only **1 sorry** remains: `theorem_1` `case neg`
-> final assembly. All sub-lemmas (Lemmas 3-6, switching polynomial,
-> qPoly + asymptotics, valuation profiles, telescoping, density argument
-> via pigeonhole, Mahler ℕ→ℤ extension, MVT eventual injectivity) and all
-> three Corollary 7 cases are fully proven. The remaining work is the
-> integrative §2 assembly. See [§ Current state](#current-state).
+> ⚠️ **Near completion.** **2 sorries** remain:
+> 1. `theorem_1` `case neg` final assembly — the integrative §2 proof body.
+> 2. `chooseFillerData` collision-avoidance fields (within the FillerData
+>    record constructor) — straightforward but bounded by the structure of
+>    `egyptian_expansion`'s threshold parameter.
+>
+> All Lemmas 3-6, switching polynomial, qPoly + asymptotics, valuation
+> profiles, telescoping, density argument via pigeonhole, Mahler ℕ→ℤ
+> extension, MVT eventual injectivity, and all three Corollary 7 cases are
+> fully proven. The remaining work is the integrative §2 assembly using the
+> CorrectionData and FillerData record interfaces.
+> See [§ Current state](#current-state).
 
 The May 3 2026 proof (GPT-5.5 Pro, cleaned up by Liam Price; Kevin Barreto
 noticed #351 follows) resolves both problems simultaneously.
@@ -78,11 +84,11 @@ Per-file sorry counts:
 | `MainSlots.lean` | 0 |
 | `Collision.lean` | 0 |
 | `Corrections.lean` | 0 |
-| `Theorem1.lean` | 1 (`theorem_1` `case neg` final assembly; constant case proven, RSG inputs all proven) |
+| `Theorem1.lean` | 2 (`theorem_1` `case neg` final assembly + `chooseFillerData` collision-avoidance sub-sorry; constant case + RSG inputs + records all proven) |
 | `Corollary351.lean` | 0 |
 | `FC.lean` | 0 (`erdos_283`, `erdos_351` bridges complete; sorries propagate from Theorem1) |
 
-**Total: 1 sorry remaining in P283** (the §2 final assembly in `theorem_1` case neg).
+**Total: 2 sorries remaining in P283** — the §2 final assembly in `theorem_1` case neg, and the collision-avoidance fields in `chooseFillerData`.
 
 Per-theorem status:
 
@@ -100,7 +106,11 @@ Per-theorem status:
 | `Dpoly_natDegree`, `Dpoly_leadingCoeff`, `Dpoly_intValued` | ✅ proved |
 | `A_comp_Dpoly_natDegree`, `A_comp_Dpoly_leadingCoeff`, `A_comp_Dpoly_intValued`, positivity, `A_comp_Dpoly_eval_at_succ` | ✅ proved |
 | `qPoly`, `qPoly_natDegree`, `qPoly_leadingCoeff`, `qPoly_leadingCoeff_pos`, `qPoly_natDegree_pos`, `qPoly_eval_at_succ` | ✅ proved |
-| `MainChoice`, `MainGCDData` records (numerator + gcd-data interface for theorem_1 case neg) | ✅ defined |
+| `MainChoice`, `MainGCDData` records (numerator + gcd-data interface for theorem_1 case neg) | ✅ defined + constructors proven |
+| `CorrectionData`, `FillerData` records (correction-slot + filler-denominator interfaces) | ✅ defined |
+| `chooseCorrectionData_g_eq_one` (trivial CorrectionData when gcd.g = 1) | ✅ proved |
+| `chooseFillerData` — Λ choice + reciprocal sum identity | ✅ proved (collision-avoidance fields = sub-sorries) |
+| `IsEgyptianPattern.sum_scaled_recip`, `switchingPoly_eval_nat` (algebra interfaces) | ✅ proved |
 | `u_coprime_six`, `D_coprime_six`, `main_valuation_profile`, `tau_valuation_profile`, `filler_v2_at_least_three` | ✅ proved |
 | `duplicated_generators_subset_sum_all_residues` | ✅ proved |
 | `exists_large_correction_denominator` (density / sieve argument via pigeonhole) | ✅ proved |

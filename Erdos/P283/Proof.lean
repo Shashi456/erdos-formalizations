@@ -56,3 +56,56 @@ remaining):
 import Erdos.P283.Theorem1
 import Erdos.P283.Corollary351
 import Erdos.P283.FC
+
+/-! ## Axiom audit
+
+The following theorems are fully axiom-free (only `propext`, `Classical.choice`,
+`Quot.sound`):
+
+  * `PolynomialEgyptianSums.egyptian_expansion`             (Lemma 3)
+  * `PolynomialEgyptianSums.egyptian_pattern_with_period`   (Lemma 4)
+  * `PolynomialEgyptianSums.polynomial_periodicity`         (Lemma 5)
+  * `PolynomialEgyptianSums.switching_values_span_top`      (Lemma 6)
+  * `PolynomialEgyptianSums.exists_large_correction_denominator`
+  * `PolynomialEgyptianSums.duplicated_generators_subset_sum_all_residues`
+  * `PolynomialEgyptianSums.corollary_7_zero`
+  * `PolynomialEgyptianSums.not_strongly_complete_of_neg_leadingCoeff`
+  * All §1 structural lemmas (switchingPoly_natDegree_eq, _leadingCoeff_eq,
+    intValued closure, etc.)
+  * All §2 main-slot infrastructure (D_recip, main_telescoping,
+    isEgyptianPattern_E0, A_leadingCoeff_eq, theta_gt_one, qPoly + asymptotic
+    constants, Dpoly natDegree/leadingCoeff, A_comp_Dpoly_*)
+  * All §2 collision-avoidance lemmas (u_coprime_six, D_coprime_six,
+    main_valuation_profile, tau_valuation_profile, filler_v2_at_least_three)
+  * `chooseMainChoice`, `chooseMainGCDData`, `qPoly_int_pos_on_pos`
+  * Algebra interfaces: `IsEgyptianPattern.sum_scaled_recip`,
+    `switchingPoly_eval_nat`
+
+The following depend on the trust-boundary axiom `roth_szekeres_graham`:
+
+  * `PolynomialEgyptianSums.main_window_representation`
+
+The following depend on `roth_szekeres_graham` AND transitively on `sorryAx`
+(via the unfinished `theorem_1` `case neg`):
+
+  * `PolynomialEgyptianSums.theorem_1`
+  * `PolynomialEgyptianSums.corollary_7_pos_leading`
+  * `Erdos283.erdos_283`
+  * `Erdos351.erdos_351`
+
+Verify with `#print axioms` — uncomment the block below to inspect at build time.
+-/
+
+-- Uncomment to run the axiom audit at build time:
+-- #print axioms PolynomialEgyptianSums.egyptian_expansion
+-- #print axioms PolynomialEgyptianSums.egyptian_pattern_with_period
+-- #print axioms PolynomialEgyptianSums.polynomial_periodicity
+-- #print axioms PolynomialEgyptianSums.switching_values_span_top
+-- #print axioms PolynomialEgyptianSums.exists_large_correction_denominator
+-- #print axioms PolynomialEgyptianSums.corollary_7_zero
+-- #print axioms PolynomialEgyptianSums.not_strongly_complete_of_neg_leadingCoeff
+-- #print axioms PolynomialEgyptianSums.main_window_representation
+-- #print axioms PolynomialEgyptianSums.theorem_1
+-- #print axioms PolynomialEgyptianSums.corollary_7_pos_leading
+-- #print axioms Erdos283.erdos_283
+-- #print axioms Erdos351.erdos_351
