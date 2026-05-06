@@ -64,8 +64,16 @@ The umbrella file `Proof.lean` re-exports everything for convenience.
 lake build Erdos.P283.Proof
 ```
 
-**Online (no Lake required):** open in
-[live.lean-lang.org against Mathlib v4.27.0](https://live.lean-lang.org/#project=mathlib-v4.27.0&url=https%3A%2F%2Fraw.githubusercontent.com%2FShashi456%2Ferdos-formalizations%2Frefs%2Fheads%2Fmain%2FErdos%2FP283%2FProof.lean).
+**Online:** unlike #694 and #750, P283 is split across 10 modules with
+project-local imports (`import Erdos.P283.Theorem1`, etc.). The browser
+build at `live.lean-lang.org` resolves only `import Mathlib` and cannot see
+project-local modules, so the umbrella `Proof.lean` here cannot be loaded
+directly — clone the repo and `lake build` instead.
+
+A single-file flat version (concatenating all 10 modules into one
+`import Mathlib` file) would be ~10 000 lines and is not currently
+maintained; if there's demand we can generate one. Individual modules can
+be browsed on GitHub.
 
 `lake build Erdos.P283.Proof` succeeds with **zero P283 lint warnings**.
 Public-API hypotheses that the current proof body doesn't use (e.g. `hm` in
