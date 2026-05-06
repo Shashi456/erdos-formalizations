@@ -220,7 +220,99 @@ theorem exists_large_correction_denominator
       have : (0 : ℚ) < ((intEval Q hQint ((x : ℕ) : ℤ) : ℤ) : ℚ) := by
         rw [h_intEval_eq]; exact hQpos
       exact_mod_cast this
-  sorry
+  -- Step 2: combine all "large enough" thresholds.
+  set X₀ : ℕ := max (max Npos (lower + 1)) (L + 1) with hX₀_def
+  have hX₀_Npos : Npos ≤ X₀ := le_trans (le_max_left _ _) (le_max_left _ _)
+  have hX₀_lower : lower < X₀ := by
+    have h1 : lower + 1 ≤ X₀ := le_trans (le_max_right _ _) (le_max_left _ _)
+    omega
+  have hX₀_L : L < X₀ := by
+    have h1 : L + 1 ≤ X₀ := le_max_right _ _
+    omega
+  -- Step 3: collect forbidden values from forbiddenFinite, expressed as constraints on c.
+  -- For each e ∈ EE and f ∈ forbiddenFinite, if e ∣ f then c = f / e is forbidden.
+  set badFinSet : Finset ℕ :=
+    EE.biUnion (fun e =>
+      forbiddenFinite.image (fun f => f / e)) with hbadFinSet_def
+  have hbadFin_forbid : ∀ c : ℕ, (∀ e ∈ EE, e * c ∉ forbiddenFinite) ∨ c ∈ badFinSet := by
+    intro c
+    by_cases h : ∀ e ∈ EE, e * c ∉ forbiddenFinite
+    · exact Or.inl h
+    · right
+      push_neg at h
+      obtain ⟨e, heE, hfE⟩ := h
+      rw [hbadFinSet_def]
+      refine Finset.mem_biUnion.mpr ⟨e, heE, ?_⟩
+      refine Finset.mem_image.mpr ⟨e * c, hfE, ?_⟩
+      have he_pos : 0 < e := hEE_pos e heE
+      exact Nat.mul_div_cancel_left c he_pos
+  -- Step 4: Bound the maximum value in badFinSet ∪ {X₀ - 1} so the AP starts past it.
+  set XbadMax : ℕ :=
+    (badFinSet ∪ {X₀ - 1}).sup id + 1 with hXbadMax_def
+  have hXbadMax_ge_X₀ : X₀ ≤ XbadMax := by
+    have h1 : X₀ - 1 ∈ (badFinSet ∪ {X₀ - 1}) := by
+      apply Finset.mem_union_right; exact Finset.mem_singleton.mpr rfl
+    have h2 : X₀ - 1 ≤ (badFinSet ∪ {X₀ - 1}).sup id := by
+      have := Finset.le_sup (f := id) h1; simpa using this
+    rw [hXbadMax_def]
+    -- X₀ - 1 + 1 ≤ ... + 1, and X₀ ≤ X₀ - 1 + 1 (since X₀ ≥ 1 from hX₀_lower)
+    have hX₀_ge_1 : 1 ≤ X₀ := by omega
+    omega
+  have hXbadMax_avoid : ∀ c : ℕ, XbadMax ≤ c → c ∉ badFinSet := by
+    intro c hc hmem
+    have h1 : c ∈ (badFinSet ∪ {X₀ - 1}) := Finset.mem_union_left _ hmem
+    have h2 : c ≤ (badFinSet ∪ {X₀ - 1}).sup id := by
+      have := Finset.le_sup (f := id) h1; simpa using this
+    rw [hXbadMax_def] at hc; omega
+  -- Step 5: The remaining counting/density step.
+  --
+  -- We seek `k : ℕ` such that, setting `c := aσ + k*Tg`, we have:
+  --   (a) `c ≥ XbadMax` (covers lower, L, Npos, badFinSet via the threshold reductions),
+  --   (b) `∀ j ≥ J, ∀ h ∈ {1,2,3,6}, ∀ e ∈ EE, e*c ≠ h*D j` (no main-slot collisions).
+  --
+  -- Mathematical content: the AP `{aσ + k*Tg : k ∈ ℕ}` has positive density `1/Tg`,
+  -- while the main-collision forbidden set `{h*D j/e : j ≥ J, h ∈ {1,2,3,6}, e ∈ EE}`
+  -- has density 0 — for c ≤ X, we need D j ≤ maxE * X, hence j ≤ √(maxE*X)/36
+  -- (since D j ≥ 1296 j² for j ≥ 1), giving O(√X) forbidden values up to X.
+  -- So for K large, the AP segment `{aσ + k*Tg : 0 ≤ k ≤ K}` of size K+1 in [X₀, X₀+K*Tg]
+  -- exceeds the O(√(X₀+K*Tg)) forbidden values, hence contains a good `c`.
+  --
+  -- This is captured in the focused claim below. Above this `sorry` is all
+  -- the bookkeeping (positivity threshold, finite-forbidden reduction, AP setup).
+  -- The remaining counting argument needs Nat.sqrt-style bounds and pigeonhole,
+  -- which would take several hundred lines to make rigorous.
+  obtain ⟨k, hk_AP, hk_main⟩ : ∃ k : ℕ,
+      XbadMax ≤ aσ + k * Tg ∧
+      (∀ j, J ≤ j → ∀ h ∈ ({1, 2, 3, 6} : Finset ℕ),
+        ∀ e ∈ EE, e * (aσ + k * Tg) ≠ h * D j) := by
+    sorry
+  -- Step 6: assemble the final witness from k.
+  refine ⟨aσ + k * Tg, ?_, ?_, ?_, ?_, ?_, ?_⟩
+  · -- AP membership.
+    exact (Nat.add_mul_modulus_modEq_iff).mpr (Nat.ModEq.refl aσ)
+  · -- lower < c.
+    have : XbadMax ≤ aσ + k * Tg := hk_AP
+    have : X₀ ≤ aσ + k * Tg := le_trans hXbadMax_ge_X₀ this
+    omega
+  · -- L < c.
+    have : XbadMax ≤ aσ + k * Tg := hk_AP
+    have : X₀ ≤ aσ + k * Tg := le_trans hXbadMax_ge_X₀ this
+    omega
+  · -- Q positivity.
+    have hX₀_le : X₀ ≤ aσ + k * Tg := le_trans hXbadMax_ge_X₀ hk_AP
+    have hNpos_le : Npos ≤ aσ + k * Tg := le_trans hX₀_Npos hX₀_le
+    exact hNpos (aσ + k * Tg) hNpos_le
+  · -- Avoid forbiddenFinite.
+    rcases hbadFin_forbid (aσ + k * Tg) with h | h
+    · -- Goal: ∀ e ∈ insert 1 Gν, e * (aσ + k*Tg) ∉ forbiddenFinite. Note EE = insert 1 Gν.
+      intro e he
+      have heE : e ∈ EE := by rw [hEE_def]; exact he
+      exact h e heE
+    · exfalso; exact hXbadMax_avoid (aσ + k * Tg) hk_AP h
+  · -- Avoid main collisions.
+    intro j hj h hh e he
+    have heE : e ∈ EE := by rw [hEE_def]; exact he
+    exact hk_main j hj h hh e heE
 
 /-! ## Correction slots (assembled)
 
