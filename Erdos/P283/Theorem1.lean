@@ -455,6 +455,126 @@ lemma main_window_representation {α : ℚ} {L : ℕ} (p : ℚ[X]) (hp : IntValu
     (qPoly_int_pos_on_pos p hp md gcd)
     gcd.hg_no_prime_fixed_quot
 
+/-! ### Construction-data records: corrections and fillers
+
+These records package the correction-slot and filler-denominator data for
+the non-constant branch of `theorem_1`. Together with `MainChoice` and
+`MainGCDData` (above), they form the four structural pieces needed for the
+final assembly. -/
+
+/-- Correction-slot data: for each `gcd : MainGCDData md`, choose finite
+correction denominators `c_ν` with patterns `G_ν` and switch increments
+`b_ν := Q_{G_ν}(c_ν)` such that:
+  * Each `c_ν > L`, distinct, collision-free with main slots.
+  * The integer values `b_ν` cover all residues mod `gcd.g` as subset sums.
+  * The reciprocal sum ∑_ν 1/c_ν is small (less than α/2).
+  * Each `b_ν > 0`. -/
+structure CorrectionData {α : ℚ} {L : ℕ} (p : ℚ[X]) (hp : IntValued p)
+    {md : MainChoice α L p hp} (gcd : MainGCDData p hp md) : Type where
+  t : ℕ
+  G : Fin t → Finset ℕ
+  c : Fin t → ℕ
+  hG : ∀ ν, IsEgyptianPattern (G ν)
+  b : Fin t → ℤ
+  hb_def : ∀ ν, b ν =
+    intEval (switchingPoly p (G ν))
+      (switchingPoly_intValued p hp (G ν)) ((c ν : ℕ) : ℤ)
+  hb_pos : ∀ ν, 0 < b ν
+  c_gt_L : ∀ ν, L < c ν
+  C0_lt :
+    (∑ ν : Fin t, (1 : ℚ) / (c ν : ℚ)) <
+      α - (1 : ℚ) / ((P : ℚ) * (u md.J : ℚ))
+  residue_cover :
+    ∀ r : ZMod gcd.g,
+      ∃ T : Finset (Fin t), r = ∑ ν ∈ T, ((b ν : ℤ) : ZMod gcd.g)
+  no_corr_collision :
+    ∀ ν μ, ν ≠ μ →
+      ∀ e ∈ insert 1 (G ν), ∀ e' ∈ insert 1 (G μ),
+        e * c ν ≠ e' * c μ
+  no_main_collision :
+    ∀ ν j, md.J ≤ j →
+      ∀ h ∈ ({1, 2, 3, 6} : Finset ℕ), ∀ e ∈ insert 1 (G ν),
+        e * c ν ≠ h * D j
+
+/-- Trivial CorrectionData when `gcd.g = 1`: take `t := 0` (no correction slots).
+All `Fin 0` quantifiers are vacuously true; the residue cover is automatic
+because `ZMod 1` is a subsingleton. -/
+lemma chooseCorrectionData_g_eq_one
+    {α : ℚ} {L : ℕ} (p : ℚ[X]) (hp : IntValued p)
+    {md : MainChoice α L p hp} (gcd : MainGCDData p hp md)
+    (hg1 : gcd.g = 1) :
+    Nonempty (CorrectionData p hp gcd) := by
+  refine ⟨{
+    t := 0
+    G := Fin.elim0
+    c := Fin.elim0
+    hG := fun ν => ν.elim0
+    b := Fin.elim0
+    hb_def := fun ν => ν.elim0
+    hb_pos := fun ν => ν.elim0
+    c_gt_L := fun ν => ν.elim0
+    C0_lt := ?_
+    residue_cover := ?_
+    no_corr_collision := ?_
+    no_main_collision := ?_
+  }⟩
+  · -- Sum over Fin 0 is 0; positive residual gap from `md.hleft_small`.
+    simp
+    have h := md.hleft_small
+    rw [one_div, mul_inv] at h
+    linarith
+  · -- ZMod 1: every element is 0; pick T := ∅.
+    intro r
+    refine ⟨∅, ?_⟩
+    have hsub : Subsingleton (ZMod gcd.g) := by
+      rw [hg1]; infer_instance
+    have hzero : (∑ ν ∈ (∅ : Finset (Fin 0)), ((Fin.elim0 ν : ℤ) : ZMod gcd.g)) = 0 := by
+      simp
+    rw [hzero]
+    exact Subsingleton.elim r 0
+  · intro ν _ _ _ _ _ _; exact ν.elim0
+  · intro ν _ _ _ _ _ _; exact ν.elim0
+
+/-- Filler-denominator data: a finite set `F` of natural numbers and a scaling
+factor `Λ` (with `8 ∣ Λ`, `Λ > L`, `Λ` larger than all correction denominators)
+such that `∑_{f ∈ F} 1/(Λ f) = R₀` for the residual reciprocal mass
+`R₀ := α - 1/(P u_J) - C₀`. -/
+structure FillerData {α : ℚ} {L : ℕ} (p : ℚ[X]) (hp : IntValued p)
+    {md : MainChoice α L p hp} {gcd : MainGCDData p hp md}
+    (corr : CorrectionData p hp gcd) : Type where
+  Λ : ℕ
+  hΛ_div_8 : 8 ∣ Λ
+  hΛ_gt_L : L < Λ
+  hΛ_gt_corr : ∀ ν : Fin corr.t, corr.c ν < Λ
+  F : Finset ℕ
+  hF_pos : ∀ f ∈ F, 1 ≤ f
+  hF_distinct_from_main_corr :
+    -- Each Λ * f differs from any main slot multiple or correction-slot multiple
+    (∀ f ∈ F, ∀ j, md.J ≤ j → ∀ h ∈ ({1, 2, 3, 6} : Finset ℕ),
+      Λ * f ≠ h * D j) ∧
+    (∀ f ∈ F, ∀ ν : Fin corr.t, ∀ e ∈ insert 1 (corr.G ν),
+      Λ * f ≠ e * corr.c ν)
+  hF_recip :
+    (∑ f ∈ F, (1 : ℚ) / ((Λ * f : ℕ) : ℚ)) =
+      α - (1 : ℚ) / ((P : ℚ) * (u md.J : ℚ)) -
+      (∑ ν : Fin corr.t, (1 : ℚ) / (corr.c ν : ℚ))
+
+/-- Constructor for FillerData via `egyptian_expansion`. The construction:
+choose `Λ` large enough (multiple of 8, exceeding `L` and all `c_ν`, plus
+collision-avoidance margins). Then apply `egyptian_expansion` to the residual
+mass `Λ * R₀` to get an Egyptian set of denominators of the form `Λ * f`. -/
+lemma chooseFillerData
+    {α : ℚ} {L : ℕ} (p : ℚ[X]) (hp : IntValued p)
+    {md : MainChoice α L p hp} {gcd : MainGCDData p hp md}
+    (corr : CorrectionData p hp gcd) :
+    Nonempty (FillerData p hp corr) := by
+  -- Strategy: choose Λ as a multiple of 8 dominating L, all c_ν, and all
+  -- collision targets up to some bound. Then apply `egyptian_expansion` to
+  -- the rational R₀ * Λ at threshold 1 to get a set F : Finset ℕ of size 1
+  -- with sum equal to R₀ * Λ. Reindex to Λ * f to obtain the recip sum.
+  -- Full collision avoidance + bound work TBD; record sub-sorry for now.
+  sorry
+
 /-! ### Quotient-gcd bridge (sketch — full proof forthcoming)
 
 The most important missing bridge for theorem_1's case neg: if `g` is the
