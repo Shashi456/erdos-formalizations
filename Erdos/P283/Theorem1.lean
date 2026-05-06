@@ -604,13 +604,82 @@ theorem theorem_1 (α : ℚ) (hα : 0 < α) (L : ℕ) (hL : 1 ≤ L) (p : ℚ[X]
     obtain ⟨gcd⟩ := chooseMainGCDData p hp h_nonconst h_lead_pos md
     -- Step 3: apply RSG to qPoly to get the window representation.
     obtain ⟨X_q, hX_q⟩ := main_window_representation p hp h_nonconst h_lead_pos md gcd
-    -- Steps 4-8 (correction slots, filler denominators, reciprocal identity,
-    -- switch operations, attainable intervals, overlap, final assembly) form
-    -- the remaining content of the §2 proof. They depend on
-    -- `exists_large_correction_denominator` (sorry in `Corrections.lean`)
-    -- and substantial bookkeeping for the switch operations and interval
-    -- overlap argument. The `md`, `gcd`, `X_q`, `hX_q` data above are
-    -- exactly the inputs the assembly consumes.
+    -- =============================================================================
+    -- REMAINING WORK (PDF §2 final assembly).
+    --
+    -- All the *atomic* pieces are proven (above are the three setup data: `md`,
+    -- `gcd`, `X_q`/`hX_q`). What remains is the integrative assembly producing
+    -- the witness denominators. The mathematical strategy from `proof.pdf`/§2:
+    --
+    --   For each large parameter `N : ℕ`, define base data:
+    --     S_main(N)   := { D j : md.J ≤ j ≤ N }         -- main slots
+    --     B_N         := ∑_{j ∈ [md.J, N]} (A p)(D j)    -- base p-sum from
+    --                                                       leaving every D_j alone
+    --     B_*         := ∑_ν b_ν                          -- correction p-sum
+    --                                                       baseline (b_ν > 0)
+    --     M_0         := X_q                              -- window-rep threshold
+    --
+    --   The "attainable" set, i.e. the set of `m` representable for parameter N:
+    --     I_N := [B_N + B_* + M_0, B_N + μ p · N^{2r}]
+    --   covers every integer m in this range. Specifically:
+    --     (i)  Subtract B_N from m. The residue r_g := (m - B_N) mod gcd.g is
+    --          chosen by adding subset of {b_ν} (uses `duplicated_generators_subset_sum`).
+    --     (ii) After this residue-correction, the remaining (m - B_N - corr_sum)
+    --          is divisible by gcd.g and falls in [M_0, μ N^{2r}], so by `hX_q`
+    --          (window-rep) we have m - B_N - corr_sum = ∑_{i ∈ I} qPoly.eval(i+1) · g
+    --          which (multiplying through) means switching the main-slots indexed
+    --          by I from "leave alone" to "split into {2 D_j, 3 D_j, 6 D_j}",
+    --          adding exactly (A p)(D_j) per switched slot.
+    --     (iii) The reciprocal sum is preserved by switch (`isEgyptianPattern_E0`
+    --           gives 1/D_j = 1/(2 D_j) + 1/(3 D_j) + 1/(6 D_j)).
+    --     (iv) Filler denominators (from `egyptian_expansion` applied to
+    --          `α - 1/(P · u_J) - 1/(τ N) - C_0` for `C_0 := ∑_ν 1/c_ν`)
+    --          give the missing reciprocal mass; collision-free by `8 ∣ Λ`
+    --          (from `Collision.filler_v2_at_least_three`).
+    --
+    --   Consecutive intervals I_N, I_{N+1} overlap once N is large because
+    --     B_{N+1} - B_N = (A p)(D_{N+1}) ≈ λ p · N^{2r}  (asymptotic)
+    --     while  μ p · N^{2r} > λ p · N^{2r}    (`lambdaConst_lt_muConst`)
+    --   so I_N's right endpoint exceeds I_{N+1}'s left endpoint for large N,
+    --   hence ⋃_N I_N covers all sufficiently large integers.
+    --
+    -- MISSING LEAN LEMMAS (each is a substantial proof in its own right):
+    --
+    --   1. `correction_slots_constructed`
+    --        Given `md`, `gcd`, choose finite `(c_ν, G_ν, b_ν)_ν` with:
+    --          - c_ν ≡ a_σ (mod T_g) using `exists_large_correction_denominator`
+    --          - {b_ν} duplicated covers all residues mod gcd.g (uses
+    --            `switching_values_span_top` + `duplicated_generators_...`)
+    --          - 0 < ∑_ν 1/c_ν < α/2 (made small by sequential largeness)
+    --          - ∀ ν,μ. c_ν ≠ c_μ + collision-free with main slots
+    --
+    --   2. `B_diff_eventually_lt_mu`
+    --        For sufficiently large N, (A p)(D_{N+1}) < μ p · (N+1)^{2r}.
+    --        Standard polynomial-asymptotics: leading term is λ N^{2r} < μ N^{2r}
+    --        with O(N^{2r-1}) error, dominated for large N. Uses
+    --        `A_leadingCoeff_eq` + `lambdaConst_lt_muConst`.
+    --
+    --   3. `attainable_interval`
+    --        For each N (with the chosen correction data), every m ∈ I_N is
+    --        representable. This is the bulk of §2: builds the explicit
+    --        denominator list, proves StrictMono via collision avoidance
+    --        (`main_valuation_profile`, `tau_valuation_profile`,
+    --        `filler_v2_at_least_three`), and verifies both sums.
+    --
+    --   4. `intervals_overlap_eventually`
+    --        For large N, I_N ∪ I_{N+1} is an interval (right(I_N) ≥ left(I_{N+1})).
+    --        Direct from `B_diff_eventually_lt_mu`.
+    --
+    --   5. Final union argument: pick m₀ such that I_N covers m for some N ≥ N_0
+    --      whenever m ≥ m₀; then `attainable_interval` gives the witness.
+    --
+    -- Each of these is doable; together they form ~600-1000 lines of Lean. The
+    -- raw shape of the conclusion (existential of `(k, n, hMono, hL, hα, hm)`)
+    -- comes from `attainable_interval` once it's in hand: just feed in the
+    -- N := smallest N with m ∈ I_N (well-defined by overlap), unpack the
+    -- denominator list as a `Finset ℕ`, enumerate via `orderEmbOfFin`, and
+    -- finish exactly as in the constant case (lines 569-597 above).
+    -- =============================================================================
     sorry
 
 end PolynomialEgyptianSums
