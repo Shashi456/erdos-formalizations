@@ -4,23 +4,54 @@ SafeVerify target for Erdős Problems 283 + 351.
 Enumerates the public theorems and the supporting definitions that the P283
 development provides. The bodies in this file are `sorry` *by design* —
 SafeVerify only inspects signatures here; the actual proofs live in the
-split modules under `Erdos.P283.*`, where they are sorry-free. SafeVerify
-replays both files and checks the submission's matching declarations only
-depend on the allow-list:
+split modules under `Erdos.P283.*` (and `Erdos.P283.RSG.*`), where they are
+sorry-free. SafeVerify replays both files and checks the submission's
+matching declarations only depend on the allow-list:
 
   Mathlib core (`propext`, `Classical.choice`, `Quot.sound`)
 
 The former `PolynomialEgyptianSums.roth_szekeres_graham` trust boundary is now
-proved in `Erdos.P283.RSG`, so no problem-specific axiom needs to be added to the
-SafeVerify allow-list. Reproduction recipe in `../README.md` §
+proved in `Erdos.P283.RSG.graham_complete_polynomial_values`, so no
+problem-specific axiom needs to be added to the SafeVerify allow-list. The
+RSG theorem is included in the spec below so SafeVerify also checks its
+axiom dependencies. Reproduction recipe in `../README.md` §
 "Verifying with SafeVerify".
 
 Lemmas 3-6 (egyptian_expansion, egyptian_pattern_with_period,
-polynomial_periodicity, switching_values_span_top), Theorem 1, Corollary 7, and
-the FC wrappers now have only Mathlib core axioms.
+polynomial_periodicity, switching_values_span_top), Theorem 1, Corollary 7,
+the FC wrappers, and `Erdos.P283.RSG.graham_complete_polynomial_values` all
+have only Mathlib core axioms.
 -/
 
 import Mathlib
+
+/-! ## §0 Roth-Szekeres-Graham (Graham 1964) -/
+
+namespace Erdos.P283.RSG
+
+open Polynomial
+
+/-- **Graham's complete polynomial values theorem (1964).** Formerly the
+trust-boundary axiom `PolynomialEgyptianSums.roth_szekeres_graham`; now
+proved in `Erdos/P283/RSG/PolynomialValues.lean`. Stated for a rational
+polynomial taking positive integer values on `ℕ_{≥1}`, with no fixed prime
+divisor. -/
+theorem graham_complete_polynomial_values
+    (f : ℚ[X])
+    (h_nonconst : 0 < f.natDegree)
+    (h_lead_pos : 0 < f.leadingCoeff)
+    (h_int_pos :
+      ∀ n : ℕ, 1 ≤ n →
+        ∃ z : ℤ, 0 < z ∧ (z : ℚ) = f.eval (n : ℚ))
+    (h_gcd_one :
+      ∀ ℓ : ℕ, ℓ.Prime →
+        ∃ n : ℕ, 1 ≤ n ∧ ∃ z : ℤ,
+          (z : ℚ) = f.eval (n : ℚ) ∧ ¬ ((ℓ : ℤ) ∣ z)) :
+    ∃ X_f : ℤ, ∀ X : ℤ, X_f ≤ X →
+      ∃ I : Finset ℕ,
+        (X : ℚ) = ∑ i ∈ I, f.eval ((i + 1 : ℕ) : ℚ) := sorry
+
+end Erdos.P283.RSG
 
 namespace PolynomialEgyptianSums
 

@@ -204,9 +204,11 @@ LEAN_PATH="/path/to/erdos-formalizations/.lake/build/lib/lean:$(lake env printen
 ```
 
 Expected output ends with `SafeVerify check passed.` — verified locally
-with the spec covering 21 declarations (definitions + Lemmas 3-5,
+with the spec covering 22 declarations (definitions + Lemmas 3-5,
 `intEval_spec`, `theorem_1`, all three Corollary 7 cases, `corollary_7`
-umbrella, FC wrappers `Erdos283.erdos_283` and `Erdos351.erdos_351`).
+umbrella, FC wrappers `Erdos283.erdos_283` and `Erdos351.erdos_351`, and
+`Erdos.P283.RSG.graham_complete_polynomial_values` — the formerly-axiom
+Roth-Szekeres-Graham theorem, now proved).
 
 ## Alignment with the informal proof
 
