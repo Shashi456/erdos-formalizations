@@ -64,16 +64,26 @@ The umbrella file `Proof.lean` re-exports everything for convenience.
 lake build Erdos.P283.Proof
 ```
 
-**Online:** unlike #694 and #750, P283 is split across 10 modules with
-project-local imports (`import Erdos.P283.Theorem1`, etc.). The browser
-build at `live.lean-lang.org` resolves only `import Mathlib` and cannot see
-project-local modules, so the umbrella `Proof.lean` here cannot be loaded
-directly — clone the repo and `lake build` instead.
+**Online (no Lake required):** open
+[`Proof_flat.lean`](Proof_flat.lean) in
+[live.lean-lang.org against Mathlib v4.27.0](https://live.lean-lang.org/#project=mathlib-v4.27.0&url=https%3A%2F%2Fraw.githubusercontent.com%2FShashi456%2Ferdos-formalizations%2Frefs%2Fheads%2Fmain%2FErdos%2FP283%2FProof_flat.lean).
 
-A single-file flat version (concatenating all 10 modules into one
-`import Mathlib` file) would be ~10 000 lines and is not currently
-maintained; if there's demand we can generate one. Individual modules can
-be browsed on GitHub.
+`Proof_flat.lean` is the 10-module modular split concatenated into a single
+`import Mathlib` file (~8 000 lines) for browser-loadable use; the modular
+`Proof.lean` umbrella above is the local-build entry. Both have identical
+content and the same trust boundary.
+
+To regenerate `Proof_flat.lean` after editing the modular files:
+
+```bash
+{
+  echo '-- header...'
+  echo 'import Mathlib'
+  for f in Erdos/P283/{Basic,Egyptian,PolynomialPeriod,Switching,MainSlots,Collision,Corrections,Theorem1,Corollary351,FC}.lean; do
+    grep -v '^import ' "$f"
+  done
+} > Erdos/P283/Proof_flat.lean
+```
 
 `lake build Erdos.P283.Proof` succeeds with **zero P283 lint warnings**.
 Public-API hypotheses that the current proof body doesn't use (e.g. `hm` in

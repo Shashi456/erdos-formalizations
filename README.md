@@ -13,8 +13,8 @@ live-link tradeoff.
 | # | Problem | Informal | Formal proof |
 |---|---------|----------|--------------|
 | [694](https://www.erdosproblems.com/694) | Totient fibre extremes: `R(x) = max_{n ≤ x} f_max(n)/f_min(n) = (e^γ + o(1)) log log x` | [informal.md](Erdos/P694/informal.md) · [proof.pdf](Erdos/P694/proof.pdf) | [Proof.lean](Erdos/P694/Proof.lean) · [live](https://live.lean-lang.org/#project=mathlib-v4.28.0&url=https%3A%2F%2Fraw.githubusercontent.com%2FShashi456%2Ferdos-formalizations%2Frefs%2Fheads%2Fmain%2FErdos%2FP694%2FProof.lean) |
-| [750](https://www.erdosproblems.com/750) | Almost-half independent sets: for every `f → ∞`, there exists a graph of infinite chromatic number with `α(F) ≥ |V(F)|/2 − f(|V(F)|)` for every finite induced subgraph `F` | [informal.md](Erdos/P750/informal.md) · [proof.pdf](Erdos/P750/proof.pdf) | [Proof.lean](Erdos/P750/Proof.lean) (v4.27) · [Proof_v4.28.lean](Erdos/P750/Proof_v4.28.lean) (v4.28+) · [live v4.27](https://live.lean-lang.org/#project=mathlib-v4.27.0&url=https%3A%2F%2Fraw.githubusercontent.com%2FShashi456%2Ferdos-formalizations%2Frefs%2Fheads%2Fmain%2FErdos%2FP750%2FProof.lean) · [live v4.28](https://live.lean-lang.org/#project=mathlib-v4.28.0&url=https%3A%2F%2Fraw.githubusercontent.com%2FShashi456%2Ferdos-formalizations%2Frefs%2Fheads%2Fmain%2FErdos%2FP750%2FProof_v4.28.lean) |
-| [283](https://www.erdosproblems.com/283) + [351](https://www.erdosproblems.com/351) | Polynomial Egyptian sums: `∑ p(n_i) = m, ∑ 1/n_i = α` for any `α ∈ ℚ_{>0}` and qualifying polynomial | [informal.md](Erdos/P283/informal.md) · [proof.pdf](Erdos/P283/proof.pdf) | 10-file split under [Erdos/P283/](Erdos/P283/) — [Proof.lean](Erdos/P283/Proof.lean) re-exports. **0 sorries**, SafeVerify-confirmed. See [P283/README.md](Erdos/P283/README.md). |
+| [750](https://www.erdosproblems.com/750) | Almost-half independent sets: graphs of infinite chromatic number whose finite induced subgraphs `F` admit independent sets of size `≥ |V(F)|/2 − f(|V(F)|)`, for any `f → ∞` | [informal.md](Erdos/P750/informal.md) · [proof.pdf](Erdos/P750/proof.pdf) | [Proof.lean](Erdos/P750/Proof.lean) (v4.27) · [Proof_v4.28.lean](Erdos/P750/Proof_v4.28.lean) (v4.28+) · [live v4.27](https://live.lean-lang.org/#project=mathlib-v4.27.0&url=https%3A%2F%2Fraw.githubusercontent.com%2FShashi456%2Ferdos-formalizations%2Frefs%2Fheads%2Fmain%2FErdos%2FP750%2FProof.lean) · [live v4.28](https://live.lean-lang.org/#project=mathlib-v4.28.0&url=https%3A%2F%2Fraw.githubusercontent.com%2FShashi456%2Ferdos-formalizations%2Frefs%2Fheads%2Fmain%2FErdos%2FP750%2FProof_v4.28.lean) |
+| [283](https://www.erdosproblems.com/283) + [351](https://www.erdosproblems.com/351) | Polynomial Egyptian sums: `∑ p(n_i) = m, ∑ 1/n_i = α` for any `α ∈ ℚ_{>0}` and qualifying polynomial | [informal.md](Erdos/P283/informal.md) · [proof.pdf](Erdos/P283/proof.pdf) | 10-file modular split under [Erdos/P283/](Erdos/P283/) — [Proof.lean](Erdos/P283/Proof.lean) re-exports · single-file bundle [Proof_flat.lean](Erdos/P283/Proof_flat.lean) (~8 000 lines) for live · [live v4.27](https://live.lean-lang.org/#project=mathlib-v4.27.0&url=https%3A%2F%2Fraw.githubusercontent.com%2FShashi456%2Ferdos-formalizations%2Frefs%2Fheads%2Fmain%2FErdos%2FP283%2FProof_flat.lean). **0 sorries**, SafeVerify-confirmed. See [P283/README.md](Erdos/P283/README.md). |
 | [42](https://www.erdosproblems.com/42) (in progress) | Sidon difference avoidance: every Sidon `A ⊆ [N]` admits a Sidon `B` of size `M` with `(A−A)∩(B−B)={0}` | [informal.md](Erdos/P42/informal.md) · [forum_thread.md](Erdos/P42/forum_thread.md) · [proof.pdf](Erdos/P42/proof.pdf) · [combined 42+43](Erdos/P42/proof_combined_42_43.pdf) · [ulam note](Erdos/P42/proof_ulam_note.pdf) | [Proof.lean](Erdos/P42/Proof.lean) (scaffolded; sorries) |
 
 See each problem's per-folder README for the full statement, trust boundary,
@@ -48,11 +48,11 @@ lake exe cache get   # optional: prebuilt Mathlib cache
 lake build
 ```
 
-Toolchain: Lean 4 `v4.27.0`, Mathlib `v4.27.0`. The single-file
-`Erdos/P694/Proof.lean` and `Erdos/P750/Proof.lean` are also written to
-typecheck standalone on [live.lean-lang.org](https://live.lean-lang.org/)
-against more recent Mathlib versions (verified on `v4.28.0`). P283's modular
-split (10 files) is local-build only — no single-file live target.
+Toolchain: Lean 4 `v4.27.0`, Mathlib `v4.27.0`. Single-file `Proof.lean`
+(P694, P750) and `Proof_flat.lean` (P283) bundles also typecheck standalone
+on [live.lean-lang.org](https://live.lean-lang.org/), so they can be loaded
+in the browser without a Lake project (P694/P750 verified on `v4.28.0`;
+P283 currently only on `v4.27.0`).
 
 ## License
 
