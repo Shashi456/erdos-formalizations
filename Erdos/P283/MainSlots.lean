@@ -48,6 +48,42 @@ def D (j : ℕ) : ℕ := u j * u (j + 1)
 sum and provides a (v₂, v₃) = (2, 2) signature distinct from main slots. -/
 def tau (N : ℕ) : ℕ := P * u (N + 1)
 
+/-- `u j = 36j + 1` is strictly increasing. -/
+lemma u_strictMono : StrictMono u := by
+  intro a b h
+  unfold u P
+  omega
+
+/-- Main denominators are positive. -/
+lemma D_pos (j : ℕ) : 0 < D j := by
+  unfold D u P
+  positivity
+
+/-- Endpoint denominators are positive. -/
+lemma tau_pos (N : ℕ) : 0 < tau N := by
+  unfold tau u P
+  positivity
+
+/-- `D j = u_j u_{j+1}` is strictly increasing. -/
+lemma D_strictMono : StrictMono D := by
+  intro a b h
+  unfold D u P
+  nlinarith [h]
+
+/-- `D` is injective. -/
+lemma D_injective : Function.Injective D :=
+  D_strictMono.injective
+
+/-- `τ N = 36 u_{N+1}` is strictly increasing. -/
+lemma tau_strictMono : StrictMono tau := by
+  intro a b h
+  unfold tau u P
+  omega
+
+/-- `τ` is injective. -/
+lemma tau_injective : Function.Injective tau :=
+  tau_strictMono.injective
+
 /-- The base Egyptian pattern `{2, 3, 6}` underlying the `1/x = 1/(2x) + 1/(3x)
 + 1/(6x)` switch identity. -/
 def E0 : Finset ℕ := {2, 3, 6}

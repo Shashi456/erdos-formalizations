@@ -3,17 +3,14 @@
 > [erdosproblems.com/283](https://www.erdosproblems.com/283) ·
 > [erdosproblems.com/351](https://www.erdosproblems.com/351)
 >
-> ⚠️ **Near completion.** **2 sorries** remain:
-> 1. `theorem_1` `case neg` final assembly — the integrative §2 proof body.
-> 2. `chooseFillerData` collision-avoidance fields (within the FillerData
->    record constructor) — straightforward but bounded by the structure of
->    `egyptian_expansion`'s threshold parameter.
+> ✅ **Complete modulo the stated trust boundary.** No executable `sorry` or
+> `admit` remains in the P283 development. The only non-Mathlib postulate is
+> the Roth-Szekeres-Graham theorem recorded in `Basic.lean`.
 >
-> All Lemmas 3-6, switching polynomial, qPoly + asymptotics, valuation
-> profiles, telescoping, density argument via pigeonhole, Mahler ℕ→ℤ
-> extension, MVT eventual injectivity, and all three Corollary 7 cases are
-> fully proven. The remaining work is the integrative §2 assembly using the
-> CorrectionData and FillerData record interfaces.
+> Lemmas 3-6, switching polynomial, qPoly + asymptotics, valuation profiles,
+> telescoping, density argument via pigeonhole, finite-window RSG conversion,
+> correction/filler data, the final §2 interval assembly, all Corollary 7
+> cases, and the FC wrappers are fully proven.
 > See [§ Current state](#current-state).
 
 The May 3 2026 proof (GPT-5.5 Pro, cleaned up by Liam Price; Kevin Barreto
@@ -43,17 +40,17 @@ The umbrella file `Proof.lean` re-exports everything for convenience.
 | [`Basic.lean`](Basic.lean) | Foundational defs: `IsEgyptianPattern`, `IntValued`, `intEval`, `NoFixedDivisor`, `HasIntegralMultiple`, `IntValued.{add, sub, sum}`, the RSG axiom, `FS`. |
 | [`Egyptian.lean`](Egyptian.lean) | §1 Lemmas 3 + 4 (`egyptian_expansion`, `egyptian_pattern_with_period`) + greedy helpers. |
 | [`PolynomialPeriod.lean`](PolynomialPeriod.lean) | §1 Lemma 5 (polynomial periodicity). |
-| [`Switching.lean`](Switching.lean) | §1 `switchingPoly`, exact natDegree/leadingCoeff formulas, Lemma 6 (`switching_values_span_top`), `IntValued.comp_nat_mul_X`, `switchingPoly_intValued`. |
+| [`Switching.lean`](Switching.lean) | §1 `switchingPoly`, exact natDegree/leadingCoeff formulas, Lemma 6 (`switching_values_span_top`), `IntValued.comp_nat_mul_X`, `switchingPoly_intValued`, `intEval_switchingPoly_nat`, `scaledPatternDenoms`. |
 | [`MainSlots.lean`](MainSlots.lean) | §2 construction objects: `P=36`, `u`, `D`, `tau`, `E0`, `A`, `Dpoly`, `theta`, telescoping, leading coeff equalities. |
 | [`Collision.lean`](Collision.lean) | §2 valuation profiles (`u_coprime_six`, `D_coprime_six`, `main_valuation_profile`, `tau_valuation_profile`, `filler_v2_at_least_three`). |
-| [`Corrections.lean`](Corrections.lean) | §2 correction-slot subset-sum residue cover + density argument (`exists_large_correction_denominator` is the remaining sorry). |
+| [`Corrections.lean`](Corrections.lean) | §2 correction-slot subset-sum residue cover + density argument (`exists_large_correction_denominator`). |
 | [`Theorem1.lean`](Theorem1.lean) | §2 main theorem. |
 | [`Corollary351.lean`](Corollary351.lean) | §3 Corollary 7 (zero, positive-leading, negative-leading cases). |
 | [`FC.lean`](FC.lean) | §4 `formal-conjectures` upstream wrappers `Erdos283.erdos_283` and `Erdos351.erdos_351`. |
 | [`Proof.lean`](Proof.lean) | Umbrella — imports all of the above. |
 | [`proof.pdf`](proof.pdf) | GPT-5.5 Pro + Liam Price, *Polynomial Egyptian Sums*, 3 May 2026. |
 | [`informal.md`](informal.md) | Human-readable proof outline matching the PDF section-by-section. |
-| [`safeverify/Spec.lean`](safeverify/Spec.lean) | SafeVerify target — public theorems with `sorry` bodies. |
+| [`safeverify/Spec.lean`](safeverify/Spec.lean) | SafeVerify target/spec surface. |
 
 ## How to verify
 
@@ -84,11 +81,11 @@ Per-file sorry counts:
 | `MainSlots.lean` | 0 |
 | `Collision.lean` | 0 |
 | `Corrections.lean` | 0 |
-| `Theorem1.lean` | 2 (`theorem_1` `case neg` final assembly + `chooseFillerData` collision-avoidance sub-sorry; constant case + RSG inputs + records all proven) |
+| `Theorem1.lean` | 0 |
 | `Corollary351.lean` | 0 |
-| `FC.lean` | 0 (`erdos_283`, `erdos_351` bridges complete; sorries propagate from Theorem1) |
+| `FC.lean` | 0 (`erdos_283`, `erdos_351` bridges complete) |
 
-**Total: 2 sorries remaining in P283** — the §2 final assembly in `theorem_1` case neg, and the collision-avoidance fields in `chooseFillerData`.
+**Total: 0 executable sorries remaining in P283.**
 
 Per-theorem status:
 
@@ -109,17 +106,25 @@ Per-theorem status:
 | `MainChoice`, `MainGCDData` records (numerator + gcd-data interface for theorem_1 case neg) | ✅ defined + constructors proven |
 | `CorrectionData`, `FillerData` records (correction-slot + filler-denominator interfaces) | ✅ defined |
 | `chooseCorrectionData_g_eq_one` (trivial CorrectionData when gcd.g = 1) | ✅ proved |
-| `chooseFillerData` — Λ choice + reciprocal sum identity | ✅ proved (collision-avoidance fields = sub-sorries) |
-| `IsEgyptianPattern.sum_scaled_recip`, `switchingPoly_eval_nat` (algebra interfaces) | ✅ proved |
+| `CorrectionResidueData`, `chooseCorrectionResidueData` (finite switching generators + duplicated subset-sum cover) | ✅ proved |
+| `exists_correction_slot_congruent`, `exists_correction_slot_for_generator` (single large collision-free correction slot preserving residue) | ✅ proved |
+| `exists_ordered_correction_slots`, `exists_recip_sum_lt_of_large`, `chooseCorrectionData_g_ge_two` | ✅ proved |
+| `chooseFillerData` — Λ choice + reciprocal sum identity + collision avoidance | ✅ proved |
+| `main_window_finite` — finite-window consequence of RSG under the tail-bound hypothesis | ✅ proved |
+| `Bstar`, `M0`, `baseInt` bookkeeping definitions; correction subset divisibility/bounds | ✅ defined/proved |
+| `IsEgyptianPattern.sum_scaled_recip`, `scaledPatternDenoms_*`, `switchingPoly_eval_nat`, `intEval_switchingPoly_nat`, slot switch p-sum identities | ✅ proved |
+| Final denominator index layer (`FinalIndex`, `finalIndexDenom`, `finalIndex_sum`, reciprocal/p-sum splits, witness finalizers) | ✅ proved |
+| Attainable-interval algebra core (`main_window_integer_subset`, `select_subsets_from_rsg_interval`, `attainable_interval_core`) | ✅ proved modulo collision/asymptotic hypotheses |
+| Collision helpers (`D_strictMono`, `tau_strictMono`, main/tau/filler/correction wrappers, same-block injectivity lemmas) | ✅ proved |
 | `u_coprime_six`, `D_coprime_six`, `main_valuation_profile`, `tau_valuation_profile`, `filler_v2_at_least_three` | ✅ proved |
 | `duplicated_generators_subset_sum_all_residues` | ✅ proved |
 | `exists_large_correction_denominator` (density / sieve argument via pigeonhole) | ✅ proved |
 | `theorem_1` constant case (deg p = 0; via Lemma 3 + `NoFixedDivisor` ⇒ `p = 1`) | ✅ proved |
-| `theorem_1` polynomial case final assembly (1 ≤ deg p; RSG inputs proven, integrative assembly remaining) | `sorry` |
+| `theorem_1` polynomial case final assembly (1 ≤ deg p; RSG inputs, correction/filler data, attainable intervals, and interval overlap) | ✅ proved |
 | `corollary_7_zero` (`p = 0` case via Lemma 3) | ✅ proved |
 | `corollary_7_pos_leading` (positive lead coeff; q := D·p/h reduction + Mahler ℕ→ℤ + MVT eventual injectivity) | ✅ proved |
 | `not_strongly_complete_of_neg_leadingCoeff` | ✅ proved |
-| `Erdos283.erdos_283` (FC iff form) | ✅ proved (sorries propagate from Theorem 1) |
+| `Erdos283.erdos_283` (FC iff form) | ✅ proved |
 | `Erdos351.erdos_351` (FC iff form) | ✅ proved |
 
 ## Target trust boundary

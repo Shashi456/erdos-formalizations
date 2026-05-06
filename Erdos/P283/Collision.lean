@@ -180,6 +180,109 @@ lemma filler_v2_at_least_three (Λ f : ℕ) (hΛ : 8 ∣ Λ) (hΛpos : 1 ≤ Λ)
   have hne : Λ * f ≠ 0 := Nat.mul_ne_zero (by omega) (by omega)
   exact (padicValNat_dvd_iff_le hne).mp h8
 
+lemma main_multiplier_cases {h : ℕ}
+    (hh : h ∈ ({1, 2, 3, 6} : Finset ℕ)) :
+    h = 1 ∨ h = 2 ∨ h = 3 ∨ h = 6 := by
+  fin_cases hh <;> simp
+
+lemma main_copy_eq_of_eq {h h' j k : ℕ}
+    (hh : h ∈ ({1, 2, 3, 6} : Finset ℕ))
+    (hh' : h' ∈ ({1, 2, 3, 6} : Finset ℕ))
+    (heq : h * D j = h' * D k) : h = h' ∧ j = k := by
+  have hv : (padicValNat 2 (h * D j), padicValNat 3 (h * D j)) =
+      (padicValNat 2 (h' * D k), padicValNat 3 (h' * D k)) := by
+    rw [heq]
+  rcases main_multiplier_cases hh with rfl | rfl | rfl | rfl <;>
+  rcases main_multiplier_cases hh' with rfl | rfl | rfl | rfl
+  · have hD : D j = D k := Nat.mul_left_cancel (by norm_num) heq
+    exact ⟨rfl, D_injective hD⟩
+  · obtain ⟨hv1, _hv2, _hv3, _hv6⟩ := main_valuation_profile j
+    obtain ⟨_hw1, hw2, _hw3, _hw6⟩ := main_valuation_profile k
+    rw [hv1, hw2] at hv
+    norm_num at hv
+  · obtain ⟨hv1, _hv2, _hv3, _hv6⟩ := main_valuation_profile j
+    obtain ⟨_hw1, _hw2, hw3, _hw6⟩ := main_valuation_profile k
+    rw [hv1, hw3] at hv
+    norm_num at hv
+  · obtain ⟨hv1, _hv2, _hv3, _hv6⟩ := main_valuation_profile j
+    obtain ⟨_hw1, _hw2, _hw3, hw6⟩ := main_valuation_profile k
+    rw [hv1, hw6] at hv
+    norm_num at hv
+  · obtain ⟨_hv1, hv2, _hv3, _hv6⟩ := main_valuation_profile j
+    obtain ⟨hw1, _hw2, _hw3, _hw6⟩ := main_valuation_profile k
+    rw [hv2, hw1] at hv
+    norm_num at hv
+  · have hD : D j = D k := Nat.mul_left_cancel (by norm_num) heq
+    exact ⟨rfl, D_injective hD⟩
+  · obtain ⟨_hv1, hv2, _hv3, _hv6⟩ := main_valuation_profile j
+    obtain ⟨_hw1, _hw2, hw3, _hw6⟩ := main_valuation_profile k
+    rw [hv2, hw3] at hv
+    norm_num at hv
+  · obtain ⟨_hv1, hv2, _hv3, _hv6⟩ := main_valuation_profile j
+    obtain ⟨_hw1, _hw2, _hw3, hw6⟩ := main_valuation_profile k
+    rw [hv2, hw6] at hv
+    norm_num at hv
+  · obtain ⟨_hv1, _hv2, hv3, _hv6⟩ := main_valuation_profile j
+    obtain ⟨hw1, _hw2, _hw3, _hw6⟩ := main_valuation_profile k
+    rw [hv3, hw1] at hv
+    norm_num at hv
+  · obtain ⟨_hv1, _hv2, hv3, _hv6⟩ := main_valuation_profile j
+    obtain ⟨_hw1, hw2, _hw3, _hw6⟩ := main_valuation_profile k
+    rw [hv3, hw2] at hv
+    norm_num at hv
+  · have hD : D j = D k := Nat.mul_left_cancel (by norm_num) heq
+    exact ⟨rfl, D_injective hD⟩
+  · obtain ⟨_hv1, _hv2, hv3, _hv6⟩ := main_valuation_profile j
+    obtain ⟨_hw1, _hw2, _hw3, hw6⟩ := main_valuation_profile k
+    rw [hv3, hw6] at hv
+    norm_num at hv
+  · obtain ⟨_hv1, _hv2, _hv3, hv6⟩ := main_valuation_profile j
+    obtain ⟨hw1, _hw2, _hw3, _hw6⟩ := main_valuation_profile k
+    rw [hv6, hw1] at hv
+    norm_num at hv
+  · obtain ⟨_hv1, _hv2, _hv3, hv6⟩ := main_valuation_profile j
+    obtain ⟨_hw1, hw2, _hw3, _hw6⟩ := main_valuation_profile k
+    rw [hv6, hw2] at hv
+    norm_num at hv
+  · obtain ⟨_hv1, _hv2, _hv3, hv6⟩ := main_valuation_profile j
+    obtain ⟨_hw1, _hw2, hw3, _hw6⟩ := main_valuation_profile k
+    rw [hv6, hw3] at hv
+    norm_num at hv
+  · have hD : D j = D k := Nat.mul_left_cancel (by norm_num) heq
+    exact ⟨rfl, D_injective hD⟩
+
+lemma main_copy_ne_tau {h j N : ℕ}
+    (hh : h ∈ ({1, 2, 3, 6} : Finset ℕ)) :
+    h * D j ≠ tau N := by
+  intro heq
+  have hv : (padicValNat 2 (h * D j), padicValNat 3 (h * D j)) =
+      (padicValNat 2 (tau N), padicValNat 3 (tau N)) := by
+    rw [heq]
+  obtain ⟨ht2, ht3⟩ := tau_valuation_profile N
+  rcases main_multiplier_cases hh with rfl | rfl | rfl | rfl
+  · obtain ⟨hv1, _hv2, _hv3, _hv6⟩ := main_valuation_profile j
+    rw [hv1, ht2, ht3] at hv
+    norm_num at hv
+  · obtain ⟨_hv1, hv2, _hv3, _hv6⟩ := main_valuation_profile j
+    rw [hv2, ht2, ht3] at hv
+    norm_num at hv
+  · obtain ⟨_hv1, _hv2, hv3, _hv6⟩ := main_valuation_profile j
+    rw [hv3, ht2, ht3] at hv
+    norm_num at hv
+  · obtain ⟨_hv1, _hv2, _hv3, hv6⟩ := main_valuation_profile j
+    rw [hv6, ht2, ht3] at hv
+    norm_num at hv
+
+lemma filler_ne_tau {Λ f N : ℕ} (hΛ : 8 ∣ Λ) (hΛpos : 1 ≤ Λ)
+    (hf : 1 ≤ f) : Λ * f ≠ tau N := by
+  intro heq
+  have hfill : 3 ≤ padicValNat 2 (Λ * f) :=
+    filler_v2_at_least_three Λ f hΛ hΛpos hf
+  obtain ⟨ht2, _ht3⟩ := tau_valuation_profile N
+  have : padicValNat 2 (Λ * f) = 2 := by
+    rw [heq, ht2]
+  omega
+
 /-! ## Collision avoidance master lemma
 
 For all sufficiently large `N`, given the collection of all main-slot copies

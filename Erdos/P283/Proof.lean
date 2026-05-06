@@ -22,35 +22,23 @@ Following GPT-5.5 Pro + Liam Price (cleanup) + Kevin Barreto (noticed #351 follo
 Trust boundary beyond Mathlib core (`propext`, `Quot.sound`, `Classical.choice`):
   PolynomialEgyptianSums.roth_szekeres_graham — Graham 1964 / Roth-Szekeres 1954.
 
-This umbrella re-exports the split development. The proof is near completion:
-§1 (Lemmas 3-6), all §2 sub-lemmas (asymptotic constants, valuation profiles,
-telescoping, switching-polynomial structural facts, rescaled-polynomial
-infrastructure, correction-slot residue cover, density argument via pigeonhole),
-all three §3 Corollary 7 cases (zero, positive-leading, negative-leading), and
-the §4 FC wrappers (`erdos_283`, `erdos_351`) are all proven. Only one sorry
-remains:
+This umbrella re-exports the split development. The proof is complete modulo
+the stated `roth_szekeres_graham` trust-boundary axiom: no executable `sorry`
+or `admit` remains in the P283 modules.
 
-  `theorem_1` polynomial case (`case neg`) in `Theorem1.lean` — the §2 final
-  integrative assembly. All RSG inputs (`md`, `gcd`, `X_q`, `hX_q`) are ready;
-  remaining work is the explicit denominator-list construction (correction slot
-  selection via `duplicated_generators_subset_sum_all_residues`, main-slot
-  switch via the window representation, filler via `egyptian_expansion`),
-  StrictMono via collision-profile lemmas, dual sum verification, and the
-  asymptotic interval-overlap argument.
-
-  Note: `theorem_1` and `Erdos283.erdos_283` transitively depend on this sorry
-  via `sorryAx`. `corollary_7_pos_leading` and `Erdos351.erdos_351` also
-  transitively depend on it via the polynomial-case branch.
-
-The full proof is structured around these named interfaces (most proven, one
-remaining):
+The full proof is structured around these named interfaces:
 
   * `chooseMainChoice` ✓        — J threshold via real-cast + tendsto.
   * `chooseMainGCDData` ✓        — g extraction + gcd-quotient bridge.
   * `main_window_representation` ✓ — direct RSG invocation.
-  * `attainable_interval` (TODO)   — every m ∈ I_N representable for parameter N.
-  * `intervals_overlap_eventually` (TODO) — overlap of I_N and I_{N+1}.
-  * Final assembly                 — pick N, invoke attainable_interval.
+  * `main_window_finite` ✓       — finite-window consequence under tail bound.
+  * `chooseCorrectionResidueData` ✓ — finite generators + duplicated residue cover.
+  * `exists_correction_slot_for_generator` ✓ — one large collision-free correction slot.
+  * `chooseCorrectionData_g_ge_two` ✓ — full nontrivial correction-data constructor.
+  * `chooseFillerData` ✓         — filler reciprocal identity + collision fields.
+  * `attainable_interval` ✓        — every m ∈ I_N representable for parameter N.
+  * `intervals_overlap_eventually` ✓ — overlap of I_N and I_{N+1}.
+  * Final assembly ✓               — pick N, invoke attainable_interval.
 -/
 
 import Erdos.P283.Theorem1
@@ -79,15 +67,24 @@ The following theorems are fully axiom-free (only `propext`, `Classical.choice`,
     main_valuation_profile, tau_valuation_profile, filler_v2_at_least_three)
   * `chooseMainChoice`, `chooseMainGCDData`, `qPoly_int_pos_on_pos`
   * Algebra interfaces: `IsEgyptianPattern.sum_scaled_recip`,
-    `switchingPoly_eval_nat`
+    `scaledPatternDenoms_*`, `switchingPoly_eval_nat`, `intEval_switchingPoly_nat`,
+    slot switch p-sum identities
+  * Correction interfaces: `chooseCorrectionResidueData`,
+    `exists_correction_slot_congruent`, `exists_correction_slot_for_generator`,
+    `exists_ordered_correction_slots`, `exists_recip_sum_lt_of_large`,
+    `chooseCorrectionData_g_ge_two`, `correction_subset_dvd_with_bounds`
+  * Final assembly interfaces: `FinalIndex`, `finalIndex_sum`,
+    `finalIndex_recip_sum`, `finalIndex_intEval_sum`,
+    `witness_from_selected_subsets`, `main_window_integer_subset`,
+    `select_subsets_from_rsg_interval`, `attainable_interval_core`,
+    `attainable_interval`, `intervals_overlap_eventually`
+  * Additional collision helpers: `D_strictMono`, `tau_strictMono`,
+    `main_copy_eq_of_eq`, `main_copy_ne_tau`, `filler_ne_tau`,
+    `correctionMultiplierMax`, and same-block injectivity lemmas
 
 The following depend on the trust-boundary axiom `roth_szekeres_graham`:
 
   * `PolynomialEgyptianSums.main_window_representation`
-
-The following depend on `roth_szekeres_graham` AND transitively on `sorryAx`
-(via the unfinished `theorem_1` `case neg`):
-
   * `PolynomialEgyptianSums.theorem_1`
   * `PolynomialEgyptianSums.corollary_7_pos_leading`
   * `Erdos283.erdos_283`

@@ -281,10 +281,9 @@ theorem exists_large_correction_denominator
   -- So for K large, the AP segment `{aσ + k*Tg : 0 ≤ k ≤ K}` of size K+1 in [X₀, X₀+K*Tg]
   -- exceeds the O(√(X₀+K*Tg)) forbidden values, hence contains a good `c`.
   --
-  -- This is captured in the focused claim below. Above this `sorry` is all
-  -- the bookkeeping (positivity threshold, finite-forbidden reduction, AP setup).
-  -- The remaining counting argument needs Nat.sqrt-style bounds and pigeonhole,
-  -- which would take several hundred lines to make rigorous.
+  -- The focused claim below packages the final pigeonhole step after the
+  -- bookkeeping reductions: positivity threshold, finite-forbidden reduction,
+  -- and AP setup.
   obtain ⟨k, hk_AP, hk_main⟩ : ∃ k : ℕ,
       XbadMax ≤ aσ + k * Tg ∧
       (∀ j, J ≤ j → ∀ h ∈ ({1, 2, 3, 6} : Finset ℕ),

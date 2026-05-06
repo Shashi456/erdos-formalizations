@@ -62,6 +62,37 @@ lemma IsEgyptianPattern.sum_scaled_recip
     field_simp
   rw [h_factor, hE.2, mul_one]
 
+def scaledPatternDenoms (E : Finset ℕ) (c : ℕ) : Finset ℕ :=
+  E.image (fun e => e * c)
+
+lemma scaledPatternDenoms_sum_recip
+    {E : Finset ℕ} (hE : IsEgyptianPattern E) {c : ℕ} (hc : 0 < c) :
+    (∑ n ∈ scaledPatternDenoms E c, (1 : ℚ) / (n : ℚ)) =
+      (1 : ℚ) / (c : ℚ) := by
+  unfold scaledPatternDenoms
+  rw [Finset.sum_image]
+  · exact IsEgyptianPattern.sum_scaled_recip hE c hc
+  · intro e _ e' _ heq
+    exact Nat.eq_of_mul_eq_mul_right hc heq
+
+lemma scaledPatternDenoms_eval_sum
+    (p : ℚ[X]) (E : Finset ℕ) {c : ℕ} (hc : 0 < c) :
+    (∑ n ∈ scaledPatternDenoms E c, p.eval ((n : ℕ) : ℚ)) =
+      ∑ e ∈ E, p.eval (((e * c : ℕ) : ℕ) : ℚ) := by
+  unfold scaledPatternDenoms
+  rw [Finset.sum_image]
+  intro e _ e' _ heq
+  exact Nat.eq_of_mul_eq_mul_right hc heq
+
+lemma scaledPatternDenoms_intEval_sum
+    (p : ℚ[X]) (hp : IntValued p) (E : Finset ℕ) {c : ℕ} (hc : 0 < c) :
+    (∑ n ∈ scaledPatternDenoms E c, intEval p hp ((n : ℕ) : ℤ)) =
+      ∑ e ∈ E, intEval p hp (((e * c : ℕ) : ℕ) : ℤ) := by
+  unfold scaledPatternDenoms
+  rw [Finset.sum_image]
+  intro e _ e' _ heq
+  exact Nat.eq_of_mul_eq_mul_right hc heq
+
 /-- The leading coefficient of `Q_E` is `lc(p) · (∑_{e ∈ E} e^r - 1)`, where
 `r := deg p`. Positive whenever `lc(p) > 0` and `E` is non-trivial (since
 `∑ e^r ≥ ∑ e ≥ 2|E| ≥ 2 > 1`). -/
@@ -489,6 +520,42 @@ lemma switchingPoly_intValued (p : ℚ[X]) (hp : IntValued p) (E : Finset ℕ) :
   exact IntValued.sub
     (IntValued.sum E _ (fun e _ => IntValued.comp_nat_mul_X p hp e))
     hp
+
+lemma intEval_switchingPoly_nat (p : ℚ[X]) (hp : IntValued p)
+    (E : Finset ℕ) (c : ℕ) :
+    intEval (switchingPoly p E) (switchingPoly_intValued p hp E) ((c : ℕ) : ℤ) =
+      (∑ e ∈ E, intEval p hp (((e * c : ℕ) : ℕ) : ℤ)) -
+        intEval p hp ((c : ℕ) : ℤ) := by
+  have hq :
+      ((intEval (switchingPoly p E) (switchingPoly_intValued p hp E)
+        ((c : ℕ) : ℤ) : ℤ) : ℚ) =
+      (((∑ e ∈ E, intEval p hp (((e * c : ℕ) : ℕ) : ℤ)) -
+        intEval p hp ((c : ℕ) : ℤ) : ℤ) : ℚ) := by
+    rw [intEval_spec]
+    change (switchingPoly p E).eval ((c : ℕ) : ℚ) =
+      (((∑ e ∈ E, intEval p hp (((e * c : ℕ) : ℕ) : ℤ)) -
+        intEval p hp ((c : ℕ) : ℤ) : ℤ) : ℚ)
+    rw [switchingPoly_eval_nat]
+    push_cast
+    congr 1
+    · apply Finset.sum_congr rfl
+      intro e _
+      rw [intEval_spec]
+      congr 1
+      push_cast
+      ring
+    · rw [intEval_spec]
+      rfl
+  exact_mod_cast hq
+
+lemma scaledPatternDenoms_intEval_sum_sub
+    (p : ℚ[X]) (hp : IntValued p) (E : Finset ℕ) {c : ℕ} (hc : 0 < c) :
+    (∑ n ∈ scaledPatternDenoms E c, intEval p hp ((n : ℕ) : ℤ)) -
+        intEval p hp ((c : ℕ) : ℤ) =
+      intEval (switchingPoly p E) (switchingPoly_intValued p hp E)
+        ((c : ℕ) : ℤ) := by
+  rw [scaledPatternDenoms_intEval_sum p hp E hc,
+    intEval_switchingPoly_nat p hp E c]
 
 /-- The set of **integer values** of switching polynomials over all Egyptian
 patterns and positive integers. -/
