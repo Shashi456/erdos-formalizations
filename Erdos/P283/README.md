@@ -142,6 +142,51 @@ the asymptotic input. Both are classical and unconditional; Mathlib has
 surrounding analytic-number-theory infrastructure but not this named
 result.
 
+## Verifying with SafeVerify
+
+[SafeVerify](https://github.com/GasStationManager/SafeVerify) replays each
+declaration through the kernel via `Environment.replay`, enforces a hard
+axiom allow-list, and bans `partial` / `unsafe` constants.
+
+Our proof depends on one named axiom beyond `{propext, Quot.sound,
+Classical.choice}` — `PolynomialEgyptianSums.roth_szekeres_graham`.
+SafeVerify's default allow-list needs to be extended with this name; the
+extension is local to this problem.
+
+**Reproduction** (assumes a clone of SafeVerify pinned to
+`leanprover/lean4:v4.27.0` — the same toolchain this repo uses):
+
+```bash
+# 1. Build this repo so all P283 oleans exist.
+cd erdos-formalizations
+lake exe cache get
+lake build
+
+# 2. Build the SafeVerify target spec to .olean.
+lake env lean -o Erdos/P283/safeverify/Spec.olean Erdos/P283/safeverify/Spec.lean
+
+# 3. In your SafeVerify clone, extend `allowedAxioms` (Main.lean line 355)
+#    with the axiom used by this proof:
+#
+#      allowedAxioms := #[`propext, `Quot.sound, `Classical.choice,
+#        `PolynomialEgyptianSums.roth_szekeres_graham]
+#
+#    Then `lake exe cache get && lake build`.
+
+# 4. Run the check (LEAN_PATH must include this repo's .lake build dir
+#    so SafeVerify can resolve `Erdos.P283.Proof`):
+cd /path/to/SafeVerify
+LEAN_PATH="/path/to/erdos-formalizations/.lake/build/lib/lean:$(lake env printenv LEAN_PATH)" \
+  lake exe safe_verify --verbose --disallow-partial \
+    /path/to/erdos-formalizations/Erdos/P283/safeverify/Spec.olean \
+    /path/to/erdos-formalizations/.lake/build/lib/lean/Erdos/P283/Proof.olean
+```
+
+Expected output ends with `SafeVerify check passed.` — verified locally
+with the spec covering 21 declarations (definitions + Lemmas 3-5,
+`intEval_spec`, `theorem_1`, all three Corollary 7 cases, `corollary_7`
+umbrella, FC wrappers `Erdos283.erdos_283` and `Erdos351.erdos_351`).
+
 ## Alignment with the informal proof
 
 [`proof.pdf`](proof.pdf) is the GPT-5.5 Pro / Liam Price PDF the

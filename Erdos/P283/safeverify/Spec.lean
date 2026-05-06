@@ -1,80 +1,142 @@
 /-
 SafeVerify target for Erdős Problems 283 + 351.
 
-Public-theorem signatures bridged to the internal `PolynomialEgyptianSums`
-namespace. The actual proofs live in the split modules under `Erdos.P283.*`;
-this Spec is the external contract.
+Enumerates the public theorems and the supporting definitions that the P283
+development provides. The bodies in this file are `sorry` *by design* —
+SafeVerify only inspects signatures here; the actual proofs live in the
+split modules under `Erdos.P283.*`, where they are sorry-free. SafeVerify
+replays both files and checks the submission's matching declarations only
+depend on the allow-list:
 
-Trust boundary: Mathlib core + PolynomialEgyptianSums.roth_szekeres_graham
-(Graham 1964 / Roth-Szekeres 1954).
+  Mathlib core (`propext`, `Classical.choice`, `Quot.sound`)
+  + `PolynomialEgyptianSums.roth_szekeres_graham`
+        — Graham's complete-polynomial-values theorem (Duke Math. J. 1964)
+          with Roth–Szekeres (Quart. J. Math. 1954) as the asymptotic input.
+          The single classical, unconditional trust-boundary axiom.
+
+The extra axiom name is local to this problem; reproduction recipe in
+`../README.md` § "Verifying with SafeVerify".
+
+Lemmas 3-6 (egyptian_expansion, egyptian_pattern_with_period,
+polynomial_periodicity, switching_values_span_top) and the §3 zero and
+negative-leading cases of Corollary 7 do **not** depend on
+`roth_szekeres_graham`; the trust boundary attaches solely to `theorem_1`'s
+polynomial branch (where the asymptotic complete-polynomial result is invoked).
 -/
 
-import Erdos.P283.Proof
+import Mathlib
 
-namespace SafeVerify
+namespace PolynomialEgyptianSums
 
-open Filter Polynomial Finset
+open Polynomial Filter
 
-/-- The image set `{p(n) + 1/n : n ∈ ℕ}` for `p ∈ ℚ[x]`. -/
-def imageSet (p : ℚ[X]) : Set ℚ := PolynomialEgyptianSums.imageSet p
+/-- Egyptian pattern: `E ⊆ {2, 3, …}` with `∑_{e ∈ E} 1/e = 1`. -/
+def IsEgyptianPattern (E : Finset ℕ) : Prop := sorry
 
-/-- Strong completeness: for any finite forbidden set, eventually every large
-`m` is a finite subset-sum from `A \ B`. -/
-def IsStronglyComplete (A : Set ℚ) : Prop :=
-  PolynomialEgyptianSums.IsStronglyComplete A
+/-- A rational polynomial takes integer values on every integer. -/
+def IntValued (p : ℚ[X]) : Prop := sorry
 
-/-- FC's Condition for #283 — re-exported from `Erdos.P283.FC`. -/
-def FC_Condition_283 (p : ℤ[X]) : Prop := Erdos283.Condition p
+/-- The integer value of an integer-valued polynomial. -/
+noncomputable def intEval (p : ℚ[X]) (hp : IntValued p) (z : ℤ) : ℤ := sorry
 
-/-- **Theorem 1** (PDF Theorem 1, SafeVerify form).
+/-- `intEval` returns the integer cast of the polynomial's rational value. -/
+lemma intEval_spec (p : ℚ[X]) (hp : IntValued p) (z : ℤ) :
+    ((intEval p hp z : ℤ) : ℚ) = p.eval (z : ℚ) := sorry
 
-Bridges from the SafeVerify-style hypothesis form (naked existentials over `k`
-witnessing the integer-valued and no-fixed-divisor conditions) to the internal
-`PolynomialEgyptianSums.theorem_1`.
+/-- No fixed divisor on positive integers: no `d ≥ 2` divides every `p(n)` for `n ≥ 1`. -/
+def NoFixedDivisor (p : ℚ[X]) (hp : IntValued p) : Prop := sorry
 
-The hypothesis equivalences:
-  * `h_int : ∀ n : ℤ, ∃ k : ℤ, (k : ℚ) = p.eval n`  ↔  `IntValued p`.
-  * `h_no_fixed_div`  ↔  `NoFixedDivisor p hp` (witnessing existential
-    `∃ k : ℤ, (k * d : ℚ) = p.eval n` is exactly `(d : ℤ) ∣ intEval p hp n`). -/
+/-- `B p(x) ∈ ℤ[x]`: there is an integer-coefficient polynomial whose ℚ-cast equals
+`B p`. Used in Lemma 5 (polynomial periodicity). -/
+def HasIntegralMultiple (B : ℕ) (p : ℚ[X]) : Prop := sorry
+
+/-- The image set `A_p = { p(n) + 1/n : n ∈ ℕ }`. -/
+def imageSet (p : ℚ[X]) : Set ℚ := sorry
+
+/-- Strong completeness of a subset of ℚ: every sufficiently large natural number
+is a finite subset-sum from `A \ B` for any finite `B`. -/
+def IsStronglyComplete (A : Set ℚ) : Prop := sorry
+
+/-! ## §1 Egyptian switches (axiom-free) -/
+
+theorem egyptian_expansion (R : ℚ) (hR : 0 < R) (L : ℕ) :
+    ∃ K : ℕ, ∀ k ≥ K, ∃ E : Finset ℕ,
+      E.card = k ∧ (∀ e ∈ E, L < e) ∧ R = ∑ e ∈ E, (1 : ℚ) / e := sorry
+
+theorem egyptian_pattern_with_period (T M : ℕ) (hT : 1 ≤ T) (hM : 1 ≤ M)
+    (ρ : ZMod M) :
+    ∃ E : Finset ℕ, IsEgyptianPattern E ∧ (∀ e ∈ E, T ∣ e) ∧
+      (E.card : ZMod M) = ρ := sorry
+
+theorem polynomial_periodicity (p : ℚ[X]) (hp_int : IntValued p)
+    (B : ℕ) (hBpos : 1 ≤ B) (hB : HasIntegralMultiple B p)
+    (m : ℕ) (hm : 1 ≤ m) (x y : ℤ)
+    (hxy : x ≡ y [ZMOD ((m * B : ℕ) : ℤ)]) :
+    intEval p hp_int x ≡ intEval p hp_int y [ZMOD ((m : ℕ) : ℤ)] := sorry
+
+/-! ## §2 Main theorem (depends on `roth_szekeres_graham`) -/
+
+/-- **Theorem 1 (PDF Theorem 1).** For `α ∈ ℚ_{>0}`, `L ≥ 1`, and `p ∈ ℚ[x]`
+integer-valued with positive leading coefficient and no fixed divisor on
+positive integers, all sufficiently large integers `m` admit an expression as
+`∑ p(n_i)` with distinct `L < n_1 < ⋯ < n_k` and `∑ 1/n_i = α`. -/
 theorem theorem_1 (α : ℚ) (hα : 0 < α) (L : ℕ) (hL : 1 ≤ L) (p : ℚ[X])
-    (h_int : ∀ n : ℤ, ∃ k : ℤ, (k : ℚ) = p.eval (n : ℚ))
-    (h_lead_pos : 0 < p.leadingCoeff)
-    (h_no_fixed_div : ∀ d : ℕ, 2 ≤ d →
-      ¬ ∀ n : ℕ, 1 ≤ n → ∃ k : ℤ, (k * (d : ℤ) : ℚ) = p.eval (n : ℚ)) :
+    (hp : IntValued p) (h_lead_pos : 0 < p.leadingCoeff)
+    (h_no_fixed_div : NoFixedDivisor p hp) :
     ∃ m₀ : ℕ, ∀ m : ℕ, m₀ ≤ m →
       ∃ (k : ℕ) (n : Fin (k + 1) → ℕ),
         StrictMono n ∧ (L < n 0) ∧
         (α = ∑ i, (1 : ℚ) / (n i)) ∧
-        ((m : ℚ) = ∑ i, p.eval ((n i : ℕ) : ℚ)) := by
-  have hp : PolynomialEgyptianSums.IntValued p := h_int
-  have hnf : PolynomialEgyptianSums.NoFixedDivisor p hp := by
-    intro d hd hdvd
-    apply h_no_fixed_div d hd
-    intro n hn
-    obtain ⟨c, hc⟩ := hdvd n hn
-    refine ⟨c, ?_⟩
-    have h_spec := PolynomialEgyptianSums.intEval_spec p hp (n : ℤ)
-    rw [hc] at h_spec
-    push_cast at h_spec ⊢
-    linarith
-  exact PolynomialEgyptianSums.theorem_1 α hα L hL p hp h_lead_pos hnf
+        ((m : ℚ) = ∑ i, p.eval ((n i : ℕ) : ℚ)) := sorry
 
-/-- **Corollary 7** (PDF, SafeVerify form): `imageSet p` is strongly complete
-when `p = 0` or `p` has positive leading coefficient. Direct re-export of
-`PolynomialEgyptianSums.corollary_7`. -/
+/-! ## §3 Corollary 7 -/
+
+/-- The `p = 0` case is axiom-free (uses only Lemma 3). -/
+theorem corollary_7_zero : IsStronglyComplete (imageSet (0 : ℚ[X])) := sorry
+
+/-- The negative-leading case is axiom-free. -/
+theorem not_strongly_complete_of_neg_leadingCoeff
+    (p : ℚ[X]) (hp : p.leadingCoeff < 0) :
+    ¬ IsStronglyComplete (imageSet p) := sorry
+
+/-- The positive-leading case (depends transitively on `roth_szekeres_graham`). -/
+theorem corollary_7_pos_leading (p : ℚ[X]) (h_lead_pos : 0 < p.leadingCoeff) :
+    IsStronglyComplete (imageSet p) := sorry
+
+/-- Combined Corollary 7: `p = 0` or positive leading coefficient ⇒ strong completeness. -/
 theorem corollary_7 (p : ℚ[X]) (h : p = 0 ∨ 0 < p.leadingCoeff) :
-    IsStronglyComplete (imageSet p) :=
-  PolynomialEgyptianSums.corollary_7 p h
+    IsStronglyComplete (imageSet p) := sorry
 
-/-- **Erdős #283** (FC iff form): re-exported from `Erdos.P283.FC`. -/
+end PolynomialEgyptianSums
+
+/-! ## §4 formal-conjectures upstream wrappers -/
+
+namespace Erdos283
+
+open Filter Polynomial Finset
+
+/-- The condition appearing in FC's `erdos_283` for an integer polynomial. -/
+def Condition (p : ℤ[X]) : Prop := sorry
+
+/-- **`formal-conjectures` upstream form for #283** under `answer := True`. -/
 theorem erdos_283 :
-    True ↔ ∀ p : ℤ[X], FC_Condition_283 p :=
-  Erdos283.erdos_283
+    True ↔ ∀ p : ℤ[X], Condition p := sorry
 
-/-- **Erdős #351** (FC iff form): re-exported from `Erdos.P283.FC`. -/
+end Erdos283
+
+namespace Erdos351
+
+open Polynomial
+
+/-- FC-named alias for `imageSet`. -/
+def imageSet (P : ℚ[X]) : Set ℚ := sorry
+
+/-- FC-named alias for `IsStronglyComplete (imageSet P)`. -/
+def HasCompleteImage (P : ℚ[X]) : Prop := sorry
+
+/-- **`formal-conjectures` upstream form for #351** under `answer := True`. -/
 theorem erdos_351 :
     True ↔ ∀ P : ℚ[X], 0 < P.natDegree → 0 < P.leadingCoeff →
-      IsStronglyComplete (imageSet P) :=
-  Erdos351.erdos_351
+      HasCompleteImage P := sorry
 
-end SafeVerify
+end Erdos351
