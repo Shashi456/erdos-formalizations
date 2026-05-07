@@ -2,11 +2,10 @@
 SafeVerify target for Erdős Problem 42.
 
 Public-theorem signatures with `sorry` bodies. The actual proofs live in
-`Proof.lean` (currently scaffolded; this Spec is the external contract).
+`Proof.lean`; this Spec is the external contract.
 
-Trust boundary: Mathlib core + two axioms:
-  - Erdos42.complexity_one_counting_lemma (Green-Tao 2008)
-  - Erdos42.compact_U2_regularity_subsequential_limit (classical compactness)
+Trust boundary of the current Route B proof: Mathlib core +
+  - Erdos42.CompactCayley.compact_cayley_clique
 -/
 
 import Mathlib
