@@ -13,7 +13,7 @@ exceed `binomial(f(N), 2) + C` for any constant `C` (take `M` with
 Following the combined PDF Section 4 corollary statement.
 -/
 
-import Erdos.P42.FCWrapper
+import Erdos.P42.FC.Local
 import Erdos.P43.Basic
 
 namespace Erdos43

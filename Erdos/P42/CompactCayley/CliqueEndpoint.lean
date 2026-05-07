@@ -8,7 +8,7 @@ ordered tuple whose pairwise differences lie in the allowed set, `0 ∉ T`
 turns that tuple into an actual finite clique.
 -/
 
-import Erdos.P42.CompactCayley.Axiom
+import Erdos.P42.CompactCayley.CliqueAxiom
 
 namespace Erdos42.CompactCayley
 

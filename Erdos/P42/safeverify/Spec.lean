@@ -3,7 +3,7 @@ SafeVerify target for Erdős Problem 42.
 
 Public-theorem signatures with `sorry` bodies. The actual proofs live in
 `Proof.lean`; this Spec is the external contract. The upstream-shaped
-formal-conjectures RHS equivalence lives in `Erdos/P42/FC.lean`.
+formal-conjectures RHS equivalence lives in `Erdos/P42/FC/Shape.lean`.
 
 Trust boundary of the current Route A proof: Mathlib core +
   - Erdos42.FourierPositive.finite_fourier_avoidance_exists

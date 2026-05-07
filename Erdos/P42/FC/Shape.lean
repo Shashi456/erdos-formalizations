@@ -3,12 +3,12 @@ Erdős Problem 42 — formal-conjectures shape wrapper.
 
 The repository does not currently vendor `formal-conjectures`, so this file
 mirrors the upstream RHS locally and proves it equivalent to the existing
-`FCWrapper.lean` statement. If the FC package is later added as a Lake
+`FC/Local.lean` statement. If the FC package is later added as a Lake
 dependency, this is the file to replace by an import of
 `FormalConjectures.ErdosProblems.42` plus a proof of its exact theorem.
 -/
 
-import Erdos.P42.FCWrapper
+import Erdos.P42.FC.Local
 
 namespace Erdos42
 
@@ -40,7 +40,7 @@ theorem isSidon_iff_local (A : Set ℕ) :
   rfl
 
 /-- FC-shaped maximal Sidon predicate. This is definitionally equal to the local
-predicate in `FCWrapper.lean`. -/
+predicate in `FC/Local.lean`. -/
 def IsMaximalSidonSetIn (A : Set ℕ) (N : ℕ) : Prop :=
   A ⊆ Set.Icc 1 N ∧ IsSidon A ∧
     ∀ x ∈ Set.Icc 1 N, x ∉ A → ¬ IsSidon (insert x A)
@@ -56,7 +56,7 @@ def erdos42RHS : Prop :=
       B ⊆ Set.Icc 1 N ∧ IsSidon B ∧ B.ncard = M ∧
         ((A - A) ∩ (B - B)) = {0}
 
-/-- The already-proved local RHS from `FCWrapper.lean`. -/
+/-- The already-proved local RHS from `FC/Local.lean`. -/
 def localRHS : Prop :=
   ∀ M ≥ 1, ∀ᶠ N in atTop, ∀ (A : Set ℕ) (_ : Erdos42.IsMaximalSidonSetIn A N),
     ∃ (B : Set ℕ), B ⊆ Set.Icc 1 N ∧ Erdos42.IsSidon B ∧ B.ncard = M ∧

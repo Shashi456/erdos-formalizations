@@ -42,7 +42,7 @@ The umbrella file `Proof.lean` re-exports everything for convenience.
 
 | File | What |
 |------|------|
-| [`Basic.lean`](Basic.lean) | Foundational defs: `IsEgyptianPattern`, `IntValued`, `intEval`, `NoFixedDivisor`, `HasIntegralMultiple`, `IntValued.{add, sub, sum}`, the RSG theorem wrapper, `FS`. |
+| [`Common.lean`](Common.lean) | Foundational defs: `IsEgyptianPattern`, `IntValued`, `intEval`, `NoFixedDivisor`, `HasIntegralMultiple`, `IntValued.{add, sub, sum}`, the RSG theorem wrapper, `FS`. |
 | [`Egyptian.lean`](Egyptian.lean) | §1 Lemmas 3 + 4 (`egyptian_expansion`, `egyptian_pattern_with_period`) + greedy helpers. |
 | [`PolynomialPeriod.lean`](PolynomialPeriod.lean) | §1 Lemma 5 (polynomial periodicity). |
 | [`Switching.lean`](Switching.lean) | §1 `switchingPoly`, exact natDegree/leadingCoeff formulas, Lemma 6 (`switching_values_span_top`), `IntValued.comp_nat_mul_X`, `switchingPoly_intValued`, `intEval_switchingPoly_nat`, `scaledPatternDenoms`. |
@@ -53,8 +53,8 @@ The umbrella file `Proof.lean` re-exports everything for convenience.
 | [`Corollary351.lean`](Corollary351.lean) | §3 Corollary 7 (zero, positive-leading, negative-leading cases). |
 | [`FC.lean`](FC.lean) | §4 `formal-conjectures` upstream wrappers `Erdos283.erdos_283` and `Erdos351.erdos_351`. |
 | [`Proof.lean`](Proof.lean) | Umbrella — imports all of the above. |
-| [`proof.pdf`](proof.pdf) | GPT-5.5 Pro + Liam Price, *Polynomial Egyptian Sums*, 3 May 2026. |
-| [`informal.md`](informal.md) | Human-readable proof outline matching the PDF section-by-section. |
+| [`compact_cayley_proof.pdf`](compact_cayley_proof.pdf) | GPT-5.5 Pro + Liam Price, *Polynomial Egyptian Sums*, 3 May 2026. |
+| [`proof_outline.md`](proof_outline.md) | Human-readable proof outline matching the PDF section-by-section. |
 | [`safeverify/Spec.lean`](safeverify/Spec.lean) | SafeVerify target/spec surface. |
 
 ## How to verify
@@ -212,7 +212,7 @@ Roth-Szekeres-Graham theorem, now proved).
 
 ## Alignment with the informal proof
 
-[`proof.pdf`](proof.pdf) is the GPT-5.5 Pro / Liam Price PDF the
+[`compact_cayley_proof.pdf`](compact_cayley_proof.pdf) is the GPT-5.5 Pro / Liam Price PDF the
 formalization is based on. We split it into the §1 Egyptian switches
 (four lemmas), §2 main proof, and Corollary 7 derivation; each section
 will be audited independently against `Proof.lean`.

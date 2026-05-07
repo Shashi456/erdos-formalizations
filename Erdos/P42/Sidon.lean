@@ -4,10 +4,10 @@ lemmas every route depends on.
 
 We define `IsSidonInt` over `Finset ℤ` (the natural setting for the analytic
 proof) and `IsSidonNat` over `Finset ℕ` / `Set ℕ` (the FC-aligned setting).
-Bridge lemmas live in `FCWrapper.lean`.
+Bridge lemmas live in `FC/Local.lean`.
 -/
 
-import Erdos.P42.Basic
+import Erdos.P42.Common
 
 namespace Erdos42
 

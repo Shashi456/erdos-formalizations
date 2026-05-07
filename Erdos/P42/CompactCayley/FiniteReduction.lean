@@ -16,12 +16,12 @@ also reused by the Fourier-positive Route A:
      `A − A`; greedily extract a Sidon subset `B ⊆ X` of size `M`.
 
 The Route B theorem that actually invokes `compact_cayley_clique` lives in
-`CompactCayley/RouteB.lean`.
+`CompactCayley/Main.lean`.
 -/
 
-import Erdos.P42.Basic
+import Erdos.P42.Common
 import Erdos.P42.Sidon
-import Erdos.P42.FourierAPI
+import Erdos.P42.FiniteFourier
 
 namespace Erdos42.CompactCayley
 

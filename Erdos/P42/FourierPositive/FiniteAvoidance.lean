@@ -12,8 +12,8 @@ counting. The downstream Lean proof of #42 is then elementary combinatorics,
 the Sidon Fourier estimate, and greedy Sidon extraction.
 -/
 
-import Erdos.P42.Basic
-import Erdos.P42.FourierAPI
+import Erdos.P42.Common
+import Erdos.P42.FiniteFourier
 
 namespace Erdos42
 

@@ -11,7 +11,7 @@ Fourier-positive notes.
 nontrivial characters.
 -/
 
-import Erdos.P42.Basic
+import Erdos.P42.Common
 import Mathlib.Analysis.Fourier.ZMod
 
 namespace Erdos42

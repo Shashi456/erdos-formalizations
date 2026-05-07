@@ -2,7 +2,7 @@
 Erdős Problem 42 — Layer 1 continuous-analogue lemma.
 
 Following Tao's May 2026 forum comment + natso26's clean exposition
-(`proof_ulam_note.pdf`). The geometric core
+(`fourier_positive_ulam_note.pdf`). The geometric core
 `closed_proper_subgroup_haar_null` is proved here axiom-free; the main
 `tao_continuous_avoidance` lemma is also proved once the standard measurable
 group assumptions needed by Mathlib's Haar shear lemmas are available.

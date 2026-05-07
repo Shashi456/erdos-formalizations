@@ -9,7 +9,7 @@ Erdős Problem 43 — Sidon difference avoidance, equal-cardinality version.
                                   parity construction.
   Erdos.P43.FCWrapper           — FC `erdos_43` wrapper.
 
-Following the combined writeup `Erdos/P42/proof_combined_42_43.pdf` and the
+Following the combined writeup `Erdos/P42/combined_42_43_proof.pdf` and the
 live #43 thread.
 -/
 

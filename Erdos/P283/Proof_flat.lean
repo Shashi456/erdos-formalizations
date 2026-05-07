@@ -8,7 +8,7 @@ Trust boundary (verify with `#print axioms` at the bottom):
   Mathlib core (propext, Classical.choice, Quot.sound)
 
 The May 3 2026 proof (GPT-5.5 Pro, cleaned up by Liam Price; Kevin Barreto
-noticed #351 follows) — see proof.pdf.
+noticed #351 follows) — see compact_cayley_proof.pdf.
 -/
 
 import Mathlib

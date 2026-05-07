@@ -18,42 +18,48 @@ Erdős's #42, [`[Er95]`]. The active Lean route follows the Fourier-positive /
 Green-Tao `U²` route from the Ulam/Tao note: a finite avoidance theorem gives a
 large tuple avoiding `A - A`, and the downstream Sidon extraction is finite
 combinatorics. The compact-Cayley route remains preserved separately in
-`CompactCayley/RouteB.lean`.
+`CompactCayley/Main.lean`.
 
 ## Files
 
 | File | What |
 |------|------|
-| [`Proof.lean`](Proof.lean) | Thin active-proof alias; currently imports `Proof_Fourier.lean`. |
-| [`Proof_Fourier.lean`](Proof_Fourier.lean) | Route A umbrella for the Fourier-positive proof and public wrappers. |
-| [`Proof_Cayley.lean`](Proof_Cayley.lean) | Route B umbrella for the compact-Cayley proof. |
-| [`Basic.lean`](Basic.lean), [`Sidon.lean`](Sidon.lean) | Shared finite-combinatorial API and Sidon lemmas. |
-| [`CompactCayley/Axiom.lean`](CompactCayley/Axiom.lean) | Route B trust boundary, `compact_cayley_clique`. |
-| [`CompactCayley/Internal.lean`](CompactCayley/Internal.lean) | Finite tuple-to-clique endpoint for opening the compact-Cayley axiom. |
-| [`CompactCayley/Application.lean`](CompactCayley/Application.lean) | Shared finite Cayley/Fourier and greedy Sidon lemmas; no Route B axiom import. |
-| [`CompactCayley/RouteB.lean`](CompactCayley/RouteB.lean) | Route B downstream theorem, isolated behind `compact_cayley_clique`. |
-| [`FourierPositive/Axiom.lean`](FourierPositive/Axiom.lean) | Route A trust boundary, `finite_fourier_avoidance_exists`. |
-| [`FourierPositive/Application.lean`](FourierPositive/Application.lean) | Route A forbidden-set setup, Fourier lower-bound bridge, and downstream theorem. |
-| [`Continuous.lean`](Continuous.lean) | Continuous Haar/null-set endpoints used when opening the compactness arguments. |
-| [`FCWrapper.lean`](FCWrapper.lean) | Public `Set ℕ` theorem and FC-style `erdos_42` wrapper. |
-| [`FC.lean`](FC.lean) | Formal-conjectures-shaped RHS with equivalence to `FCWrapper.lean`. |
-| [`proof.pdf`](proof.pdf) | Harjas / GPT-5.5 Pro, *A Fourier-Compactness Proof of Erdős Problem 42*, corrected version, 27 April 2026. |
-| [`proof_combined_42_43.pdf`](proof_combined_42_43.pdf) | Kevin Barreto, *Sidon Difference Avoidance*, 29 April 2026 — combines #42 + #43. |
-| [`proof_ulam_note.pdf`](proof_ulam_note.pdf) | natso26 / Tao, *A Fourier-positive proof of Erdős Problem 42*, draft note, 30 April 2026 — the cleanest exposition; we follow this layout. |
-| [`informal.md`](informal.md) | Human-readable proof outline matching `proof_ulam_note.pdf`. |
-| [`forum_thread.md`](forum_thread.md) | Snapshot of the forum thread (relevant comments + links). |
-| [`safeverify/Spec.lean`](safeverify/Spec.lean) | SafeVerify target — public theorems with `sorry` bodies. |
+| [`Proof.lean`](Proof.lean) | Thin modular active-proof alias; currently imports `FC/Shape.lean`. |
+| [`FourierPositive/Proof.lean`](FourierPositive/Proof.lean) | Standalone flat Route A bundle: shared machinery + Fourier-positive proof + public wrappers. |
+| [`CompactCayley/Proof.lean`](CompactCayley/Proof.lean) | Standalone flat Route B bundle: shared machinery + compact-Cayley proof. |
+| [`Common.lean`](Common.lean), [`Sidon.lean`](Sidon.lean), [`FiniteFourier.lean`](FiniteFourier.lean) | Shared finite-combinatorial, Sidon, and normalized `ZMod.dft` API. |
+| [`CompactCayley/CliqueAxiom.lean`](CompactCayley/CliqueAxiom.lean) | Route B trust boundary, `compact_cayley_clique`. |
+| [`CompactCayley/CliqueEndpoint.lean`](CompactCayley/CliqueEndpoint.lean) | Finite tuple-to-clique endpoint for opening the compact-Cayley axiom. |
+| [`CompactCayley/FiniteReduction.lean`](CompactCayley/FiniteReduction.lean) | Shared finite Cayley/Fourier and greedy Sidon lemmas; no Route B axiom import. |
+| [`CompactCayley/Main.lean`](CompactCayley/Main.lean) | Route B downstream theorem, isolated behind `compact_cayley_clique`. |
+| [`FourierPositive/FiniteAvoidance.lean`](FourierPositive/FiniteAvoidance.lean) | Route A trust boundary, `finite_fourier_avoidance_exists`. |
+| [`FourierPositive/Main.lean`](FourierPositive/Main.lean) | Route A forbidden-set setup, Fourier lower-bound bridge, and downstream theorem. |
+| [`CompactCayley/ContinuousEndpoint.lean`](CompactCayley/ContinuousEndpoint.lean) | Continuous Haar/null-set endpoints used when opening the compactness arguments. |
+| [`FC/Local.lean`](FC/Local.lean) | Public `Set ℕ` theorem and FC-style `erdos_42` wrapper. |
+| [`FC/Shape.lean`](FC/Shape.lean) | Formal-conjectures-shaped RHS with equivalence to `FC/Local.lean`. |
+| [`docs/compact_cayley_proof.pdf`](docs/compact_cayley_proof.pdf) | Harjas / GPT-5.5 Pro, *A Fourier-Compactness Proof of Erdős Problem 42*, corrected version, 27 April 2026. |
+| [`docs/combined_42_43_proof.pdf`](docs/combined_42_43_proof.pdf) | Kevin Barreto, *Sidon Difference Avoidance*, 29 April 2026 — combines #42 + #43. |
+| [`docs/fourier_positive_ulam_note.pdf`](docs/fourier_positive_ulam_note.pdf) | natso26 / Tao, *A Fourier-positive proof of Erdős Problem 42*, draft note, 30 April 2026 — the cleanest exposition; we follow this layout. |
+| [`docs/proof_outline.md`](docs/proof_outline.md) | Human-readable proof outline matching `fourier_positive_ulam_note.pdf`. |
+| [`docs/forum.md`](docs/forum.md) | Snapshot of the forum thread (relevant comments + links). |
+| [`safeverify/Spec.lean`](safeverify/Spec.lean) | SafeVerify target for Route A — public `Set ℕ` theorems (`theorem_1_1`, `erdos_42`) with `sorry` bodies. |
+| [`safeverify/SpecCayley.lean`](safeverify/SpecCayley.lean) | SafeVerify target for Route B — `Finset ℤ` theorem `theorem_1_1_from_compact_cayley` with `sorry` body. |
 
 ## How to verify
 
 **Locally (with Lake):**
 ```
 lake build Erdos.P42.Proof
-lake build Erdos.P42.Proof_Fourier
-lake build Erdos.P42.Proof_Cayley
+lake build Erdos.P42.FourierPositive.Proof
+lake build Erdos.P42.CompactCayley.Proof
 ```
 
-**Online:** [live.lean-lang.org against Mathlib v4.27.0](https://live.lean-lang.org/#project=mathlib-v4.27.0&url=https%3A%2F%2Fraw.githubusercontent.com%2FShashi456%2Ferdos-formalizations%2Frefs%2Fheads%2Fmain%2FErdos%2FP42%2FProof.lean)
+**Online (single-file flat snapshots, Mathlib v4.27.0):**
+
+- Route A (Fourier-positive, active):
+  [live.lean-lang.org](https://live.lean-lang.org/#project=mathlib-v4.27.0&url=https%3A%2F%2Fraw.githubusercontent.com%2FShashi456%2Ferdos-formalizations%2Frefs%2Fheads%2Fmain%2FErdos%2FP42%2FFourierPositive%2FProof.lean)
+- Route B (compact-Cayley, alternative):
+  [live.lean-lang.org](https://live.lean-lang.org/#project=mathlib-v4.27.0&url=https%3A%2F%2Fraw.githubusercontent.com%2FShashi456%2Ferdos-formalizations%2Frefs%2Fheads%2Fmain%2FErdos%2FP42%2FCompactCayley%2FProof.lean)
 
 ## Current state
 
@@ -70,13 +76,13 @@ calculations and the elementary Sidon-size-over-prime smallness bound are proved
 | `allowedDiffs_fourier_upper` | proved finite Fourier calculation for `T_A = ZMod p \ ((A - A) ∪ {0})` |
 | `sidon_card_minus_one_div_prime_eventually_small` | proved elementary `|A| = O(sqrt N)` bound used to make `( |A|-1 ) / p ≤ ε` |
 | `CompactCayley.cliqueKernelDensity_re_pos_iff_exists_clique` | proved finite endpoint: positive ordered `K_ℓ` Cayley density is equivalent to an actual `ℓ`-clique |
-| `CompactCayley.theorem_1_1_from_compact_cayley` | preserved Route B downstream theorem over `Finset ℤ`, isolated in `CompactCayley/RouteB.lean` |
+| `CompactCayley.theorem_1_1_from_compact_cayley` | preserved Route B downstream theorem over `Finset ℤ`, isolated in `CompactCayley/Main.lean` |
 | `isSidonInt_of_isSidon` | proved bridge from bounded `Set ℕ` Sidon sets to `Finset ℤ` |
 | `theorem_1_1` | proved public `Set ℕ` statement from Route A |
 | `erdos_42` | proved FC-style wrapper under `answer := True` |
 | `FormalConjecturesShape.erdos42RHS_iff_localRHS` | proved equivalence between the local wrapper RHS and the upstream-shaped RHS |
 | `FormalConjecturesShape.erdos_42` | proved formal-conjectures-shaped theorem under `answer := True`, with FC's `∃ᵉ` represented by `ExplicitExists` |
-| `FourierUpperIndicator` / `FourierLowerIndicator` | concrete normalized `ZMod.dft` predicates in `FourierAPI.lean` |
+| `FourierUpperIndicator` / `FourierLowerIndicator` | concrete normalized `ZMod.dft` predicates in `FiniteFourier.lean` |
 | `indicatorC_eq_sum_normalizedDftCoeff` | proved normalized finite Fourier inversion for indicator kernels |
 | `tao_continuous_avoidance` | proved continuous null-set endpoint, including the Haar shear/Fubini step |
 | `continuousCliqueDensity_pos_of_zeroLevel_proper_subgroup` | proved compact-forcing endpoint: a kernel vanishing exactly on a proper closed subgroup has positive continuous `K_M` density |
@@ -88,15 +94,16 @@ calculations and the elementary Sidon-size-over-prime smallness bound are proved
 Route A builds with:
 
 ```
-lake build Erdos.P42.Proof_Fourier
-lake build Erdos.P42.FourierPositive.Application
+lake build Erdos.P42.FourierPositive.Proof
+lake build Erdos.P42.FourierPositive.Main
 ```
 
-It is imported by the active umbrella `Erdos.P42.Proof`. Route B builds
-separately with:
+The active modular umbrella `Erdos.P42.Proof` imports `FC/Shape.lean` directly rather
+than importing the flat file, so the full project can still import modular P42
+files without duplicate declarations. Route B builds separately with:
 
 ```
-lake build Erdos.P42.Proof_Cayley
+lake build Erdos.P42.CompactCayley.Proof
 ```
 
 ## Target trust boundary
@@ -121,6 +128,53 @@ only Mathlib foundations. For Route A, the finite forbidden-set lemmas through
 `Erdos42.FourierPositive.sidon_forbidden_fourier_lower` also report only Mathlib
 foundations.
 
+## Verifying with SafeVerify
+
+[SafeVerify](https://github.com/GasStationManager/SafeVerify) replays each
+declaration through the kernel via `Environment.replay`, enforces a hard
+axiom allow-list, and bans `partial` / `unsafe` constants. Both routes have
+their own spec, and both pass replay against the corresponding submission
+`.olean`.
+
+The required allow-list extends Mathlib core (`propext`, `Quot.sound`,
+`Classical.choice`) by exactly one route axiom each:
+
+| Route | Spec | Submission `.olean` | Extra allowed axiom |
+|---|---|---|---|
+| A (Fourier-positive, active) | `safeverify/Spec.lean` | `Erdos.P42.Proof` | `Erdos42.FourierPositive.finite_fourier_avoidance_exists` |
+| B (compact-Cayley) | `safeverify/SpecCayley.lean` | `Erdos.P42.CompactCayley.Main` | `Erdos42.CompactCayley.compact_cayley_clique` |
+
+Reproduction, from a checkout of this repo at the same parent directory as
+SafeVerify (with `lake exe safe_verify` available):
+
+```
+# Build everything in this repo first.
+lake build Erdos.P42.Proof Erdos.P42.CompactCayley.Main
+
+# Build the two spec oleans.
+lake env lean -o Erdos/P42/safeverify/Spec.olean Erdos/P42/safeverify/Spec.lean
+lake env lean -o Erdos/P42/safeverify/SpecCayley.olean Erdos/P42/safeverify/SpecCayley.lean
+
+# Run SafeVerify (LEAN_PATH must include this repo's .lake build dir).
+cd ../SafeVerify
+LEAN_PATH="../erdos-formalizations/.lake/build/lib/lean:$(lake env printenv LEAN_PATH)" \
+  lake exe safe_verify --disallow-partial \
+    ../erdos-formalizations/Erdos/P42/safeverify/Spec.olean \
+    ../erdos-formalizations/.lake/build/lib/lean/Erdos/P42/Proof.olean
+
+LEAN_PATH="../erdos-formalizations/.lake/build/lib/lean:$(lake env printenv LEAN_PATH)" \
+  lake exe safe_verify --disallow-partial \
+    ../erdos-formalizations/Erdos/P42/safeverify/SpecCayley.olean \
+    ../erdos-formalizations/.lake/build/lib/lean/Erdos/P42/CompactCayley/Main.olean
+```
+
+Both runs end with `SafeVerify check passed.` — Route A matches 4
+declarations (`IsSidon`, `IsMaximalSidonSetIn`, `theorem_1_1`, `erdos_42`),
+Route B matches 3 (`IsSidonInt`, `AvoidsNonzeroDiff`,
+`theorem_1_1_from_compact_cayley`). Each route's submission only uses its own
+single trust-boundary axiom; the union allow-list is a convenience for running
+both checks with the same SafeVerify build.
+
 ## Comparison with Sedov's `M = 3` formalization
 
 Daniil Sedov's [github.com/Gusarich/erdos42](https://github.com/Gusarich/erdos42) handles the **special case `M = 3`** via a sum-free 2/5-trichotomy axiom (Balogh-Liu-Sharifzadeh-Treglown, 2014). Our target is the **general `M`** case via the Fourier-compactness route.
@@ -129,10 +183,10 @@ The two approaches are independent — Sedov's axiom is a finite Ramsey/sum-free
 
 ## Alignment with the informal proof
 
-[`proof_ulam_note.pdf`](proof_ulam_note.pdf) is the canonical reference for
-Route A; we audit `Proof_Fourier.lean` and `FourierPositive/Application.lean`
+[`docs/fourier_positive_ulam_note.pdf`](docs/fourier_positive_ulam_note.pdf) is the canonical reference for
+Route A; we audit `FourierPositive/Proof.lean` and `FourierPositive/Main.lean`
 against it section-by-section. The compact-Cayley PDF is tracked separately by
-`Proof_Cayley.lean`.
+`CompactCayley/Proof.lean`.
 
 Notable encoding choices:
 * **Sidon sets** use Mathlib's `IsSidon` (or the FC skeleton's `IsMaximalSidonSetIn` + `IsSidon`, whichever lands cleanest).

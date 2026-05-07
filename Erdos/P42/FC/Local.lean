@@ -12,9 +12,9 @@ The bridge from `Finset ℤ` to `Set ℕ` is harmless but explicit; natural
 subtraction is truncated, so we go through signed integer differences.
 -/
 
-import Erdos.P42.Basic
+import Erdos.P42.Common
 import Erdos.P42.Sidon
-import Erdos.P42.FourierPositive.Application
+import Erdos.P42.FourierPositive.Main
 
 namespace Erdos42
 

@@ -2,7 +2,7 @@
 Erdős Problem 42 — Route B trust boundary: compact Cayley clique theorem.
 
 Theorem 2.1 of `erdos42_compact_sidon_clean.pdf` (Google Drive link in
-`forum_thread.md`). A dense symmetric Cayley graph on `ZMod p`, with `0 ∉ T`
+`forum.md`). A dense symmetric Cayley graph on `ZMod p`, with `0 ∉ T`
 and small nontrivial Fourier coefficients (upper bound), contains a clique of
 any prescribed size for all sufficiently large primes.
 
@@ -15,8 +15,8 @@ This file is the trust boundary for Route B: replace this `axiom` with a
 `theorem` once those six lemmas are formalized.
 -/
 
-import Erdos.P42.Basic
-import Erdos.P42.FourierAPI
+import Erdos.P42.Common
+import Erdos.P42.FiniteFourier
 
 namespace Erdos42
 

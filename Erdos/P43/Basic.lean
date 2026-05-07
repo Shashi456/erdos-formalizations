@@ -4,7 +4,7 @@ Erdős Problem 43 — `sidonNumber` and shared definitions.
 
 import Mathlib
 import Erdos.P42.Sidon
-import Erdos.P42.FCWrapper
+import Erdos.P42.FC.Local
 
 namespace Erdos43
 

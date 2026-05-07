@@ -18,8 +18,8 @@ corollary.
 |------|------|
 | [`Proof.lean`](Proof.lean) | Lean 4 / Mathlib formalization for **Mathlib v4.27.0** (the toolchain pinned in `lean-toolchain`). Single `Erdos750` namespace, `import Mathlib`, ~2000 lines. |
 | [`Proof_v4.28.lean`](Proof_v4.28.lean) | **Mathlib v4.28+ port** of `Proof.lean`, with the few API-drift fixes (`Std.Irrefl`, explicit-vertex `Walk.rotate`, etc.). Same proof, same trust boundary. Use this against `live.lean-lang.org`'s newer-Mathlib projects. |
-| [`proof.pdf`](proof.pdf) | Chojecki + GPT-5.5 Pro, *Local odd-cycle transversals in generalized Mycielski graphs and an Erdős problem on almost-half independent sets*, 3 May 2026. |
-| [`informal.md`](informal.md) | Human-readable proof outline / strategy notes. |
+| [`compact_cayley_proof.pdf`](compact_cayley_proof.pdf) | Chojecki + GPT-5.5 Pro, *Local odd-cycle transversals in generalized Mycielski graphs and an Erdős problem on almost-half independent sets*, 3 May 2026. |
+| [`proof_outline.md`](proof_outline.md) | Human-readable proof outline / strategy notes. |
 | [`safeverify/Spec.lean`](safeverify/Spec.lean) | SafeVerify target — the public theorems with `sorry` bodies. |
 
 ## How to verify
@@ -110,7 +110,7 @@ Expected output ends with `SafeVerify check passed.`.
 
 ## Alignment with the informal proof
 
-[`proof.pdf`](proof.pdf) is the Chojecki + GPT-5.5 Pro writeup the
+[`compact_cayley_proof.pdf`](compact_cayley_proof.pdf) is the Chojecki + GPT-5.5 Pro writeup the
 formalization is based on. We split it into Sections 2–5 and audited
 each independently against `Proof.lean`. **All sections are faithfully
 aligned**, with the following deliberate, documented deviations:

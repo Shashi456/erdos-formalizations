@@ -16,11 +16,11 @@ Ulam note Section 3, with Tao's greedy-Sidon simplification):
   6. Greedily extract a Sidon subset `B ⊆ X` of size `M`.
 -/
 
-import Erdos.P42.Basic
+import Erdos.P42.Common
 import Erdos.P42.Sidon
-import Erdos.P42.FourierAPI
-import Erdos.P42.FourierPositive.Axiom
-import Erdos.P42.CompactCayley.Application
+import Erdos.P42.FiniteFourier
+import Erdos.P42.FourierPositive.FiniteAvoidance
+import Erdos.P42.CompactCayley.FiniteReduction
 
 namespace Erdos42.FourierPositive
 

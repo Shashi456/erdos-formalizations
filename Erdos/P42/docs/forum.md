@@ -60,13 +60,13 @@ For `M = 2`: also fairly intuitive but full proof longer.
 > - [Latest audit and formalisation discussion](https://chatgpt.com/share/69eee2a4-2fec-8399-a8ab-d68f2499b328)
 > - [Initial chat where the proof was produced](https://chatgpt.com/share/69eee1a3-8bec-8399-81a9-45b691abb65d)
 
-(This is the `proof.pdf` in this directory: *A Fourier-Compactness Proof of Erdős Problem 42*, corrected version, April 27 2026.)
+(This is the `compact_cayley_proof.pdf` in this directory: *A Fourier-Compactness Proof of Erdős Problem 42*, corrected version, April 27 2026.)
 
 ### Kevin Barreto — 18:19 on 29 Apr 2026 — **42 + 43 combined writeup**
 
 > EDIT: I asked GPT to combine the work on [42] and [43], which may be of interest to others, viewable as a [PDF here](https://drive.google.com/file/d/1xZQzwqvAZ2LK47rxQfHLzQKbKnZAuLzU/view?usp=sharing) with the TeX file here.
 
-(This is `proof_combined_42_43.pdf` in this directory: *Sidon Difference Avoidance*, April 29 2026.)
+(This is `combined_42_43_proof.pdf` in this directory: *Sidon Difference Avoidance*, April 29 2026.)
 
 ### Thomas Bloom — 19:22 on 29 Apr 2026 — **the key Fourier lemma**
 
@@ -104,7 +104,7 @@ The lemma reminds me somewhat of the Green-Sanders quantitative version of Cohen
 
 Has obtained one exposition of Harjas's solution which uses subsequent ideas from the forum. The exposition uses Tao's continuous analogue + compactness to get the finite key lemma + theorem reduction. [Notes (PDF)](https://www.ulam.ai/research/erdos42-note.pdf).
 
-(This is `proof_ulam_note.pdf` in this directory: *A Fourier-positive proof of Erdős Problem 42*, draft note, April 30 2026.)
+(This is `fourier_positive_ulam_note.pdf` in this directory: *A Fourier-positive proof of Erdős Problem 42*, draft note, April 30 2026.)
 
 ### qrdl — late discussion thread — **effective bounds**
 
@@ -124,9 +124,9 @@ Tried to get GPT to generalise; claims an effective bound `N₀(M) ≤ exp(exp(C
 
 ## External links collected from the thread
 
-- `proof.pdf` (this dir) ← Overleaf at https://www.overleaf.com/read/hwhmzcjwmqbn#c0b9e1
-- `proof_combined_42_43.pdf` (this dir) ← https://drive.google.com/file/d/1xZQzwqvAZ2LK47rxQfHLzQKbKnZAuLzU
-- `proof_ulam_note.pdf` (this dir) ← https://www.ulam.ai/research/erdos42-note.pdf
+- `compact_cayley_proof.pdf` (this dir) ← Overleaf at https://www.overleaf.com/read/hwhmzcjwmqbn#c0b9e1
+- `combined_42_43_proof.pdf` (this dir) ← https://drive.google.com/file/d/1xZQzwqvAZ2LK47rxQfHLzQKbKnZAuLzU
+- `fourier_positive_ulam_note.pdf` (this dir) ← https://www.ulam.ai/research/erdos42-note.pdf
 - ChatGPT shares (Harjas's runs): [69eee2a4](https://chatgpt.com/share/69eee2a4-2fec-8399-a8ab-d68f2499b328), [69eee1a3](https://chatgpt.com/share/69eee1a3-8bec-8399-81a9-45b691abb65d)
 - Sedov's `M = 3` Lean repo: [github.com/Gusarich/erdos42](https://github.com/Gusarich/erdos42)
 - Balogh-Liu-Sharifzadeh-Treglown (the `M = 3` axiom source): [arXiv:1409.5661](https://arxiv.org/abs/1409.5661)

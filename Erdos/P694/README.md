@@ -14,9 +14,9 @@ R(x) := max_{n ≤ x, n ∈ φ(ℕ)} f_max(n) / f_min(n).
 | File | What |
 |------|------|
 | [`Proof.lean`](Proof.lean) | The full Lean 4 / Mathlib formalization. Single `Erdos694` namespace, `import Mathlib`, ~2,800 lines. |
-| [`proof.pdf`](proof.pdf) | The original informal proof (Liam Price + GPT-5.5 Pro). |
-| [`proof.tex`](proof.tex) | LaTeX source of `proof.pdf`. |
-| [`informal.md`](informal.md) | Human-readable proof outline / strategy notes. |
+| [`compact_cayley_proof.pdf`](compact_cayley_proof.pdf) | The original informal proof (Liam Price + GPT-5.5 Pro). |
+| [`proof.tex`](proof.tex) | LaTeX source of `compact_cayley_proof.pdf`. |
+| [`proof_outline.md`](proof_outline.md) | Human-readable proof outline / strategy notes. |
 | [`safeverify/Spec.lean`](safeverify/Spec.lean) | SafeVerify target — the four public theorems with `sorry` bodies. |
 | [`safeverify/report.json`](safeverify/report.json) | Per-declaration SafeVerify report (output artifact). |
 

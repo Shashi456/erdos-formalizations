@@ -17,7 +17,7 @@ Erdős Problems 283 + 351 — Polynomial Egyptian sums.
                                   namespaces).
 
 Following GPT-5.5 Pro + Liam Price (cleanup) + Kevin Barreto (noticed #351 follows),
-*Polynomial Egyptian Sums*, 3 May 2026 — `proof.pdf` in this directory.
+*Polynomial Egyptian Sums*, 3 May 2026 — `compact_cayley_proof.pdf` in this directory.
 
 This umbrella re-exports the split development. The proof is complete with no
 problem-specific axioms: `roth_szekeres_graham` is now derived from the

@@ -7,8 +7,8 @@ Fourier estimates and greedy Sidon extraction stay in `Application.lean` so
 Route A can reuse them without importing this axiom.
 -/
 
-import Erdos.P42.CompactCayley.Axiom
-import Erdos.P42.CompactCayley.Application
+import Erdos.P42.CompactCayley.CliqueAxiom
+import Erdos.P42.CompactCayley.FiniteReduction
 
 namespace Erdos42.CompactCayley
 

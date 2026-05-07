@@ -1,10 +1,10 @@
 # Erdős Problem 42 — Sidon difference avoidance
 
 > Sources:
-> - **Harjas / GPT-5.5 Pro** (April 27 2026, corrected): *A Fourier-Compactness Proof of Erdős Problem 42* — `proof.pdf` in this directory.
-> - **Kevin Barreto / GPT-5.5 Pro** (April 29 2026): *Sidon Difference Avoidance* — combines #42 + #43 — `proof_combined_42_43.pdf`.
-> - **natso26 / Tao** (April 30 2026): *A Fourier-positive proof of Erdős Problem 42* — clean continuous-version note — `proof_ulam_note.pdf`.
-> - Forum: [erdosproblems.com/forum/thread/42](https://www.erdosproblems.com/forum/thread/42) — captured as `forum_thread.md`.
+> - **Harjas / GPT-5.5 Pro** (April 27 2026, corrected): *A Fourier-Compactness Proof of Erdős Problem 42* — `compact_cayley_proof.pdf` in this directory.
+> - **Kevin Barreto / GPT-5.5 Pro** (April 29 2026): *Sidon Difference Avoidance* — combines #42 + #43 — `combined_42_43_proof.pdf`.
+> - **natso26 / Tao** (April 30 2026): *A Fourier-positive proof of Erdős Problem 42* — clean continuous-version note — `fourier_positive_ulam_note.pdf`.
+> - Forum: [erdosproblems.com/forum/thread/42](https://www.erdosproblems.com/forum/thread/42) — captured as `forum.md`.
 
 ## Problem statement
 
@@ -16,11 +16,11 @@
 
 (For `A = ∅` the equality `= {0}` is impossible since `0 ∉ A − A`; the natural form is `(A − A) ∩ (B − B) ⊆ {0}`, which we use.)
 
-## Main theorem (Theorem 1.1 in `proof.pdf`, Theorem 1.1 in `proof_combined_42_43.pdf`)
+## Main theorem (Theorem 1.1 in `compact_cayley_proof.pdf`, Theorem 1.1 in `combined_42_43_proof.pdf`)
 
 For every integer `M ≥ 1` there is `N₀(M)` such that the following holds for every `N ≥ N₀(M)`. If `A ⊆ [N]` is a non-empty Sidon set, then there is a Sidon set `B ⊆ [N]` with `|B| = M` and `(A − A) ∩ (B − B) = {0}`.
 
-## Proof outline (following natso26's note `proof_ulam_note.pdf`)
+## Proof outline (following natso26's note `fourier_positive_ulam_note.pdf`)
 
 The cleanest exposition uses **Tao's continuous analogue + compactness** to reduce the discrete problem to a continuous one. Three layers:
 
@@ -70,7 +70,7 @@ Both axioms are real Mathlib gaps. Proving them cleanly inside Mathlib would be 
 
 ## Differences from the LaTeX (planned)
 
-- We follow natso26's exposition (`proof_ulam_note.pdf`) since it's the cleanest.
+- We follow natso26's exposition (`fourier_positive_ulam_note.pdf`) since it's the cleanest.
 - Sidon sets are encoded via Mathlib's `IsSidon` (in `Combinatorics.Additive.Sidon`).
 - The discrete-to-continuous reduction is treated as a single named axiom; layer 1 (the continuous lemma itself) is proved in Mathlib-style if reachable.
 - The probabilistic argument in Layer 3 is replaced by a *constructive* counting argument: pick a tuple by enumerating over the positive-density set guaranteed by the avoidance lemma.
