@@ -1,9 +1,8 @@
 /-
-Erdős Problem 42 — Route B application.
+Erdős Problem 42 — shared compact-Cayley downstream machinery.
 
-Derives Theorem 1.1 (the Erdős statement, working over `Finset ℤ`) from the
-compact-Cayley clique axiom plus the finite Fourier calculation for the
-allowed-difference set. Pipeline (compact PDF Section 3):
+This file contains the finite pieces used by the compact-Cayley route and now
+also reused by the Fourier-positive Route A:
 
   1. Greedy Sidon subset lemma: any sufficiently large finite integer set
      contains a Sidon subset of any prescribed size.
@@ -11,18 +10,18 @@ allowed-difference set. Pipeline (compact PDF Section 3):
      `T_A := (ZMod p) \ ((A − A) ∪ {0})`. Then `T_A` is symmetric, `0 ∉ T_A`,
      `|T_A| ≥ p/2`, and the normalized Fourier transform satisfies an upper
      bound `≤ (|A|−1)/p ≤ ε` for `p` large.
-  3. Apply `compact_cayley_clique` to obtain a clique `C ⊆ ZMod p` of size
-     `8 · greedySidonThreshold M`.
-  4. Cyclic-interval averaging: some cyclic interval of length `N` in `ZMod p`
+  3. Cyclic-interval averaging: some cyclic interval of length `N` in `ZMod p`
      contains `≥ greedySidonThreshold M` clique elements (uses `p < 8N`).
-  5. Lift the clique-in-interval to an integer set `X ⊆ [1, N]` avoiding
+  4. Lift the clique-in-interval to an integer set `X ⊆ [1, N]` avoiding
      `A − A`; greedily extract a Sidon subset `B ⊆ X` of size `M`.
+
+The Route B theorem that actually invokes `compact_cayley_clique` lives in
+`CompactCayley/RouteB.lean`.
 -/
 
 import Erdos.P42.Basic
 import Erdos.P42.Sidon
 import Erdos.P42.FourierAPI
-import Erdos.P42.CompactCayley.Axiom
 
 namespace Erdos42.CompactCayley
 
@@ -587,15 +586,16 @@ lemma sum_product_eq_sum_diag_add_sum_offDiag
   rw [Finset.sum_union (Finset.disjoint_diag_offDiag A)]
   rw [Finset.sum_diag]
 
-lemma sum_product_stdAddChar_diff
+lemma sum_product_stdAddChar_neg_diff
     {p : ℕ} [NeZero p] (A : Finset ℤ) (r : ZMod p) :
     (∑ ab ∈ A ×ˢ A,
         ZMod.stdAddChar (-(((ab.1 - ab.2 : ℤ) : ZMod p) * r))) =
-      (∑ a ∈ A, ZMod.stdAddChar (((a : ZMod p) * r))) *
-        (∑ b ∈ A, ZMod.stdAddChar (-(((b : ZMod p) * r)))) := by
+      (∑ a ∈ A, ZMod.stdAddChar (-(((a : ZMod p) * r)))) *
+        (∑ b ∈ A, ZMod.stdAddChar (((b : ZMod p) * r))) := by
   classical
   rw [Finset.sum_product]
-  simp_rw [Finset.mul_sum, Finset.sum_mul]
+  rw [Finset.sum_mul]
+  simp_rw [Finset.mul_sum]
   refine Finset.sum_congr rfl ?_
   intro a ha
   refine Finset.sum_congr rfl ?_
@@ -617,8 +617,8 @@ lemma sum_offDiagDiffSetMod_stdAddChar_eq
     (hSidon : IsSidonInt A)
     (r : ZMod p) :
     ∑ x ∈ offDiagDiffSetMod p A, ZMod.stdAddChar (-(x * r)) =
-      (∑ a ∈ A, ZMod.stdAddChar (((a : ZMod p) * r))) *
-        (∑ b ∈ A, ZMod.stdAddChar (-(((b : ZMod p) * r)))) - (A.card : ℂ) := by
+      (∑ a ∈ A, ZMod.stdAddChar (-(((a : ZMod p) * r)))) *
+        (∑ b ∈ A, ZMod.stdAddChar (((b : ZMod p) * r))) - (A.card : ℂ) := by
   classical
   let F : ℤ × ℤ → ℂ :=
     fun ab => ZMod.stdAddChar (-((((ab.1 - ab.2 : ℤ) : ZMod p) * r)))
@@ -626,7 +626,7 @@ lemma sum_offDiagDiffSetMod_stdAddChar_eq
     sum_offDiagDiffSetMod_eq_sum_offDiag (p := p) (N := N) hbig A hAint hSidon
       (fun x : ZMod p => ZMod.stdAddChar (-(x * r)))
   have hsplit := sum_product_eq_sum_diag_add_sum_offDiag A F
-  have hprod := sum_product_stdAddChar_diff A r
+  have hprod := sum_product_stdAddChar_neg_diff A r
   have hdiag : ∑ a ∈ A, F (a, a) = (A.card : ℂ) := by
     simp [F]
   rw [hoff]
@@ -657,14 +657,20 @@ lemma sum_stdAddChar_neg_eq_conj_sum
     _ = (starRingEnd ℂ) (∑ a ∈ A, ZMod.stdAddChar (((a : ZMod p) * r))) := by
       simp
 
-lemma stdAddChar_product_re_nonneg
+lemma stdAddChar_neg_product_re_nonneg
     {p : ℕ} [NeZero p] (A : Finset ℤ) (r : ZMod p) :
     0 ≤
-      ((∑ a ∈ A, ZMod.stdAddChar (((a : ZMod p) * r))) *
-        (∑ b ∈ A, ZMod.stdAddChar (-(((b : ZMod p) * r))))).re := by
+      ((∑ a ∈ A, ZMod.stdAddChar (-(((a : ZMod p) * r)))) *
+        (∑ b ∈ A, ZMod.stdAddChar (((b : ZMod p) * r)))).re := by
   classical
-  rw [sum_stdAddChar_neg_eq_conj_sum A r, Complex.mul_conj]
-  simpa using Complex.normSq_nonneg (∑ a ∈ A, ZMod.stdAddChar (((a : ZMod p) * r)))
+  let S : ℂ := ∑ b ∈ A, ZMod.stdAddChar (((b : ZMod p) * r))
+  have hneg :
+      (∑ a ∈ A, ZMod.stdAddChar (-(((a : ZMod p) * r)))) =
+        (starRingEnd ℂ) S := by
+    simpa [S] using sum_stdAddChar_neg_eq_conj_sum A r
+  rw [hneg]
+  rw [← Complex.normSq_eq_conj_mul_self]
+  simpa using Complex.normSq_nonneg S
 
 lemma sum_allowedDiffSetMod_stdAddChar_re_le
     {p N : ℕ} [Fact p.Prime] (hbig : 4 * N < p)
@@ -676,8 +682,8 @@ lemma sum_allowedDiffSetMod_stdAddChar_re_le
       ((A.card - 1 : ℕ) : ℝ) := by
   classical
   let P : ℂ :=
-    (∑ a ∈ A, ZMod.stdAddChar (((a : ZMod p) * r))) *
-      (∑ b ∈ A, ZMod.stdAddChar (-(((b : ZMod p) * r))))
+    (∑ a ∈ A, ZMod.stdAddChar (-(((a : ZMod p) * r)))) *
+      (∑ b ∈ A, ZMod.stdAddChar (((b : ZMod p) * r)))
   have hallowed :=
     sum_allowedDiffSetMod_eq_neg_forbidden (p := p) A hr
   have hforbidden :=
@@ -691,7 +697,7 @@ lemma sum_allowedDiffSetMod_stdAddChar_re_le
     simp [P]
     ring
   have hP_nonneg : 0 ≤ P.re := by
-    simpa [P] using stdAddChar_product_re_nonneg A r
+    simpa [P] using stdAddChar_neg_product_re_nonneg A r
   rw [hsum]
   by_cases hA0 : A.card = 0
   · simp [hA0]
@@ -985,117 +991,5 @@ theorem exists_large_intersection_cyclicInterval
     have hs' : R < fiber.card := by
       simpa [fiber] using hs
     exact (Nat.le_of_lt hs').trans hfiber_le
-
-/-! ## Step 4 — final assembly: Theorem 1.1 from `compact_cayley_clique` -/
-
-/-- **Theorem 1.1, Route B.** For every `M ≥ 1`, there is `N₀` such that for
-all `N ≥ N₀` and every non-empty Sidon `A ⊆ [1, N] ⊂ ℤ`, there is a Sidon
-`B ⊆ [1, N]` with `|B| = M` and no nonzero common difference. Proved
-conditional on `compact_cayley_clique`. -/
-theorem theorem_1_1_from_compact_cayley
-    (M : ℕ) (_hM : 1 ≤ M) :
-    ∃ N₀ : ℕ, ∀ N : ℕ, N₀ ≤ N →
-      ∀ A : Finset ℤ,
-        (∀ a ∈ A, 1 ≤ a ∧ a ≤ (N : ℤ)) → IsSidonInt A → A.Nonempty →
-        ∃ B : Finset ℤ,
-          (∀ b ∈ B, 1 ≤ b ∧ b ≤ (N : ℤ)) ∧
-          IsSidonInt B ∧ B.card = M ∧
-          AvoidsNonzeroDiff A B := by
-  classical
-  let R := greedySidonThreshold M
-  have hRpos : 0 < R := by
-    dsimp [R, greedySidonThreshold]
-    omega
-  have hCliqueSize : 2 ≤ 8 * R := by omega
-  obtain ⟨ε, hεpos, p₀, hcompact⟩ :=
-    compact_cayley_clique (8 * R) (1 / 2 : ℝ) hCliqueSize (by norm_num)
-  obtain ⟨Nε, hNε⟩ := sidon_card_minus_one_div_prime_eventually_small ε hεpos
-  refine ⟨max (p₀ + 1) Nε, ?_⟩
-  intro N hN A hAint hSidon _hAnonempty
-  have hNpos : 0 < N := by omega
-  obtain ⟨p, hpprime, hpgt, hple⟩ :=
-    Nat.exists_prime_lt_and_le_two_mul (4 * N) (by omega)
-  haveI : Fact p.Prime := ⟨hpprime⟩
-  have hp₀lt : p₀ < p := by omega
-  have hpN : N < p := by omega
-  have hpupper : p < 8 * N := by
-    have hple' : p ≤ 8 * N := by omega
-    have hpne2 : p ≠ 2 := by omega
-    have hpodd : Odd p := hpprime.odd_of_ne_two hpne2
-    have hpne : p ≠ 8 * N := by
-      intro hpeq
-      have heven : Even p := by
-        rw [hpeq, even_iff_two_dvd]
-        exact ⟨4 * N, by ring⟩
-      exact (Nat.not_even_iff_odd.mpr hpodd) heven
-    omega
-  let T : Finset (ZMod p) := allowedDiffSetMod p A
-  have hT_sym : SymmetricFinset T := by
-    simpa [T] using allowedDiffSetMod_symmetric p A
-  have hT_zero : (0 : ZMod p) ∉ T := by
-    simpa [T] using zero_notMem_allowedDiffSetMod p A
-  have hT_density : (1 / 2 : ℝ) * p ≤ (T.card : ℝ) := by
-    simpa [T] using allowedDiffSetMod_density (p := p) (N := N) hpgt A hAint hSidon
-  have hsmall : ((A.card - 1 : ℕ) : ℝ) / p ≤ ε :=
-    hNε N p (by omega) hpgt A hAint hSidon
-  have hT_fourier : FourierUpperIndicator T ε := by
-    simpa [T] using
-      allowedDiffs_fourier_upper (p := p) (N := N) hpgt A hAint hSidon ε hsmall
-  obtain ⟨C, hCcard, hCclique⟩ :=
-    hcompact p hp₀lt T hT_sym hT_zero hT_density hT_fourier
-  obtain ⟨s, hs⟩ :=
-    exists_large_intersection_cyclicInterval (p := p) (N := N) (R := R)
-      hpN C (by simpa [R] using hCcard) hpupper
-  let X : Finset ℤ := intervalLiftSet p N s C
-  have hXcard : R ≤ X.card := by
-    dsimp [X]
-    rw [intervalLiftSet_card_eq hpN]
-    exact hs
-  obtain ⟨B, hBX, hBcard, hBsidon⟩ := exists_sidon_subset_of_card_ge M X hXcard
-  refine ⟨B, ?_, hBsidon, hBcard, ?_⟩
-  · intro b hb
-    rcases mem_intervalLiftSet.mp (hBX hb) with ⟨i, hiN, _hiC, rfl⟩
-    constructor <;> omega
-  · intro d hdA hdB
-    rw [mem_diffFinset] at hdA hdB
-    rcases hdA with ⟨a₁, ha₁, a₂, ha₂, rfl⟩
-    rcases hdB with ⟨b₁, hb₁, b₂, hb₂, hbDiff⟩
-    by_cases hzero : a₁ - a₂ = 0
-    · exact hzero
-    · exfalso
-      rcases mem_intervalLiftSet.mp (hBX hb₁) with ⟨i₁, hi₁N, hi₁C, hb₁eq⟩
-      rcases mem_intervalLiftSet.mp (hBX hb₂) with ⟨i₂, hi₂N, hi₂C, hb₂eq⟩
-      have hbne : b₁ ≠ b₂ := by
-        intro hb
-        apply hzero
-        rw [hb] at hbDiff
-        linarith
-      have hine : i₁ ≠ i₂ := by
-        intro hi
-        apply hbne
-        rw [hb₁eq, hb₂eq, hi]
-      let y₁ : ZMod p := s + (i₁ : ZMod p)
-      let y₂ : ZMod p := s + (i₂ : ZMod p)
-      have hyne : y₁ ≠ y₂ := by
-        intro hy
-        apply hine
-        apply nat_eq_of_zmod_eq_of_lt
-          (Nat.lt_trans hi₁N hpN) (Nat.lt_trans hi₂N hpN)
-        apply add_left_cancel (a := s)
-        simpa [y₁, y₂] using hy
-      have hallowed : y₁ - y₂ ∈ T := hCclique y₁ hi₁C y₂ hi₂C hyne
-      have hyDiff : y₁ - y₂ = ((a₁ - a₂ : ℤ) : ZMod p) := by
-        calc
-          y₁ - y₂ = (i₁ : ZMod p) - (i₂ : ZMod p) := by
-            simp [y₁, y₂]
-          _ = ((b₁ - b₂ : ℤ) : ZMod p) := by
-            rw [hb₁eq, hb₂eq]
-            norm_num
-          _ = ((a₁ - a₂ : ℤ) : ZMod p) := by
-            rw [hbDiff]
-      have hcast : ((a₁ - a₂ : ℤ) : ZMod p) ∈ allowedDiffSetMod p A := by
-        simpa [T, hyDiff] using hallowed
-      rw [allowedDiffSetMod, Finset.mem_filter] at hcast
-      exact hcast.2.2 a₁ ha₁ a₂ ha₂ rfl
 
 end Erdos42.CompactCayley

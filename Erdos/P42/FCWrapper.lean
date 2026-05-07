@@ -14,7 +14,7 @@ subtraction is truncated, so we go through signed integer differences.
 
 import Erdos.P42.Basic
 import Erdos.P42.Sidon
-import Erdos.P42.CompactCayley.Application
+import Erdos.P42.FourierPositive.Application
 
 namespace Erdos42
 
@@ -118,7 +118,7 @@ theorem isSidonInt_of_isSidon
 admit, for every non-empty Sidon `A ⊆ [1, N]`, a Sidon `B ⊆ [1, N]` of size
 `M` with no nonzero common difference.
 
-This wrapper uses Route B's `theorem_1_1_from_compact_cayley`, then bridges
+This wrapper uses Route A's `theorem_1_1_from_finite_fourier_avoidance`, then bridges
 the `Finset ℤ` construction back to the FC-style `Set ℕ` statement. -/
 theorem theorem_1_1 :
     ∀ M : ℕ, 1 ≤ M → ∃ N₀ : ℕ, ∀ N : ℕ, N₀ ≤ N →
@@ -127,7 +127,7 @@ theorem theorem_1_1 :
           ((A - A) ∩ (B - B) : Set ℕ) = {0} := by
   intro M hM
   classical
-  obtain ⟨N₀, hN₀⟩ := CompactCayley.theorem_1_1_from_compact_cayley M hM
+  obtain ⟨N₀, hN₀⟩ := FourierPositive.theorem_1_1_from_finite_fourier_avoidance M hM
   refine ⟨N₀, ?_⟩
   intro N hN A hAint hSidon hAnonempty
   obtain ⟨A', hA'int, hA'sidon, _hAcard, hA'mem⟩ :=

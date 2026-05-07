@@ -2,10 +2,11 @@
 SafeVerify target for Erdős Problem 42.
 
 Public-theorem signatures with `sorry` bodies. The actual proofs live in
-`Proof.lean`; this Spec is the external contract.
+`Proof.lean`; this Spec is the external contract. The upstream-shaped
+formal-conjectures RHS equivalence lives in `Erdos/P42/FC.lean`.
 
-Trust boundary of the current Route B proof: Mathlib core +
-  - Erdos42.CompactCayley.compact_cayley_clique
+Trust boundary of the current Route A proof: Mathlib core +
+  - Erdos42.FourierPositive.finite_fourier_avoidance_exists
 -/
 
 import Mathlib
@@ -13,6 +14,7 @@ import Mathlib
 namespace Erdos42
 
 open Filter Set
+open scoped Pointwise
 
 def IsSidon (A : Set ℕ) : Prop := sorry
 def IsMaximalSidonSetIn (A : Set ℕ) (N : ℕ) : Prop := sorry
