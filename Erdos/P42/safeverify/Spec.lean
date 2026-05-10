@@ -6,7 +6,7 @@ Public-theorem signatures with `sorry` bodies. The actual proofs live in
 formal-conjectures RHS equivalence lives in `Erdos/P42/FC/Shape.lean`.
 
 Trust boundary of the current Route A proof: Mathlib core +
-  - Erdos42.FourierPositive.finite_fourier_avoidance_exists
+  - Erdos42.FourierPositive.finite_fourier_avoidance_count
 -/
 
 import Mathlib

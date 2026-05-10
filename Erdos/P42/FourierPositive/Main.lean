@@ -1,9 +1,10 @@
 /-
 Erdős Problem 42 — Route A application.
 
-Derives Theorem 1.1 (Erdős statement, `Finset ℤ` form) from the single
-trust-boundary axiom `finite_fourier_avoidance_exists`. Pipeline (combined PDF /
-Ulam note Section 3, with Tao's greedy-Sidon simplification):
+Derives Theorem 1.1 (Erdős statement, `Finset ℤ` form) from the Route A
+counting trust-boundary axiom `finite_fourier_avoidance_count`, through the
+derived existence theorem `finite_fourier_avoidance_exists`. Pipeline
+(combined PDF / Ulam note Section 3, with Tao's greedy-Sidon simplification):
 
   1. Forbidden set: `F := (A − A) mod p` for `p` a prime in `(4N, 8N)`.
      Symmetric, `0 ∈ F`, `|F| ≤ 2N − 1 ≤ (1 − 1/2) p`.
@@ -16,11 +17,20 @@ Ulam note Section 3, with Tao's greedy-Sidon simplification):
   6. Greedily extract a Sidon subset `B ⊆ X` of size `M`.
 -/
 
-import Erdos.P42.Common
-import Erdos.P42.Sidon
-import Erdos.P42.FiniteFourier
+import Erdos.P42.Shared.Common
+import Erdos.P42.Shared.Sidon
+import Erdos.P42.Shared.FiniteFourier
 import Erdos.P42.FourierPositive.FiniteAvoidance
-import Erdos.P42.CompactCayley.FiniteReduction
+import Erdos.P42.FourierPositive.Counterexample
+import Erdos.P42.FourierPositive.Counting
+import Erdos.P42.FourierPositive.CompactModel
+import Erdos.P42.FourierPositive.LargeSpectrum
+import Erdos.P42.FourierPositive.Limit
+import Erdos.P42.FourierPositive.ExtractionGroup
+import Erdos.P42.FourierPositive.CompactDual
+import Erdos.P42.FourierPositive.TrigPolynomial
+import Erdos.P42.FourierPositive.Fejer
+import Erdos.P42.Shared.FiniteReduction
 
 namespace Erdos42.FourierPositive
 
@@ -93,7 +103,7 @@ lemma forbiddenDiffSetMod_card_le
 lemma forbiddenDiffSetMod_eq_insert_offDiagDiffSetMod
     {p : ℕ} [NeZero p] (A : Finset ℤ) (hA : A.Nonempty) :
     forbiddenDiffSetMod p A =
-      insert 0 (Erdos42.CompactCayley.offDiagDiffSetMod p A) := by
+      insert 0 (Erdos42.offDiagDiffSetMod p A) := by
   classical
   ext t
   constructor
@@ -105,7 +115,7 @@ lemma forbiddenDiffSetMod_eq_insert_offDiagDiffSetMod
     by_cases hzero : ((a - b : ℤ) : ZMod p) = 0
     · exact Finset.mem_insert.mpr (Or.inl hzero)
     · refine Finset.mem_insert.mpr (Or.inr ?_)
-      rw [Erdos42.CompactCayley.offDiagDiffSetMod, Finset.mem_image]
+      rw [Erdos42.offDiagDiffSetMod, Finset.mem_image]
       have hab : a ≠ b := by
         intro hab
         subst b
@@ -118,7 +128,7 @@ lemma forbiddenDiffSetMod_eq_insert_offDiagDiffSetMod
     rcases ht with ht0 | ht
     · subst t
       exact zero_mem_forbiddenDiffSetMod p A hA
-    · rw [Erdos42.CompactCayley.offDiagDiffSetMod, Finset.mem_image] at ht
+    · rw [Erdos42.offDiagDiffSetMod, Finset.mem_image] at ht
       rcases ht with ⟨ab, hab, rfl⟩
       rw [Finset.mem_offDiag] at hab
       rcases hab with ⟨ha, hb, _hne⟩
@@ -153,28 +163,28 @@ lemma sidon_forbidden_fourier_lower
   · have hF_eq :=
       forbiddenDiffSetMod_eq_insert_offDiagDiffSetMod (p := p) A hA
     have hsum_allowed :=
-      Erdos42.CompactCayley.sum_allowedDiffSetMod_eq_neg_forbidden
+      Erdos42.sum_allowedDiffSetMod_eq_neg_forbidden
         (p := p) A hr
     have hsum_forbidden :
-        ∑ x ∈ insert 0 (Erdos42.CompactCayley.offDiagDiffSetMod p A),
+        ∑ x ∈ insert 0 (Erdos42.offDiagDiffSetMod p A),
             ZMod.stdAddChar (-(x * r)) =
-          - ∑ x ∈ Erdos42.CompactCayley.allowedDiffSetMod p A,
+          - ∑ x ∈ Erdos42.allowedDiffSetMod p A,
               ZMod.stdAddChar (-(x * r)) := by
       calc
-        ∑ x ∈ insert 0 (Erdos42.CompactCayley.offDiagDiffSetMod p A),
+        ∑ x ∈ insert 0 (Erdos42.offDiagDiffSetMod p A),
             ZMod.stdAddChar (-(x * r))
-            = -(-∑ x ∈ insert 0 (Erdos42.CompactCayley.offDiagDiffSetMod p A),
+            = -(-∑ x ∈ insert 0 (Erdos42.offDiagDiffSetMod p A),
                 ZMod.stdAddChar (-(x * r))) := by simp
-        _ = -∑ x ∈ Erdos42.CompactCayley.allowedDiffSetMod p A,
+        _ = -∑ x ∈ Erdos42.allowedDiffSetMod p A,
                 ZMod.stdAddChar (-(x * r)) := by rw [← hsum_allowed]
     have hcoeff :
         normalizedDftCoeff (forbiddenDiffSetMod p A) r =
-          - normalizedDftCoeff (Erdos42.CompactCayley.allowedDiffSetMod p A) r := by
+          - normalizedDftCoeff (Erdos42.allowedDiffSetMod p A) r := by
       rw [hF_eq, normalizedDftCoeff_eq_sum, normalizedDftCoeff_eq_sum, hsum_forbidden]
       ring
     have hupper :
-        (normalizedDftCoeff (Erdos42.CompactCayley.allowedDiffSetMod p A) r).re ≤ ε :=
-      Erdos42.CompactCayley.allowedDiffs_fourier_upper
+        (normalizedDftCoeff (Erdos42.allowedDiffSetMod p A) r).re ≤ ε :=
+      Erdos42.allowedDiffs_fourier_upper
         (p := p) (N := N) _hbig A hAint hSidon ε hε r hr
     rw [hcoeff]
     simp
@@ -195,16 +205,16 @@ theorem theorem_1_1_from_finite_fourier_avoidance
           IsSidonInt B ∧ B.card = M ∧
           AvoidsNonzeroDiff A B := by
   classical
-  let R := Erdos42.CompactCayley.greedySidonThreshold M
+  let R := Erdos42.greedySidonThreshold M
   have hRpos : 0 < R := by
-    dsimp [R, Erdos42.CompactCayley.greedySidonThreshold]
+    dsimp [R, Erdos42.greedySidonThreshold]
     omega
   have hRge : 1 ≤ R := Nat.succ_le_of_lt hRpos
   obtain ⟨ε, hεpos, p₀, havoid⟩ :=
     finite_fourier_avoidance_exists R (1 / 8 : ℝ) (1 / 2 : ℝ)
       hRge (by norm_num) (by norm_num)
   obtain ⟨Nε, hNε⟩ :=
-    Erdos42.CompactCayley.sidon_card_minus_one_div_prime_eventually_small ε hεpos
+    Erdos42.sidon_card_minus_one_div_prime_eventually_small ε hεpos
   refine ⟨max (p₀ + 1) Nε, ?_⟩
   intro N hN A hAint hSidon hAnonempty
   have hNpos : 0 < N := by
@@ -263,7 +273,7 @@ theorem theorem_1_1_from_finite_fourier_avoidance
       change i ∈ (Finset.Icc 1 N : Finset ℕ) at hi
       change j ∈ (Finset.Icc 1 N : Finset ℕ) at hj
       rw [Finset.mem_Icc] at hi hj
-      exact Erdos42.CompactCayley.nat_eq_of_zmod_eq_of_lt
+      exact Erdos42.nat_eq_of_zmod_eq_of_lt
         (p := p) (i := i) (j := j) (by omega) (by omega) hij
     rw [Finset.card_image_of_injOn hinj]
     simp
@@ -350,7 +360,7 @@ theorem theorem_1_1_from_finite_fourier_avoidance
               norm_num
       exact (hxAvoid i j hij) hFmem
   obtain ⟨B, hBX, hBcard, hBsidon⟩ :=
-    Erdos42.CompactCayley.exists_sidon_subset_of_card_ge M X (by simpa [R] using hXcard)
+    Erdos42.exists_sidon_subset_of_card_ge M X (by simpa [R] using hXcard)
   refine ⟨B, ?_, hBsidon, hBcard, ?_⟩
   · intro b hb
     exact hXint b (hBX hb)

@@ -6,7 +6,7 @@ It is intended as a one-file snapshot: no project-local imports.
 
 Trust boundary (verify with `#print axioms`):
   Mathlib core (propext, Classical.choice, Quot.sound) +
-  Erdos42.FourierPositive.finite_fourier_avoidance_exists
+  Erdos42.FourierPositive.finite_fourier_avoidance_count
 -/
 
 import Mathlib
@@ -20,9 +20,10 @@ import Mathlib.Analysis.Fourier.ZMod
 /-
 Erdős Problem 42 — shared finite-combinatorial primitives.
 
-`DiffFinset`, `SymmetricFinset`, `AvoidsNonzeroDiff`, plus tiny lemmas that both
-the Fourier-positive and compact-Cayley routes use. We work with `Finset` rather
-than `Set` because Lean's `Set ℕ` subtraction is truncated.
+`DiffFinset`, `SymmetricFinset`, `CliqueInCayley`, `AvoidsNonzeroDiff`, plus
+tiny lemmas that both the Fourier-positive and compact-Cayley routes use. We
+work with `Finset` rather than `Set` because Lean's `Set ℕ` subtraction is
+truncated.
 -/
 
 
@@ -42,6 +43,12 @@ def DiffFinset {α : Type*} [DecidableEq α] [Sub α] (A B : Finset α) : Finset
 /-- A `Finset` is symmetric under negation. -/
 def SymmetricFinset {α : Type*} [Neg α] (S : Finset α) : Prop :=
   ∀ x, x ∈ S ↔ -x ∈ S
+
+/-- A `Finset C` is a clique in the Cayley graph on `ZMod p` with allowed
+difference set `T`: every pair of distinct vertices in `C` has its difference
+in `T`. -/
+def CliqueInCayley {p : ℕ} (T C : Finset (ZMod p)) : Prop :=
+  ∀ x ∈ C, ∀ y ∈ C, x ≠ y → x - y ∈ T
 
 /-- `A` and `B` share no nonzero difference. -/
 def AvoidsNonzeroDiff {α : Type*} [DecidableEq α] [Zero α] [Sub α]
@@ -245,6 +252,13 @@ open scoped BigOperators ZMod
 noncomputable def indicatorC {p : ℕ} (T : Finset (ZMod p)) : ZMod p → ℂ :=
   fun x => if x ∈ T then 1 else 0
 
+/-- Normalized DFT coefficient of an arbitrary complex-valued function on
+`ZMod p`. This is the common finite-Fourier primitive needed for both axiom
+removal projects; `normalizedDftCoeff` is the indicator-specialized version. -/
+noncomputable def normalizedDftFunction {p : ℕ} [NeZero p]
+    (f : ZMod p → ℂ) (r : ZMod p) : ℂ :=
+  ((p : ℂ)⁻¹) * (ZMod.dft f r)
+
 /-- Normalized DFT coefficient of the indicator of `T`.
 
 Mathlib's `ZMod.dft` is the counting-measure transform
@@ -252,7 +266,7 @@ Mathlib's `ZMod.dft` is the counting-measure transform
 averaged coefficient, hence the factor `(p : ℂ)⁻¹`. -/
 noncomputable def normalizedDftCoeff {p : ℕ} [NeZero p]
     (T : Finset (ZMod p)) (r : ZMod p) : ℂ :=
-  ((p : ℂ)⁻¹) * (ZMod.dft (indicatorC T) r)
+  normalizedDftFunction (indicatorC T) r
 
 /-- Normalized Fourier *lower* bound: every character of `ZMod p` evaluated on
 `1_F` has real part `≥ -ε`. Used by Route A (Fourier-positive). -/
@@ -264,13 +278,61 @@ evaluated on `1_T` has real part `≤ ε`. Used by Route B (compact Cayley). -/
 def FourierUpperIndicator {p : ℕ} [NeZero p] (T : Finset (ZMod p)) (ε : ℝ) : Prop :=
   ∀ r : ZMod p, r ≠ 0 → (normalizedDftCoeff T r).re ≤ ε
 
+lemma normalizedDftFunction_eq_sum {p : ℕ} [NeZero p]
+    (f : ZMod p → ℂ) (r : ZMod p) :
+    normalizedDftFunction f r =
+      ((p : ℂ)⁻¹) * ∑ x : ZMod p, ZMod.stdAddChar (-(x * r)) * f x := by
+  rw [normalizedDftFunction, ZMod.dft_apply]
+  simp [smul_eq_mul]
+
+lemma normalizedDftFunction_zero_eq_average {p : ℕ} [NeZero p]
+    (f : ZMod p → ℂ) :
+    normalizedDftFunction f 0 =
+      ((p : ℂ)⁻¹) * ∑ x : ZMod p, f x := by
+  rw [normalizedDftFunction_eq_sum]
+  simp
+
+@[simp] lemma normalizedDftFunction_zero_fun {p : ℕ} [NeZero p]
+    (r : ZMod p) :
+    normalizedDftFunction (fun _ : ZMod p => 0) r = 0 := by
+  rw [normalizedDftFunction_eq_sum]
+  simp
+
+lemma normalizedDftFunction_add {p : ℕ} [NeZero p]
+    (f g : ZMod p → ℂ) (r : ZMod p) :
+    normalizedDftFunction (fun x => f x + g x) r =
+      normalizedDftFunction f r + normalizedDftFunction g r := by
+  rw [normalizedDftFunction_eq_sum, normalizedDftFunction_eq_sum,
+    normalizedDftFunction_eq_sum]
+  simp [mul_add, Finset.sum_add_distrib]
+
+lemma normalizedDftFunction_neg {p : ℕ} [NeZero p]
+    (f : ZMod p → ℂ) (r : ZMod p) :
+    normalizedDftFunction (fun x => -f x) r =
+      - normalizedDftFunction f r := by
+  rw [normalizedDftFunction_eq_sum, normalizedDftFunction_eq_sum]
+  simp [Finset.mul_sum]
+
+lemma normalizedDftFunction_sub {p : ℕ} [NeZero p]
+    (f g : ZMod p → ℂ) (r : ZMod p) :
+    normalizedDftFunction (fun x => f x - g x) r =
+      normalizedDftFunction f r - normalizedDftFunction g r := by
+  simp [sub_eq_add_neg, normalizedDftFunction_add, normalizedDftFunction_neg]
+
+lemma normalizedDftFunction_const_mul {p : ℕ} [NeZero p]
+    (c : ℂ) (f : ZMod p → ℂ) (r : ZMod p) :
+    normalizedDftFunction (fun x => c * f x) r =
+      c * normalizedDftFunction f r := by
+  rw [normalizedDftFunction_eq_sum, normalizedDftFunction_eq_sum]
+  simp [Finset.mul_sum, mul_comm, mul_left_comm, mul_assoc]
+
 lemma normalizedDftCoeff_eq_sum {p : ℕ} [NeZero p]
     (T : Finset (ZMod p)) (r : ZMod p) :
     normalizedDftCoeff T r =
       ((p : ℂ)⁻¹) * ∑ x ∈ T, ZMod.stdAddChar (-(x * r)) := by
   classical
-  rw [normalizedDftCoeff, ZMod.dft_apply]
-  simp [indicatorC, smul_eq_mul]
+  rw [normalizedDftCoeff, normalizedDftFunction_eq_sum]
+  simp [indicatorC]
 
 lemma normalizedDftCoeff_zero_eq_card_div {p : ℕ} [NeZero p]
     (T : Finset (ZMod p)) :
@@ -278,22 +340,30 @@ lemma normalizedDftCoeff_zero_eq_card_div {p : ℕ} [NeZero p]
   rw [normalizedDftCoeff_eq_sum]
   simp [div_eq_inv_mul]
 
+/-- Fourier inversion in the normalized convention, for arbitrary functions. -/
+lemma function_eq_sum_normalizedDftFunction {p : ℕ} [NeZero p]
+    (f : ZMod p → ℂ) (x : ZMod p) :
+    f x =
+      ∑ r : ZMod p, ZMod.stdAddChar (r * x) * normalizedDftFunction f r := by
+  classical
+  have h :=
+    congrFun (LinearEquiv.symm_apply_apply (ZMod.dft : (ZMod p → ℂ) ≃ₗ[ℂ] (ZMod p → ℂ))
+      f) x
+  calc
+    f x =
+        ((p : ℂ)⁻¹) * ∑ r : ZMod p,
+          ZMod.stdAddChar (r * x) * ZMod.dft f r := by
+          simpa [ZMod.invDFT_apply, smul_eq_mul] using h.symm
+    _ = ∑ r : ZMod p, ZMod.stdAddChar (r * x) * normalizedDftFunction f r := by
+          simp [normalizedDftFunction, Finset.mul_sum, mul_comm, mul_left_comm]
+
 /-- Fourier inversion in the normalization used by the compact-Cayley route. -/
 lemma indicatorC_eq_sum_normalizedDftCoeff {p : ℕ} [NeZero p]
     (T : Finset (ZMod p)) (x : ZMod p) :
     indicatorC T x =
       ∑ r : ZMod p, ZMod.stdAddChar (r * x) * normalizedDftCoeff T r := by
-  classical
-  have h :=
-    congrFun (LinearEquiv.symm_apply_apply (ZMod.dft : (ZMod p → ℂ) ≃ₗ[ℂ] (ZMod p → ℂ))
-      (indicatorC T)) x
-  calc
-    indicatorC T x =
-        ((p : ℂ)⁻¹) * ∑ r : ZMod p,
-          ZMod.stdAddChar (r * x) * ZMod.dft (indicatorC T) r := by
-          simpa [ZMod.invDFT_apply, smul_eq_mul] using h.symm
-    _ = ∑ r : ZMod p, ZMod.stdAddChar (r * x) * normalizedDftCoeff T r := by
-          simp [normalizedDftCoeff, Finset.mul_sum, mul_comm, mul_left_comm]
+  simpa [normalizedDftCoeff] using
+    function_eq_sum_normalizedDftFunction (p := p) (indicatorC T) x
 
 lemma sum_stdAddChar_neg_mul_eq_zero_of_ne_zero
     {p : ℕ} [Fact p.Prime] [NeZero p] {r : ZMod p} (hr : r ≠ 0) :
@@ -362,14 +432,13 @@ lemma normalizedDftCoeff_im_eq_zero_of_symmetric
 end Erdos42
 
 /-! =============================================================
-    Section from: Erdos/P42/CompactCayley/FiniteReduction.lean
+    Section from: Erdos/P42/FiniteReduction.lean
     ============================================================= -/
 
 /-
-Erdős Problem 42 — shared compact-Cayley downstream machinery.
+Erdős Problem 42 — shared finite-reduction machinery.
 
-This file contains the finite pieces used by the compact-Cayley route and now
-also reused by the Fourier-positive Route A:
+This file contains the route-neutral finite pieces used by both the Fourier-positive Route A and the compact-Cayley Route B:
 
   1. Greedy Sidon subset lemma: any sufficiently large finite integer set
      contains a Sidon subset of any prescribed size.
@@ -382,12 +451,12 @@ also reused by the Fourier-positive Route A:
   4. Lift the clique-in-interval to an integer set `X ⊆ [1, N]` avoiding
      `A − A`; greedily extract a Sidon subset `B ⊆ X` of size `M`.
 
-The Route B theorem that actually invokes `compact_cayley_clique` lives in
-`CompactCayley/Main.lean`.
+The Route-specific theorem files import this module; this file imports no analytic
+trust-boundary axiom.
 -/
 
 
-namespace Erdos42.CompactCayley
+namespace Erdos42
 
 open Finset Erdos42
 
@@ -1356,7 +1425,7 @@ theorem exists_large_intersection_cyclicInterval
       simpa [fiber] using hs
     exact (Nat.le_of_lt hs').trans hfiber_le
 
-end Erdos42.CompactCayley
+end Erdos42
 
 /-! =============================================================
     Section from: Erdos/P42/FourierPositive/FiniteAvoidance.lean
@@ -1390,14 +1459,37 @@ def AvoidsForbiddenDiffs {p m : ℕ} [NeZero p]
   (∀ i, x i ∈ U) ∧
     ∀ i j : Fin m, i ≠ j → x i - x j ∉ F
 
-/-- **Existence-only finite Fourier avoidance theorem.**
+/-- **Counting finite Fourier avoidance theorem.**
 
-This is the Route A trust boundary. It is the weaker form of the combined
-PDF / Ulam-note counting theorem actually needed downstream: apply it with
-`m = greedySidonThreshold M` and then extract a Sidon subset greedily. -/
-axiom finite_fourier_avoidance_exists
+This is the Route A trust boundary in the form closest to the combined
+PDF / Ulam-note statement: under the density and one-sided Fourier hypotheses,
+there are at least `c * p^m` ordered avoiding tuples. The downstream #42 proof
+only needs existence; `finite_fourier_avoidance_exists` below derives that
+weaker interface from this count statement. -/
+axiom finite_fourier_avoidance_count
     (m : ℕ) (α ρ : ℝ)
     (_hm : 1 ≤ m) (_hα : 0 < α) (_hρ : 0 < ρ) :
+    ∃ ε : ℝ, 0 < ε ∧
+    ∃ c : ℝ, 0 < c ∧
+    ∃ p₀ : ℕ, ∀ p : ℕ, [Fact p.Prime] → p₀ ≤ p →
+    ∀ F U : Finset (ZMod p),
+      SymmetricFinset F →
+      (0 : ZMod p) ∈ F →
+      (F.card : ℝ) ≤ (1 - ρ) * p →
+      α * p ≤ (U.card : ℝ) →
+      FourierLowerIndicator F ε →
+      c * (p : ℝ) ^ m ≤
+        (((Finset.univ : Finset (Fin m → ZMod p)).filter
+          (fun x => AvoidsForbiddenDiffs F U x)).card : ℝ)
+
+/-- Existence-only finite Fourier avoidance, derived from the count version.
+
+This is the interface used by the #42 downstream proof. Keeping it as a theorem
+rather than an axiom makes the stronger count statement the only Route A
+analytic trust boundary. -/
+theorem finite_fourier_avoidance_exists
+    (m : ℕ) (α ρ : ℝ)
+    (hm : 1 ≤ m) (hα : 0 < α) (hρ : 0 < ρ) :
     ∃ ε : ℝ, 0 < ε ∧
     ∃ p₀ : ℕ, ∀ p : ℕ, [Fact p.Prime] → p₀ ≤ p →
     ∀ F U : Finset (ZMod p),
@@ -1406,11 +1498,1953 @@ axiom finite_fourier_avoidance_exists
       (F.card : ℝ) ≤ (1 - ρ) * p →
       α * p ≤ (U.card : ℝ) →
       FourierLowerIndicator F ε →
-      ∃ x : Fin m → ZMod p, AvoidsForbiddenDiffs F U x
+      ∃ x : Fin m → ZMod p, AvoidsForbiddenDiffs F U x := by
+  classical
+  obtain ⟨ε, hε, c, hc, p₀, hcount⟩ :=
+    finite_fourier_avoidance_count m α ρ hm hα hρ
+  refine ⟨ε, hε, p₀, ?_⟩
+  intro p hp hp₀ F U hFsym hFzero hFdense hUdense hFourier
+  have hcnt :=
+    hcount p hp₀ F U hFsym hFzero hFdense hUdense hFourier
+  let S : Finset (Fin m → ZMod p) :=
+    (Finset.univ : Finset (Fin m → ZMod p)).filter
+      (fun x => AvoidsForbiddenDiffs F U x)
+  have hp_pos : 0 < (p : ℝ) := by
+    exact_mod_cast (Fact.out : p.Prime).pos
+  have hleft_pos : 0 < c * (p : ℝ) ^ m := by
+    exact mul_pos hc (pow_pos hp_pos m)
+  have hScard_pos_real : 0 < (S.card : ℝ) := by
+    exact lt_of_lt_of_le hleft_pos (by simpa [S] using hcnt)
+  have hScard_pos : 0 < S.card := by exact_mod_cast hScard_pos_real
+  obtain ⟨x, hxS⟩ := Finset.card_pos.mp hScard_pos
+  refine ⟨x, ?_⟩
+  simpa [S] using hxS
 
 end FourierPositive
 
 end Erdos42
+
+/-! =============================================================
+    Section from: Erdos/P42/FourierPositive/Counterexample.lean
+    ============================================================= -/
+
+/-
+Erdos Problem 42 — Fourier-positive counterexample sequence.
+
+This is the Route A contradiction skeleton for opening
+`finite_fourier_avoidance_count`. It is independent of Route B: if the
+explicit-prime count theorem fails, then one can choose primes `p_n -> infinity`,
+forbidden sets `F_n`, dense vertex sets `U_n`, Fourier lower bias
+`eps_n -> 0`, and a vanishing count threshold `c_n -> 0` such that the avoiding
+tuple count is always below `c_n p_n^m`.
+-/
+
+namespace Erdos42.FourierPositive
+
+open Filter Erdos42
+open scoped Topology Classical
+
+/-- Explicit-prime version of the Route A count theorem statement. This avoids
+typeclass binders in the counterexample extraction while preserving the same
+mathematical content as `finite_fourier_avoidance_count`. -/
+def FiniteFourierAvoidanceCountStatementExplicit (m : ℕ) (α ρ : ℝ) : Prop :=
+  ∃ ε : ℝ, 0 < ε ∧
+  ∃ c : ℝ, 0 < c ∧
+  ∃ p₀ : ℕ, ∀ (p : ℕ) (hp : p.Prime), p₀ ≤ p →
+    ∀ F U : Finset (ZMod p),
+      SymmetricFinset F →
+      (0 : ZMod p) ∈ F →
+      (F.card : ℝ) ≤ (1 - ρ) * p →
+      α * p ≤ (U.card : ℝ) →
+      (letI : NeZero p := ⟨hp.ne_zero⟩; FourierLowerIndicator F ε) →
+      (letI : NeZero p := ⟨hp.ne_zero⟩;
+        c * (p : ℝ) ^ m ≤
+          (((Finset.univ : Finset (Fin m → ZMod p)).filter
+            (fun x => AvoidsForbiddenDiffs F U x)).card : ℝ))
+
+/-- The original typeclass-shaped Route A count theorem statement implies the
+explicit-prime statement used for contradiction extraction. -/
+theorem explicit_of_finite_fourier_avoidance_count_statement
+    {m : ℕ} {α ρ : ℝ}
+    (h : ∃ ε : ℝ, 0 < ε ∧
+      ∃ c : ℝ, 0 < c ∧
+      ∃ p₀ : ℕ, ∀ p : ℕ, [Fact p.Prime] → p₀ ≤ p →
+      ∀ F U : Finset (ZMod p),
+        SymmetricFinset F →
+        (0 : ZMod p) ∈ F →
+        (F.card : ℝ) ≤ (1 - ρ) * p →
+        α * p ≤ (U.card : ℝ) →
+        FourierLowerIndicator F ε →
+        c * (p : ℝ) ^ m ≤
+          (((Finset.univ : Finset (Fin m → ZMod p)).filter
+            (fun x => AvoidsForbiddenDiffs F U x)).card : ℝ)) :
+    FiniteFourierAvoidanceCountStatementExplicit m α ρ := by
+  rcases h with ⟨ε, hε, c, hc, p₀, hp₀⟩
+  refine ⟨ε, hε, c, hc, p₀, ?_⟩
+  intro p hp hpge F U hsym hzero hFdense hUdense hFourier
+  haveI : Fact p.Prime := ⟨hp⟩
+  exact hp₀ p hpge F U hsym hzero hFdense hUdense (by simpa using hFourier)
+
+/-- Conversely, the explicit-prime statement implies the original
+typeclass-shaped Route A count theorem statement. -/
+theorem finite_fourier_avoidance_count_statement_from_explicit
+    {m : ℕ} {α ρ : ℝ}
+    (h : FiniteFourierAvoidanceCountStatementExplicit m α ρ) :
+    ∃ ε : ℝ, 0 < ε ∧
+    ∃ c : ℝ, 0 < c ∧
+    ∃ p₀ : ℕ, ∀ p : ℕ, [Fact p.Prime] → p₀ ≤ p →
+    ∀ F U : Finset (ZMod p),
+      SymmetricFinset F →
+      (0 : ZMod p) ∈ F →
+      (F.card : ℝ) ≤ (1 - ρ) * p →
+      α * p ≤ (U.card : ℝ) →
+      FourierLowerIndicator F ε →
+      c * (p : ℝ) ^ m ≤
+        (((Finset.univ : Finset (Fin m → ZMod p)).filter
+          (fun x => AvoidsForbiddenDiffs F U x)).card : ℝ) := by
+  rcases h with ⟨ε, hε, c, hc, p₀, hp₀⟩
+  refine ⟨ε, hε, c, hc, p₀, ?_⟩
+  intro p hpFact hpge F U hsym hzero hFdense hUdense hFourier
+  have hp : p.Prime := Fact.out
+  exact hp₀ p hp hpge F U hsym hzero hFdense hUdense (by simpa using hFourier)
+
+/-- A Route A counterexample sequence for a failed finite Fourier avoidance
+count theorem. -/
+structure FourierAvoidanceCounterSeq (m : ℕ) (α ρ : ℝ) where
+  p : ℕ → ℕ
+  prime : ∀ n, (p n).Prime
+  p_ge : ∀ n, n ≤ p n
+  F : ∀ n, Finset (ZMod (p n))
+  U : ∀ n, Finset (ZMod (p n))
+  F_sym : ∀ n, SymmetricFinset (F n)
+  F_zero : ∀ n, (0 : ZMod (p n)) ∈ F n
+  F_density : ∀ n, ((F n).card : ℝ) ≤ (1 - ρ) * (p n : ℝ)
+  U_density : ∀ n, α * (p n : ℝ) ≤ ((U n).card : ℝ)
+  eps : ℕ → ℝ
+  c : ℕ → ℝ
+  eps_pos : ∀ n, 0 < eps n
+  c_pos : ∀ n, 0 < c n
+  eps_tendsto_zero : Tendsto eps atTop (𝓝 0)
+  c_tendsto_zero : Tendsto c atTop (𝓝 0)
+  F_fourier_lower : ∀ n,
+    letI : NeZero (p n) := ⟨(prime n).ne_zero⟩
+    FourierLowerIndicator (F n) (eps n)
+  count_small : ∀ n,
+    letI : NeZero (p n) := ⟨(prime n).ne_zero⟩
+    (((Finset.univ : Finset (Fin m → ZMod (p n))).filter
+      (fun x => AvoidsForbiddenDiffs (F n) (U n) x)).card : ℝ) <
+      c n * (p n : ℝ) ^ m
+
+lemma FourierAvoidanceCounterSeq.tendsto_p_atTop {m : ℕ} {α ρ : ℝ}
+    (S : FourierAvoidanceCounterSeq m α ρ) :
+    Tendsto S.p atTop atTop :=
+  tendsto_atTop_mono S.p_ge tendsto_id
+
+lemma FourierAvoidanceCounterSeq.tendsto_p_natCast_atTop {m : ℕ} {α ρ : ℝ}
+    (S : FourierAvoidanceCounterSeq m α ρ) :
+    Tendsto (fun n => (S.p n : ℝ)) atTop atTop :=
+  tendsto_natCast_atTop_atTop.comp S.tendsto_p_atTop
+
+/-- Failure of the explicit Route A count statement produces the standard
+contradiction sequence with `eps_n = c_n = 1 / (n + 1)` and `p_n >= n`. -/
+theorem exists_fourierAvoidanceCounterSeq_of_not_finiteFourierAvoidanceCountStatementExplicit
+    {m : ℕ} {α ρ : ℝ}
+    (hfail : ¬ FiniteFourierAvoidanceCountStatementExplicit m α ρ) :
+    ∃ _S : FourierAvoidanceCounterSeq m α ρ, True := by
+  classical
+  have hbad : ∀ n : ℕ,
+      ∃ p : ℕ, ∃ hp : p.Prime, n ≤ p ∧
+      ∃ F U : Finset (ZMod p),
+        SymmetricFinset F ∧
+        (0 : ZMod p) ∈ F ∧
+        (F.card : ℝ) ≤ (1 - ρ) * (p : ℝ) ∧
+        α * (p : ℝ) ≤ (U.card : ℝ) ∧
+        (letI : NeZero p := ⟨hp.ne_zero⟩;
+          FourierLowerIndicator F (((n + 1 : ℕ) : ℝ)⁻¹)) ∧
+        (letI : NeZero p := ⟨hp.ne_zero⟩;
+          (((Finset.univ : Finset (Fin m → ZMod p)).filter
+            (fun x => AvoidsForbiddenDiffs F U x)).card : ℝ) <
+            (((n + 1 : ℕ) : ℝ)⁻¹) * (p : ℝ) ^ m) := by
+    intro n
+    by_contra hnone
+    apply hfail
+    refine ⟨(((n + 1 : ℕ) : ℝ)⁻¹), by positivity,
+      (((n + 1 : ℕ) : ℝ)⁻¹), by positivity, n, ?_⟩
+    intro p hp hpge F U hsym hzero hFdense hUdense hFourier
+    by_contra hnot
+    apply hnone
+    exact ⟨p, hp, hpge, F, U, hsym, hzero, hFdense, hUdense, hFourier, not_le.mp hnot⟩
+  choose p hp hpge F U hsym hzero hFdense hUdense hFourier hsmall using hbad
+  refine ⟨{
+    p := p
+    prime := hp
+    p_ge := hpge
+    F := F
+    U := U
+    F_sym := hsym
+    F_zero := hzero
+    F_density := hFdense
+    U_density := hUdense
+    eps := fun n => (((n + 1 : ℕ) : ℝ)⁻¹)
+    c := fun n => (((n + 1 : ℕ) : ℝ)⁻¹)
+    eps_pos := by
+      intro n
+      positivity
+    c_pos := by
+      intro n
+      positivity
+    eps_tendsto_zero := by
+      simpa [one_div] using (tendsto_one_div_add_atTop_nhds_zero_nat (𝕜 := ℝ))
+    c_tendsto_zero := by
+      simpa [one_div] using (tendsto_one_div_add_atTop_nhds_zero_nat (𝕜 := ℝ))
+    F_fourier_lower := by
+      intro n
+      simpa using hFourier n
+    count_small := by
+      intro n
+      simpa using hsmall n
+  }, trivial⟩
+
+end Erdos42.FourierPositive
+
+/-! =============================================================
+    Section from: Erdos/P42/FourierPositive/Counting.lean
+    ============================================================= -/
+
+/-
+Erdos Problem 42 — Route A finite weighted pattern counts.
+
+This is the finite algebra layer used when opening the Route A
+`finite_fourier_avoidance_count` axiom. It is independent of Route B: it has
+the dense vertex weight `U`, the forbidden kernel `F`, and the
+inclusion-exclusion expansion of the avoidance density into weighted
+complexity-one pattern counts.
+-/
+
+namespace Erdos42.FourierPositive
+
+open Finset Filter Erdos42
+open scoped BigOperators Classical Topology
+
+/-- The oriented edge set of the complete graph on `Fin m`. Route A uses this
+for pairwise forbidden differences in ordered `m`-tuples. -/
+def pairEdgePairs (m : ℕ) : Finset (Fin m × Fin m) :=
+  (Finset.univ : Finset (Fin m × Fin m)).filter (fun e => e.1 < e.2)
+
+lemma pairEdgePairs_left_lt_right {m : ℕ} {e : Fin m × Fin m}
+    (he : e ∈ pairEdgePairs m) : e.1 < e.2 := by
+  exact (Finset.mem_filter.mp he).2
+
+lemma pairEdgePairs_left_ne_right {m : ℕ} {e : Fin m × Fin m}
+    (he : e ∈ pairEdgePairs m) : e.1 ≠ e.2 :=
+  ne_of_lt (pairEdgePairs_left_lt_right he)
+
+/-- Weighted finite pattern count:
+
+`E_x (prod_i v(x_i)) (prod_{ij in E} h(x_i - x_j))`.
+
+In Route A, `v` will be `1_U` and `h` will be `1_F`. -/
+noncomputable def finiteWeightedPattern {p m : ℕ} [NeZero p]
+    (E : Finset (Fin m × Fin m)) (h v : ZMod p → ℂ) : ℂ :=
+  ((Fintype.card (Fin m → ZMod p) : ℂ)⁻¹) *
+    ∑ x : Fin m → ZMod p,
+      (∏ i : Fin m, v (x i)) *
+        ∏ e ∈ E, h (x e.1 - x e.2)
+
+/-- Edge-indexed version of `finiteWeightedPattern`. This is the convenient
+form for the one-edge replacement/telescoping argument: different edges may
+temporarily use different kernels. -/
+noncomputable def finiteWeightedPatternEdge {p m : ℕ} [NeZero p]
+    (E : Finset (Fin m × Fin m))
+    (H : (Fin m × Fin m) → ZMod p → ℂ) (v : ZMod p → ℂ) : ℂ :=
+  ((Fintype.card (Fin m → ZMod p) : ℂ)⁻¹) *
+    ∑ x : Fin m → ZMod p,
+      (∏ i : Fin m, v (x i)) *
+        ∏ e ∈ E, H e (x e.1 - x e.2)
+
+lemma finiteWeightedPatternEdge_const {p m : ℕ} [NeZero p]
+    (E : Finset (Fin m × Fin m)) (h v : ZMod p → ℂ) :
+    finiteWeightedPatternEdge E (fun _ => h) v =
+      finiteWeightedPattern E h v := by
+  rfl
+
+/-- Replace one edge kernel by a new kernel. -/
+noncomputable def replacePairEdgeKernel {p m : ℕ}
+    (H : (Fin m × Fin m) → ZMod p → ℂ) (e₀ : Fin m × Fin m)
+    (g : ZMod p → ℂ) : (Fin m × Fin m) → ZMod p → ℂ :=
+  fun e z => if e = e₀ then g z else H e z
+
+lemma finiteWeightedPatternEdge_replace_sub
+    {p m : ℕ} [NeZero p] {E : Finset (Fin m × Fin m)}
+    {H : (Fin m × Fin m) → ZMod p → ℂ} {e₀ : Fin m × Fin m}
+    (he₀ : e₀ ∈ E) (g v : ZMod p → ℂ) :
+    finiteWeightedPatternEdge E (replacePairEdgeKernel H e₀ g) v -
+        finiteWeightedPatternEdge E H v =
+      ((Fintype.card (Fin m → ZMod p) : ℂ)⁻¹) *
+        ∑ x : Fin m → ZMod p,
+          (∏ i : Fin m, v (x i)) *
+            ((g (x e₀.1 - x e₀.2) - H e₀ (x e₀.1 - x e₀.2)) *
+              ∏ e ∈ E \ {e₀}, H e (x e.1 - x e.2)) := by
+  classical
+  unfold finiteWeightedPatternEdge
+  rw [← mul_sub, ← Finset.sum_sub_distrib]
+  congr 1
+  refine Finset.sum_congr rfl ?_
+  intro x _hx
+  rw [Finset.prod_eq_mul_prod_diff_singleton he₀
+      (fun e => replacePairEdgeKernel H e₀ g e (x e.1 - x e.2)),
+    Finset.prod_eq_mul_prod_diff_singleton he₀
+      (fun e => H e (x e.1 - x e.2))]
+  have hprod :
+      (∏ e ∈ E \ {e₀}, replacePairEdgeKernel H e₀ g e (x e.1 - x e.2)) =
+        ∏ e ∈ E \ {e₀}, H e (x e.1 - x e.2) := by
+    refine Finset.prod_congr rfl ?_
+    intro e he
+    have hne : e ≠ e₀ := by
+      intro h
+      exact (Finset.mem_sdiff.mp he).2 (by simp [h])
+    simp [replacePairEdgeKernel, hne]
+  rw [hprod]
+  simp [replacePairEdgeKernel]
+  ring
+
+/-- Patch a set of edges from a base kernel family `H` to a target family `G`. -/
+noncomputable def patchPairEdgeKernel {p m : ℕ}
+    (H G : (Fin m × Fin m) → ZMod p → ℂ) (S : Finset (Fin m × Fin m)) :
+    (Fin m × Fin m) → ZMod p → ℂ :=
+  fun e z => if e ∈ S then G e z else H e z
+
+lemma patchPairEdgeKernel_insert_eq_replace {p m : ℕ}
+    (H G : (Fin m × Fin m) → ZMod p → ℂ) (S : Finset (Fin m × Fin m))
+    (e₀ : Fin m × Fin m) :
+    patchPairEdgeKernel H G (insert e₀ S) =
+      replacePairEdgeKernel (patchPairEdgeKernel H G S) e₀ (G e₀) := by
+  funext e z
+  by_cases h : e = e₀
+  · subst h
+    simp [patchPairEdgeKernel, replacePairEdgeKernel]
+  · simp [patchPairEdgeKernel, replacePairEdgeKernel, h]
+
+lemma finiteWeightedPatternEdge_patch_empty {p m : ℕ} [NeZero p]
+    (E : Finset (Fin m × Fin m))
+    (H G : (Fin m × Fin m) → ZMod p → ℂ) (v : ZMod p → ℂ) :
+    finiteWeightedPatternEdge E (patchPairEdgeKernel H G ∅) v =
+      finiteWeightedPatternEdge E H v := by
+  unfold finiteWeightedPatternEdge
+  simp [patchPairEdgeKernel]
+
+lemma finiteWeightedPatternEdge_patch_all {p m : ℕ} [NeZero p]
+    (E : Finset (Fin m × Fin m))
+    (H G : (Fin m × Fin m) → ZMod p → ℂ) (v : ZMod p → ℂ) :
+    finiteWeightedPatternEdge E (patchPairEdgeKernel H G E) v =
+      finiteWeightedPatternEdge E G v := by
+  classical
+  unfold finiteWeightedPatternEdge
+  congr 1
+  refine Finset.sum_congr rfl ?_
+  intro x _hx
+  congr 1
+  refine Finset.prod_congr rfl ?_
+  intro e he
+  simp [patchPairEdgeKernel, he]
+
+/-- Abstract finite telescoping lemma for Route A weighted pattern counts.
+
+Once each one-edge replacement is bounded by `M`, replacing all edge kernels
+on a finite edge set costs at most `|E| * M`. Later counting-convergence work
+will supply the one-edge bound from the Cayley cut norm after Fejer smoothing. -/
+lemma norm_finiteWeightedPatternEdge_patch_sub_le_card_mul {p m : ℕ} [NeZero p]
+    {E S : Finset (Fin m × Fin m)}
+    {H G : (Fin m × Fin m) → ZMod p → ℂ} {v : ZMod p → ℂ} {M : ℝ}
+    (hstep : ∀ e ∈ E, ∀ S' : Finset (Fin m × Fin m), S' ⊆ E → e ∉ S' →
+      ‖finiteWeightedPatternEdge E (patchPairEdgeKernel H G (insert e S')) v -
+        finiteWeightedPatternEdge E (patchPairEdgeKernel H G S') v‖ ≤ M)
+    (hS : S ⊆ E) :
+    ‖finiteWeightedPatternEdge E (patchPairEdgeKernel H G S) v -
+        finiteWeightedPatternEdge E H v‖ ≤ (S.card : ℝ) * M := by
+  classical
+  refine Finset.induction_on S ?base ?step hS
+  · intro _hS
+    rw [finiteWeightedPatternEdge_patch_empty]
+    simp
+  · intro e S heS ih hInsert
+    have heE : e ∈ E := hInsert (by simp)
+    have hSsub : S ⊆ E := by
+      intro x hx
+      exact hInsert (by simp [hx])
+    have hstep' := hstep e heE S hSsub heS
+    have hih := ih hSsub
+    have hdecomp :
+        finiteWeightedPatternEdge E (patchPairEdgeKernel H G (insert e S)) v -
+            finiteWeightedPatternEdge E H v =
+          (finiteWeightedPatternEdge E (patchPairEdgeKernel H G (insert e S)) v -
+            finiteWeightedPatternEdge E (patchPairEdgeKernel H G S) v) +
+          (finiteWeightedPatternEdge E (patchPairEdgeKernel H G S) v -
+            finiteWeightedPatternEdge E H v) := by
+      ring
+    rw [hdecomp]
+    calc
+      ‖(finiteWeightedPatternEdge E (patchPairEdgeKernel H G (insert e S)) v -
+            finiteWeightedPatternEdge E (patchPairEdgeKernel H G S) v) +
+          (finiteWeightedPatternEdge E (patchPairEdgeKernel H G S) v -
+            finiteWeightedPatternEdge E H v)‖
+          ≤ ‖finiteWeightedPatternEdge E (patchPairEdgeKernel H G (insert e S)) v -
+            finiteWeightedPatternEdge E (patchPairEdgeKernel H G S) v‖ +
+            ‖finiteWeightedPatternEdge E (patchPairEdgeKernel H G S) v -
+              finiteWeightedPatternEdge E H v‖ := norm_add_le _ _
+      _ ≤ M + (S.card : ℝ) * M := add_le_add hstep' hih
+      _ = ((insert e S).card : ℝ) * M := by
+        rw [Finset.card_insert_of_notMem heS]
+        norm_num
+        ring
+
+lemma norm_finiteWeightedPatternEdge_sub_le_card_mul {p m : ℕ} [NeZero p]
+    {E : Finset (Fin m × Fin m)}
+    {H G : (Fin m × Fin m) → ZMod p → ℂ} {v : ZMod p → ℂ} {M : ℝ}
+    (hstep : ∀ e ∈ E, ∀ S' : Finset (Fin m × Fin m), S' ⊆ E → e ∉ S' →
+      ‖finiteWeightedPatternEdge E (patchPairEdgeKernel H G (insert e S')) v -
+        finiteWeightedPatternEdge E (patchPairEdgeKernel H G S') v‖ ≤ M) :
+    ‖finiteWeightedPatternEdge E G v - finiteWeightedPatternEdge E H v‖ ≤
+      (E.card : ℝ) * M := by
+  have h := norm_finiteWeightedPatternEdge_patch_sub_le_card_mul
+    (E := E) (S := E) (H := H) (G := G) (v := v) (M := M)
+    hstep (by intro x hx; exact hx)
+  rwa [finiteWeightedPatternEdge_patch_all] at h
+
+/-- Normalized average over a finite nonempty type. -/
+noncomputable def avgFinite (ι : Type*) [Fintype ι] (f : ι → ℂ) : ℂ :=
+  ((Fintype.card ι : ℂ)⁻¹) * ∑ x : ι, f x
+
+lemma norm_avgFinite_le {ι : Type*} [Fintype ι] [Nonempty ι]
+    {f : ι → ℂ} {M : ℝ} (hf : ∀ x, ‖f x‖ ≤ M) :
+    ‖avgFinite ι f‖ ≤ M := by
+  classical
+  have hcard_pos_nat : 0 < Fintype.card ι := Fintype.card_pos
+  have hcard_pos : 0 < (Fintype.card ι : ℝ) := by exact_mod_cast hcard_pos_nat
+  have hsum :
+      ‖∑ x : ι, f x‖ ≤ (Fintype.card ι : ℝ) * M := by
+    calc
+      ‖∑ x : ι, f x‖ ≤ ∑ x : ι, ‖f x‖ := norm_sum_le _ _
+      _ ≤ ∑ _x : ι, M := by
+        exact Finset.sum_le_sum (fun x _hx => hf x)
+      _ = (Fintype.card ι : ℝ) * M := by simp
+  unfold avgFinite
+  calc
+    ‖((Fintype.card ι : ℂ)⁻¹) * ∑ x : ι, f x‖
+        = ‖((Fintype.card ι : ℂ)⁻¹)‖ * ‖∑ x : ι, f x‖ := norm_mul _ _
+    _ ≤ ‖((Fintype.card ι : ℂ)⁻¹)‖ * ((Fintype.card ι : ℝ) * M) :=
+        mul_le_mul_of_nonneg_left hsum (norm_nonneg _)
+    _ = M := by
+      rw [norm_inv, Complex.norm_natCast]
+      field_simp [ne_of_gt hcard_pos]
+
+/-- Normalized average over `ZMod p`. Kept in the Route A namespace to avoid
+depending on the compact-Cayley route internals. -/
+noncomputable def avgZMod {p : ℕ} [NeZero p] (f : ZMod p → ℂ) : ℂ :=
+  ((p : ℂ)⁻¹) * ∑ x : ZMod p, f x
+
+lemma avgZMod_sum {p : ℕ} [NeZero p] {ι : Type*} [Fintype ι]
+    (F : ι → ZMod p → ℂ) :
+    avgZMod (fun x => ∑ i : ι, F i x) = ∑ i : ι, avgZMod (F i) := by
+  classical
+  unfold avgZMod
+  rw [Finset.sum_comm]
+  rw [Finset.mul_sum]
+
+lemma avgZMod_const_mul {p : ℕ} [NeZero p]
+    (c : ℂ) (f : ZMod p → ℂ) :
+    avgZMod (fun x => c * f x) = c * avgZMod f := by
+  unfold avgZMod
+  rw [← Finset.mul_sum]
+  ring
+
+lemma avgZMod_mul_const {p : ℕ} [NeZero p]
+    (f : ZMod p → ℂ) (c : ℂ) :
+    avgZMod (fun x => f x * c) = avgZMod f * c := by
+  unfold avgZMod
+  rw [← Finset.sum_mul]
+  ring
+
+/-- Route A Cayley cut functional for the single replaced edge. -/
+noncomputable def weightedCayleyCutFunctional {p : ℕ} [NeZero p]
+    (a φ ψ : ZMod p → ℂ) : ℂ :=
+  avgZMod fun x => avgZMod fun y => a (x - y) * φ x * ψ y
+
+/-- Abstract cut-bound interface used by the weighted one-edge replacement
+lemma. -/
+def WeightedCayleyCutBound {p : ℕ} [NeZero p]
+    (a : ZMod p → ℂ) (M : ℝ) : Prop :=
+  ∀ φ ψ : ZMod p → ℂ,
+    (∀ x, ‖φ x‖ ≤ 1) →
+    (∀ y, ‖ψ y‖ ≤ 1) →
+    ‖weightedCayleyCutFunctional a φ ψ‖ ≤ M
+
+/-- Spectral coefficient bound for a Route A weighted Cayley kernel. -/
+def WeightedSpectralBound {p : ℕ} [NeZero p] (a : ZMod p → ℂ) (M : ℝ) : Prop :=
+  ∀ r : ZMod p, ‖normalizedDftFunction a r‖ ≤ M
+
+/-- The left test Fourier factor appearing after expanding the weighted Cayley
+kernel. -/
+noncomputable def weightedLeftFourierTest {p : ℕ} [NeZero p]
+    (φ : ZMod p → ℂ) (r : ZMod p) : ℂ :=
+  avgZMod fun x => ZMod.stdAddChar (r * x) * φ x
+
+/-- The right test Fourier factor appearing after expanding the weighted Cayley
+kernel. -/
+noncomputable def weightedRightFourierTest {p : ℕ} [NeZero p]
+    (ψ : ZMod p → ℂ) (r : ZMod p) : ℂ :=
+  avgZMod fun y => ZMod.stdAddChar (-(r * y)) * ψ y
+
+lemma weightedRightFourierTest_eq_normalizedDftFunction {p : ℕ} [NeZero p]
+    (ψ : ZMod p → ℂ) (r : ZMod p) :
+    weightedRightFourierTest ψ r = normalizedDftFunction ψ r := by
+  dsimp [weightedRightFourierTest, avgZMod]
+  rw [normalizedDftFunction_eq_sum (p := p) ψ r]
+  apply congrArg (fun S : ℂ => ((p : ℂ)⁻¹) * S)
+  refine Finset.sum_congr rfl ?_
+  intro y _
+  rw [mul_comm r y]
+
+lemma weightedLeftFourierTest_eq_normalizedDftFunction_neg {p : ℕ} [NeZero p]
+    (φ : ZMod p → ℂ) (r : ZMod p) :
+    weightedLeftFourierTest φ r = normalizedDftFunction φ (-r) := by
+  dsimp [weightedLeftFourierTest, avgZMod]
+  rw [normalizedDftFunction_eq_sum (p := p) φ (-r)]
+  apply congrArg (fun S : ℂ => ((p : ℂ)⁻¹) * S)
+  refine Finset.sum_congr rfl ?_
+  intro x _
+  congr 1
+  simp [mul_comm]
+
+lemma sum_sq_norm_weightedRightFourierTest_eq_normalizedDftFunction
+    {p : ℕ} [NeZero p] (ψ : ZMod p → ℂ) :
+    (∑ r : ZMod p, ‖weightedRightFourierTest ψ r‖ ^ 2) =
+      ∑ r : ZMod p, ‖normalizedDftFunction ψ r‖ ^ 2 := by
+  refine Finset.sum_congr rfl ?_
+  intro r _
+  rw [weightedRightFourierTest_eq_normalizedDftFunction]
+
+lemma sum_sq_norm_weightedLeftFourierTest_eq_normalizedDftFunction
+    {p : ℕ} [NeZero p] (φ : ZMod p → ℂ) :
+    (∑ r : ZMod p, ‖weightedLeftFourierTest φ r‖ ^ 2) =
+      ∑ r : ZMod p, ‖normalizedDftFunction φ r‖ ^ 2 := by
+  classical
+  calc
+    (∑ r : ZMod p, ‖weightedLeftFourierTest φ r‖ ^ 2) =
+        ∑ r : ZMod p, ‖normalizedDftFunction φ (-r)‖ ^ 2 := by
+          refine Finset.sum_congr rfl ?_
+          intro r _
+          rw [weightedLeftFourierTest_eq_normalizedDftFunction_neg]
+    _ = ∑ r : ZMod p, ‖normalizedDftFunction φ r‖ ^ 2 := by
+          refine Fintype.sum_equiv (Equiv.neg (ZMod p)) _ _ ?_
+          intro r
+          simp
+
+lemma star_stdAddChar_neg_mul {p : ℕ} [NeZero p] (x r : ZMod p) :
+    (starRingEnd ℂ) (ZMod.stdAddChar (-(x * r))) =
+      ZMod.stdAddChar (x * r) := by
+  have h := AddChar.map_neg_eq_conj (ZMod.stdAddChar (N := p)) (x * r)
+  simp [h]
+
+lemma star_normalizedDftFunction {p : ℕ} [NeZero p]
+    (f : ZMod p → ℂ) (r : ZMod p) :
+    (starRingEnd ℂ) (normalizedDftFunction f r) =
+      ((p : ℂ)⁻¹) *
+        ∑ x : ZMod p, ZMod.stdAddChar (x * r) * (starRingEnd ℂ) (f x) := by
+  rw [normalizedDftFunction_eq_sum]
+  simp [map_sum, star_stdAddChar_neg_mul, mul_comm]
+
+lemma avg_stdAddChar_mul_star_eq_star_normalizedDftFunction
+    {p : ℕ} [NeZero p] (g : ZMod p → ℂ) (r : ZMod p) :
+    avgZMod (fun x => ZMod.stdAddChar (r * x) * (starRingEnd ℂ) (g x)) =
+      (starRingEnd ℂ) (normalizedDftFunction g r) := by
+  rw [star_normalizedDftFunction, avgZMod]
+  apply congrArg (fun S : ℂ => ((p : ℂ)⁻¹) * S)
+  refine Finset.sum_congr rfl ?_
+  intro x _
+  rw [mul_comm r x]
+
+/-- Parseval cross identity in normalized-average form. -/
+lemma avg_mul_star_eq_sum_normalizedDftFunction {p : ℕ} [NeZero p]
+    (f g : ZMod p → ℂ) :
+    avgZMod (fun x => f x * (starRingEnd ℂ) (g x)) =
+      ∑ r : ZMod p,
+        normalizedDftFunction f r * (starRingEnd ℂ) (normalizedDftFunction g r) := by
+  classical
+  calc
+    avgZMod (fun x => f x * (starRingEnd ℂ) (g x)) =
+        avgZMod
+          (fun x =>
+            (∑ r : ZMod p, ZMod.stdAddChar (r * x) * normalizedDftFunction f r) *
+              (starRingEnd ℂ) (g x)) := by
+          congr 1
+          funext x
+          rw [← function_eq_sum_normalizedDftFunction (p := p) f x]
+    _ = avgZMod
+          (fun x =>
+            ∑ r : ZMod p,
+              normalizedDftFunction f r *
+                (ZMod.stdAddChar (r * x) * (starRingEnd ℂ) (g x))) := by
+          congr 1
+          funext x
+          rw [Finset.sum_mul]
+          refine Finset.sum_congr rfl ?_
+          intro r _
+          ring
+    _ = ∑ r : ZMod p,
+        normalizedDftFunction f r * (starRingEnd ℂ) (normalizedDftFunction g r) := by
+          rw [avgZMod_sum]
+          refine Finset.sum_congr rfl ?_
+          intro r _
+          rw [avgZMod_const_mul, avg_stdAddChar_mul_star_eq_star_normalizedDftFunction]
+
+/-- Parseval in the normalized convention used here. -/
+lemma sum_sq_norm_normalizedDftFunction_eq_avg
+    {p : ℕ} [NeZero p] (f : ZMod p → ℂ) :
+    (∑ r : ZMod p, ‖normalizedDftFunction f r‖ ^ 2) =
+      ((p : ℝ)⁻¹) * ∑ x : ZMod p, ‖f x‖ ^ 2 := by
+  classical
+  apply Complex.ofReal_injective
+  have hcomplex :
+      ((p : ℂ)⁻¹) * ∑ x : ZMod p, (‖f x‖ : ℂ) ^ 2 =
+        ∑ r : ZMod p, (‖normalizedDftFunction f r‖ : ℂ) ^ 2 := by
+    calc
+      ((p : ℂ)⁻¹) * ∑ x : ZMod p, (‖f x‖ : ℂ) ^ 2 =
+          avgZMod (fun x => f x * (starRingEnd ℂ) (f x)) := by
+            unfold avgZMod
+            apply congrArg (fun S : ℂ => ((p : ℂ)⁻¹) * S)
+            refine Finset.sum_congr rfl ?_
+            intro x _
+            rw [← Complex.mul_conj']
+      _ = ∑ r : ZMod p,
+          normalizedDftFunction f r * (starRingEnd ℂ) (normalizedDftFunction f r) :=
+            avg_mul_star_eq_sum_normalizedDftFunction f f
+      _ = ∑ r : ZMod p, (‖normalizedDftFunction f r‖ : ℂ) ^ 2 := by
+            refine Finset.sum_congr rfl ?_
+            intro r _
+            rw [Complex.mul_conj']
+  simpa [Complex.ofReal_sum, Complex.ofReal_mul, Complex.ofReal_inv,
+    Complex.ofReal_pow, Complex.ofReal_natCast] using hcomplex.symm
+
+lemma sum_sq_norm_normalizedDftFunction_le_one_of_norm_le_one
+    {p : ℕ} [NeZero p] {f : ZMod p → ℂ}
+    (hf : ∀ x, ‖f x‖ ≤ 1) :
+    (∑ r : ZMod p, ‖normalizedDftFunction f r‖ ^ 2) ≤ 1 := by
+  classical
+  rw [sum_sq_norm_normalizedDftFunction_eq_avg]
+  have hsum : (∑ x : ZMod p, ‖f x‖ ^ 2) ≤ (p : ℝ) := by
+    calc
+      (∑ x : ZMod p, ‖f x‖ ^ 2) ≤ ∑ _x : ZMod p, (1 : ℝ) := by
+        refine Finset.sum_le_sum ?_
+        intro x _
+        have hx_nonneg : 0 ≤ ‖f x‖ := norm_nonneg _
+        have hx_le : ‖f x‖ ^ 2 ≤ (1 : ℝ) := by
+          nlinarith [hf x]
+        exact hx_le
+      _ = (p : ℝ) := by simp [ZMod.card]
+  have hp_nonneg : 0 ≤ ((p : ℝ)⁻¹) := inv_nonneg.mpr (Nat.cast_nonneg p)
+  have hp_ne : (p : ℝ) ≠ 0 := by exact_mod_cast (NeZero.ne p)
+  calc
+    ((p : ℝ)⁻¹) * ∑ x : ZMod p, ‖f x‖ ^ 2
+        ≤ ((p : ℝ)⁻¹) * (p : ℝ) := mul_le_mul_of_nonneg_left hsum hp_nonneg
+    _ = 1 := inv_mul_cancel₀ hp_ne
+
+lemma sum_sq_norm_weightedRightFourierTest_le_one_of_norm_le_one
+    {p : ℕ} [NeZero p] {ψ : ZMod p → ℂ}
+    (hψ : ∀ y, ‖ψ y‖ ≤ 1) :
+    (∑ r : ZMod p, ‖weightedRightFourierTest ψ r‖ ^ 2) ≤ 1 := by
+  rw [sum_sq_norm_weightedRightFourierTest_eq_normalizedDftFunction]
+  exact sum_sq_norm_normalizedDftFunction_le_one_of_norm_le_one hψ
+
+lemma sum_sq_norm_weightedLeftFourierTest_le_one_of_norm_le_one
+    {p : ℕ} [NeZero p] {φ : ZMod p → ℂ}
+    (hφ : ∀ x, ‖φ x‖ ≤ 1) :
+    (∑ r : ZMod p, ‖weightedLeftFourierTest φ r‖ ^ 2) ≤ 1 := by
+  rw [sum_sq_norm_weightedLeftFourierTest_eq_normalizedDftFunction]
+  exact sum_sq_norm_normalizedDftFunction_le_one_of_norm_le_one hφ
+
+lemma stdAddChar_mul_sub {p : ℕ} [NeZero p] (r x y : ZMod p) :
+    ZMod.stdAddChar (r * (x - y)) =
+      ZMod.stdAddChar (r * x) * ZMod.stdAddChar (-(r * y)) := by
+  rw [← ZMod.stdAddChar.map_add_eq_mul]
+  congr 1
+  ring
+
+/-- Fourier inversion applied to the weighted Cayley kernel `a(x-y)`, in the
+exact factorized form used by the spectral-cut argument. -/
+lemma weightedCayleyKernel_eq_fourier_sum {p : ℕ} [NeZero p]
+    (a : ZMod p → ℂ) (x y : ZMod p) :
+    a (x - y) =
+      ∑ r : ZMod p,
+        normalizedDftFunction a r *
+          ZMod.stdAddChar (r * x) *
+          ZMod.stdAddChar (-(r * y)) := by
+  calc
+    a (x - y) =
+        ∑ r : ZMod p, ZMod.stdAddChar (r * (x - y)) *
+          normalizedDftFunction a r := by
+          exact function_eq_sum_normalizedDftFunction (p := p) a (x - y)
+    _ = ∑ r : ZMod p,
+        normalizedDftFunction a r *
+          ZMod.stdAddChar (r * x) *
+          ZMod.stdAddChar (-(r * y)) := by
+          refine Finset.sum_congr rfl ?_
+          intro r _
+          rw [stdAddChar_mul_sub]
+          ring
+
+lemma weightedCayleyKernel_mul_tests_eq_fourier_sum {p : ℕ} [NeZero p]
+    (a φ ψ : ZMod p → ℂ) (x y : ZMod p) :
+    a (x - y) * φ x * ψ y =
+      ∑ r : ZMod p,
+        normalizedDftFunction a r *
+          (ZMod.stdAddChar (r * x) * φ x) *
+          (ZMod.stdAddChar (-(r * y)) * ψ y) := by
+  rw [weightedCayleyKernel_eq_fourier_sum (p := p) a x y]
+  simp only [Finset.sum_mul]
+  refine Finset.sum_congr rfl ?_
+  intro r _
+  ring
+
+/-- The weighted double-average Cayley cut functional factors through the
+normalized Fourier coefficients of the kernel and the two test Fourier factors. -/
+lemma weightedCayleyCutFunctional_eq_fourier_sum {p : ℕ} [NeZero p]
+    (a φ ψ : ZMod p → ℂ) :
+    weightedCayleyCutFunctional a φ ψ =
+      ∑ r : ZMod p,
+        normalizedDftFunction a r *
+          weightedLeftFourierTest φ r * weightedRightFourierTest ψ r := by
+  classical
+  unfold weightedCayleyCutFunctional
+  simp_rw [weightedCayleyKernel_mul_tests_eq_fourier_sum (p := p) a φ ψ]
+  calc
+    avgZMod
+        (fun x : ZMod p =>
+          avgZMod
+            (fun y : ZMod p =>
+              ∑ r : ZMod p,
+                normalizedDftFunction a r *
+                  (ZMod.stdAddChar (r * x) * φ x) *
+                  (ZMod.stdAddChar (-(r * y)) * ψ y))) =
+        avgZMod
+          (fun x : ZMod p =>
+            ∑ r : ZMod p,
+              normalizedDftFunction a r *
+                (ZMod.stdAddChar (r * x) * φ x) *
+                weightedRightFourierTest ψ r) := by
+          congr 1
+          funext x
+          rw [avgZMod_sum]
+          refine Finset.sum_congr rfl ?_
+          intro r _
+          rw [avgZMod_const_mul]
+          simp [weightedRightFourierTest, mul_assoc]
+    _ = ∑ r : ZMod p,
+        normalizedDftFunction a r *
+          weightedLeftFourierTest φ r * weightedRightFourierTest ψ r := by
+          rw [avgZMod_sum]
+          refine Finset.sum_congr rfl ?_
+          intro r _
+          rw [avgZMod_mul_const, avgZMod_const_mul]
+          simp [weightedLeftFourierTest, mul_assoc]
+
+lemma norm_weightedCayleyCutFunctional_le_fourier_l1 {p : ℕ} [NeZero p]
+    (a φ ψ : ZMod p → ℂ) :
+    ‖weightedCayleyCutFunctional a φ ψ‖ ≤
+      ∑ r : ZMod p,
+        ‖normalizedDftFunction a r‖ * ‖weightedLeftFourierTest φ r‖ *
+          ‖weightedRightFourierTest ψ r‖ := by
+  rw [weightedCayleyCutFunctional_eq_fourier_sum]
+  refine (norm_sum_le _ _).trans ?_
+  refine Finset.sum_le_sum ?_
+  intro r _
+  rw [norm_mul, norm_mul]
+
+lemma norm_weightedCayleyCutFunctional_le_spectral_of_fourier_l2
+    {p : ℕ} [NeZero p] (a φ ψ : ZMod p → ℂ) {M : ℝ}
+    (hM : ∀ r : ZMod p, ‖normalizedDftFunction a r‖ ≤ M)
+    (hMnonneg : 0 ≤ M)
+    (hφ2 : (∑ r : ZMod p, ‖weightedLeftFourierTest φ r‖ ^ 2) ≤ 1)
+    (hψ2 : (∑ r : ZMod p, ‖weightedRightFourierTest ψ r‖ ^ 2) ≤ 1) :
+    ‖weightedCayleyCutFunctional a φ ψ‖ ≤ M := by
+  classical
+  let L : ZMod p → ℝ := fun r => ‖weightedLeftFourierTest φ r‖
+  let R : ZMod p → ℝ := fun r => ‖weightedRightFourierTest ψ r‖
+  have h_l1 :
+      ‖weightedCayleyCutFunctional a φ ψ‖ ≤ ∑ r : ZMod p,
+        ‖normalizedDftFunction a r‖ * L r * R r := by
+    simpa [L, R, mul_assoc] using norm_weightedCayleyCutFunctional_le_fourier_l1 a φ ψ
+  have h_by_M :
+      ∑ r : ZMod p, ‖normalizedDftFunction a r‖ * L r * R r ≤
+        ∑ r : ZMod p, M * (L r * R r) := by
+    refine Finset.sum_le_sum ?_
+    intro r _
+    have hLR : 0 ≤ L r * R r := mul_nonneg (norm_nonneg _) (norm_nonneg _)
+    calc
+      ‖normalizedDftFunction a r‖ * L r * R r =
+          ‖normalizedDftFunction a r‖ * (L r * R r) := by ring
+      _ ≤ M * (L r * R r) := mul_le_mul_of_nonneg_right (hM r) hLR
+  have hcs :
+      ∑ r : ZMod p, L r * R r ≤
+        Real.sqrt (∑ r : ZMod p, L r ^ 2) *
+          Real.sqrt (∑ r : ZMod p, R r ^ 2) := by
+    simpa [L, R] using
+      (Real.sum_mul_le_sqrt_mul_sqrt (Finset.univ : Finset (ZMod p)) L R)
+  have hsqrtL : Real.sqrt (∑ r : ZMod p, L r ^ 2) ≤ 1 := by
+    rw [Real.sqrt_le_one]
+    simpa [L] using hφ2
+  have hsqrtR : Real.sqrt (∑ r : ZMod p, R r ^ 2) ≤ 1 := by
+    rw [Real.sqrt_le_one]
+    simpa [R] using hψ2
+  have hsqrt_nonneg_L : 0 ≤ Real.sqrt (∑ r : ZMod p, L r ^ 2) := Real.sqrt_nonneg _
+  have hsqrt_nonneg_R : 0 ≤ Real.sqrt (∑ r : ZMod p, R r ^ 2) := Real.sqrt_nonneg _
+  have hprod :
+      Real.sqrt (∑ r : ZMod p, L r ^ 2) *
+          Real.sqrt (∑ r : ZMod p, R r ^ 2) ≤ 1 := by
+    nlinarith
+  have hsumLR : ∑ r : ZMod p, L r * R r ≤ 1 := hcs.trans hprod
+  calc
+    ‖weightedCayleyCutFunctional a φ ψ‖
+        ≤ ∑ r : ZMod p, ‖normalizedDftFunction a r‖ * L r * R r := h_l1
+    _ ≤ ∑ r : ZMod p, M * (L r * R r) := h_by_M
+    _ = M * ∑ r : ZMod p, L r * R r := by rw [Finset.mul_sum]
+    _ ≤ M * 1 := mul_le_mul_of_nonneg_left hsumLR hMnonneg
+    _ = M := by ring
+
+lemma norm_weightedCayleyCutFunctional_le_spectral
+    {p : ℕ} [NeZero p] (a φ ψ : ZMod p → ℂ) {M : ℝ}
+    (hM : ∀ r : ZMod p, ‖normalizedDftFunction a r‖ ≤ M)
+    (hMnonneg : 0 ≤ M)
+    (hφ : ∀ x, ‖φ x‖ ≤ 1)
+    (hψ : ∀ y, ‖ψ y‖ ≤ 1) :
+    ‖weightedCayleyCutFunctional a φ ψ‖ ≤ M := by
+  exact norm_weightedCayleyCutFunctional_le_spectral_of_fourier_l2 a φ ψ hM hMnonneg
+    (sum_sq_norm_weightedLeftFourierTest_le_one_of_norm_le_one hφ)
+    (sum_sq_norm_weightedRightFourierTest_le_one_of_norm_le_one hψ)
+
+/-- Route A finite spectral cut-norm control in predicate form. -/
+theorem weightedCayleyCutBound_of_spectralBound
+    {p : ℕ} [NeZero p] (a : ZMod p → ℂ) {M : ℝ}
+    (hMnonneg : 0 ≤ M) (hM : WeightedSpectralBound a M) :
+    WeightedCayleyCutBound a M := by
+  intro φ ψ hφ hψ
+  exact norm_weightedCayleyCutFunctional_le_spectral a φ ψ hM hMnonneg hφ hψ
+
+lemma norm_avgFinite_weightedCayleyCutFunctional_le
+    {ι : Type*} [Fintype ι] [Nonempty ι]
+    {p : ℕ} [NeZero p] {a : ZMod p → ℂ} {M : ℝ}
+    (hcut : WeightedCayleyCutBound a M)
+    (φ ψ : ι → ZMod p → ℂ)
+    (hφ : ∀ t x, ‖φ t x‖ ≤ 1)
+    (hψ : ∀ t y, ‖ψ t y‖ ≤ 1) :
+    ‖avgFinite ι (fun t => weightedCayleyCutFunctional a (φ t) (ψ t))‖ ≤ M := by
+  exact norm_avgFinite_le (fun t => hcut (φ t) (ψ t) (hφ t) (hψ t))
+
+/-- One-edge replacement bound once the replacement difference has been
+reindexed/factored as an average of bounded Cayley cut functionals. -/
+lemma norm_finiteWeightedPatternEdge_replace_sub_le_of_cut_representation
+    {ι : Type*} [Fintype ι] [Nonempty ι]
+    {p m : ℕ} [NeZero p] {E : Finset (Fin m × Fin m)}
+    {H : (Fin m × Fin m) → ZMod p → ℂ} {e₀ : Fin m × Fin m}
+    {g v : ZMod p → ℂ} {M : ℝ}
+    (φ ψ : ι → ZMod p → ℂ)
+    (hrep :
+      finiteWeightedPatternEdge E (replacePairEdgeKernel H e₀ g) v -
+          finiteWeightedPatternEdge E H v =
+        avgFinite ι
+          (fun t => weightedCayleyCutFunctional
+            (fun z => g z - H e₀ z) (φ t) (ψ t)))
+    (hcut : WeightedCayleyCutBound (fun z => g z - H e₀ z) M)
+    (hφ : ∀ t x, ‖φ t x‖ ≤ 1)
+    (hψ : ∀ t y, ‖ψ t y‖ ≤ 1) :
+    ‖finiteWeightedPatternEdge E (replacePairEdgeKernel H e₀ g) v -
+        finiteWeightedPatternEdge E H v‖ ≤ M := by
+  rw [hrep]
+  exact norm_avgFinite_weightedCayleyCutFunctional_le hcut φ ψ hφ hψ
+
+/-! ## Frozen-coordinate factorization for one-edge replacement -/
+
+/-- Indices other than the two endpoints of a chosen edge. -/
+def PairEdgeRest {m : ℕ} (e₀ : Fin m × Fin m) : Type :=
+  {k : Fin m // k ≠ e₀.1 ∧ k ≠ e₀.2}
+
+instance instFintypePairEdgeRest {m : ℕ} (e₀ : Fin m × Fin m) :
+    Fintype (PairEdgeRest e₀) := by
+  classical
+  unfold PairEdgeRest
+  infer_instance
+
+noncomputable instance instDecidableEqPairEdgeRest {m : ℕ} (e₀ : Fin m × Fin m) :
+    DecidableEq (PairEdgeRest e₀) := by
+  classical
+  infer_instance
+
+/-- Assignments to all non-endpoint coordinates of a chosen edge. -/
+abbrev PairEdgeRestAssignment (p m : ℕ) (e₀ : Fin m × Fin m) : Type :=
+  PairEdgeRest e₀ → ZMod p
+
+noncomputable instance instFintypePairEdgeRestAssignment {p m : ℕ} [NeZero p]
+    (e₀ : Fin m × Fin m) : Fintype (PairEdgeRestAssignment p m e₀) := by
+  unfold PairEdgeRestAssignment
+  infer_instance
+
+/-- Extend a frozen assignment on the remaining vertices by assigning `u` and
+`w` to the two endpoints of the chosen edge. -/
+noncomputable def extendPairEdgeTuple {p m : ℕ} (e₀ : Fin m × Fin m)
+    (r : PairEdgeRestAssignment p m e₀) (u w : ZMod p) : Fin m → ZMod p :=
+  fun k =>
+    if h1 : k = e₀.1 then u
+    else if h2 : k = e₀.2 then w
+    else r ⟨k, h1, h2⟩
+
+@[simp] lemma extendPairEdgeTuple_left {p m : ℕ} (e₀ : Fin m × Fin m)
+    (r : PairEdgeRestAssignment p m e₀) (u w : ZMod p) :
+    extendPairEdgeTuple e₀ r u w e₀.1 = u := by
+  simp [extendPairEdgeTuple]
+
+@[simp] lemma extendPairEdgeTuple_right {p m : ℕ} {e₀ : Fin m × Fin m}
+    (hne : e₀.2 ≠ e₀.1) (r : PairEdgeRestAssignment p m e₀) (u w : ZMod p) :
+    extendPairEdgeTuple e₀ r u w e₀.2 = w := by
+  simp [extendPairEdgeTuple, hne]
+
+lemma extendPairEdgeTuple_rest {p m : ℕ} (e₀ : Fin m × Fin m)
+    (r : PairEdgeRestAssignment p m e₀) (u w : ZMod p)
+    {k : Fin m} (h1 : k ≠ e₀.1) (h2 : k ≠ e₀.2) :
+    extendPairEdgeTuple e₀ r u w k = r ⟨k, h1, h2⟩ := by
+  simp [extendPairEdgeTuple, h1, h2]
+
+lemma extendPairEdgeTuple_edge_diff {p m : ℕ} {e₀ : Fin m × Fin m}
+    (hne : e₀.1 ≠ e₀.2) (r : PairEdgeRestAssignment p m e₀) (u w : ZMod p) :
+    extendPairEdgeTuple e₀ r u w e₀.1 - extendPairEdgeTuple e₀ r u w e₀.2 = u - w := by
+  simp [extendPairEdgeTuple_right (e₀ := e₀) (show e₀.2 ≠ e₀.1 from hne.symm)]
+
+/-- Reindex all tuples by a chosen edge's two endpoint values and the
+assignment on the remaining vertices. -/
+noncomputable def pairEdgeTupleEquiv {p m : ℕ} (e₀ : Fin m × Fin m)
+    (hne : e₀.1 ≠ e₀.2) :
+    (Fin m → ZMod p) ≃ (PairEdgeRestAssignment p m e₀ × ZMod p × ZMod p) where
+  toFun x := (fun k => x k.1, x e₀.1, x e₀.2)
+  invFun q := extendPairEdgeTuple e₀ q.1 q.2.1 q.2.2
+  left_inv x := by
+    funext k
+    by_cases h1 : k = e₀.1
+    · subst h1
+      simp [extendPairEdgeTuple]
+    · by_cases h2 : k = e₀.2
+      · subst h2
+        simp [extendPairEdgeTuple, hne.symm]
+      · simp [extendPairEdgeTuple, h1, h2]
+  right_inv q := by
+    rcases q with ⟨r, u, w⟩
+    ext k
+    · exact extendPairEdgeTuple_rest e₀ r u w k.property.1 k.property.2
+    · simp [extendPairEdgeTuple]
+    · simp [extendPairEdgeTuple, hne.symm]
+
+lemma sum_pairEdgeTupleEquiv {p m : ℕ} [NeZero p] {e₀ : Fin m × Fin m}
+    (hne : e₀.1 ≠ e₀.2) (f : (Fin m → ZMod p) → ℂ) :
+    (∑ x : Fin m → ZMod p, f x) =
+      ∑ q : PairEdgeRestAssignment p m e₀ × ZMod p × ZMod p,
+        f (extendPairEdgeTuple e₀ q.1 q.2.1 q.2.2) := by
+  simpa [pairEdgeTupleEquiv] using ((pairEdgeTupleEquiv (p := p) e₀ hne).symm.sum_comp f).symm
+
+lemma pairEdgeTuple_normalized_sum_eq_avgFinite_avgZMod
+    {p m : ℕ} [NeZero p] {e₀ : Fin m × Fin m} (hne : e₀.1 ≠ e₀.2)
+    (K : PairEdgeRestAssignment p m e₀ → ZMod p → ZMod p → ℂ) :
+    ((Fintype.card (Fin m → ZMod p) : ℂ)⁻¹) *
+      ∑ q : PairEdgeRestAssignment p m e₀ × ZMod p × ZMod p,
+        K q.1 q.2.1 q.2.2 =
+    avgFinite (PairEdgeRestAssignment p m e₀)
+      (fun r => avgZMod fun u => avgZMod fun w => K r u w) := by
+  classical
+  have hcard_nat :
+      Fintype.card (Fin m → ZMod p) =
+        Fintype.card (PairEdgeRestAssignment p m e₀) * p * p := by
+    calc
+      Fintype.card (Fin m → ZMod p) =
+          Fintype.card (PairEdgeRestAssignment p m e₀ × ZMod p × ZMod p) :=
+            Fintype.card_congr (pairEdgeTupleEquiv (p := p) e₀ hne)
+      _ = Fintype.card (PairEdgeRestAssignment p m e₀) * p * p := by
+            simp [Fintype.card_prod, ZMod.card, mul_assoc]
+  have hcard_complex :
+      (Fintype.card (Fin m → ZMod p) : ℂ) =
+        (Fintype.card (PairEdgeRestAssignment p m e₀) : ℂ) * (p : ℂ) * (p : ℂ) := by
+    exact_mod_cast hcard_nat
+  unfold avgFinite avgZMod
+  rw [hcard_complex]
+  simp only [Fintype.sum_prod_type]
+  simp_rw [← Finset.mul_sum]
+  ring
+
+lemma finiteWeightedPatternEdge_replace_sub_reindex
+    {p m : ℕ} [NeZero p] {E : Finset (Fin m × Fin m)}
+    {H : (Fin m × Fin m) → ZMod p → ℂ} {e₀ : Fin m × Fin m}
+    (he₀ : e₀ ∈ E) (hne : e₀.1 ≠ e₀.2) (g v : ZMod p → ℂ) :
+    finiteWeightedPatternEdge E (replacePairEdgeKernel H e₀ g) v -
+        finiteWeightedPatternEdge E H v =
+      ((Fintype.card (Fin m → ZMod p) : ℂ)⁻¹) *
+        ∑ q : PairEdgeRestAssignment p m e₀ × ZMod p × ZMod p,
+          (∏ i : Fin m, v (extendPairEdgeTuple e₀ q.1 q.2.1 q.2.2 i)) *
+            ((g (q.2.1 - q.2.2) - H e₀ (q.2.1 - q.2.2)) *
+              ∏ e ∈ E \ {e₀},
+                H e (extendPairEdgeTuple e₀ q.1 q.2.1 q.2.2 e.1 -
+                  extendPairEdgeTuple e₀ q.1 q.2.1 q.2.2 e.2)) := by
+  rw [finiteWeightedPatternEdge_replace_sub he₀]
+  congr 1
+  rw [sum_pairEdgeTupleEquiv hne]
+  refine Finset.sum_congr rfl ?_
+  intro q _hq
+  rw [extendPairEdgeTuple_edge_diff hne]
+
+lemma finiteWeightedPatternEdge_replace_sub_eq_avgFinite_weightedCayleyCutFunctional_of_factorization
+    {p m : ℕ} [NeZero p] {E : Finset (Fin m × Fin m)}
+    {H : (Fin m × Fin m) → ZMod p → ℂ} {e₀ : Fin m × Fin m}
+    (he₀ : e₀ ∈ E) (hne : e₀.1 ≠ e₀.2) (g v : ZMod p → ℂ)
+    (φ ψ : PairEdgeRestAssignment p m e₀ → ZMod p → ℂ)
+    (hprod : ∀ r u w,
+      (∏ i : Fin m, v (extendPairEdgeTuple e₀ r u w i)) *
+        (∏ e ∈ E \ {e₀},
+          H e (extendPairEdgeTuple e₀ r u w e.1 -
+            extendPairEdgeTuple e₀ r u w e.2)) =
+          φ r u * ψ r w) :
+    finiteWeightedPatternEdge E (replacePairEdgeKernel H e₀ g) v -
+        finiteWeightedPatternEdge E H v =
+      avgFinite (PairEdgeRestAssignment p m e₀)
+        (fun r => weightedCayleyCutFunctional
+          (fun z => g z - H e₀ z) (φ r) (ψ r)) := by
+  rw [finiteWeightedPatternEdge_replace_sub_reindex he₀ hne]
+  rw [pairEdgeTuple_normalized_sum_eq_avgFinite_avgZMod
+    (p := p) (m := m) (e₀ := e₀) hne
+    (fun r u w =>
+      (∏ i : Fin m, v (extendPairEdgeTuple e₀ r u w i)) *
+        ((g (u - w) - H e₀ (u - w)) *
+          ∏ e ∈ E \ {e₀},
+            H e (extendPairEdgeTuple e₀ r u w e.1 -
+              extendPairEdgeTuple e₀ r u w e.2)))]
+  unfold weightedCayleyCutFunctional
+  congr 1
+  funext r
+  congr 1
+  funext u
+  congr 1
+  funext w
+  calc
+    (∏ i : Fin m, v (extendPairEdgeTuple e₀ r u w i)) *
+        ((g (u - w) - H e₀ (u - w)) *
+          ∏ e ∈ E \ {e₀},
+            H e (extendPairEdgeTuple e₀ r u w e.1 -
+              extendPairEdgeTuple e₀ r u w e.2))
+        = (g (u - w) - H e₀ (u - w)) *
+            ((∏ i : Fin m, v (extendPairEdgeTuple e₀ r u w i)) *
+              ∏ e ∈ E \ {e₀},
+                H e (extendPairEdgeTuple e₀ r u w e.1 -
+                  extendPairEdgeTuple e₀ r u w e.2)) := by
+          ring
+    _ = (g (u - w) - H e₀ (u - w)) * (φ r u * ψ r w) := by
+          rw [hprod]
+    _ = (fun z => g z - H e₀ z) (u - w) * φ r u * ψ r w := by
+          ring
+
+/-- An edge is incident to a vertex. -/
+def pairEdgeUsesVertex {m : ℕ} (e : Fin m × Fin m) (i : Fin m) : Prop :=
+  e.1 = i ∨ e.2 = i
+
+instance instDecidablePairEdgeUsesVertex {m : ℕ} (e : Fin m × Fin m) (i : Fin m) :
+    Decidable (pairEdgeUsesVertex e i) := by
+  unfold pairEdgeUsesVertex
+  infer_instance
+
+/-- The remaining edges after removing the edge currently being replaced. -/
+def remainingPairEdges {m : ℕ} (E : Finset (Fin m × Fin m)) (e₀ : Fin m × Fin m) :
+    Finset (Fin m × Fin m) :=
+  E \ {e₀}
+
+def leftPairEdges {m : ℕ} (E : Finset (Fin m × Fin m)) (e₀ : Fin m × Fin m) :
+    Finset (Fin m × Fin m) :=
+  (remainingPairEdges E e₀).filter (fun e => pairEdgeUsesVertex e e₀.1)
+
+def rightPairEdges {m : ℕ} (E : Finset (Fin m × Fin m)) (e₀ : Fin m × Fin m) :
+    Finset (Fin m × Fin m) :=
+  (remainingPairEdges E e₀).filter
+    (fun e => ¬ pairEdgeUsesVertex e e₀.1 ∧ pairEdgeUsesVertex e e₀.2)
+
+def constantPairEdges {m : ℕ} (E : Finset (Fin m × Fin m)) (e₀ : Fin m × Fin m) :
+    Finset (Fin m × Fin m) :=
+  (remainingPairEdges E e₀).filter
+    (fun e => ¬ pairEdgeUsesVertex e e₀.1 ∧ ¬ pairEdgeUsesVertex e e₀.2)
+
+lemma pairEdge_not_uses_both_endpoints_of_mem_remaining {m : ℕ}
+    {E : Finset (Fin m × Fin m)} {e₀ e : Fin m × Fin m}
+    (hE : E ⊆ pairEdgePairs m) (he₀ : e₀ ∈ pairEdgePairs m)
+    (he : e ∈ remainingPairEdges E e₀)
+    (hleft : pairEdgeUsesVertex e e₀.1) (hright : pairEdgeUsesVertex e e₀.2) :
+    False := by
+  have he_pair : e ∈ pairEdgePairs m := hE (Finset.mem_sdiff.mp he).1
+  have hne_single : e ∉ ({e₀} : Finset (Fin m × Fin m)) := (Finset.mem_sdiff.mp he).2
+  have hlt_e : e.1 < e.2 := pairEdgePairs_left_lt_right he_pair
+  have hlt_e₀ : e₀.1 < e₀.2 := pairEdgePairs_left_lt_right he₀
+  rcases hleft with hleft | hleft <;> rcases hright with hright | hright
+  · have h_eq : e₀.1 = e₀.2 := hleft.symm.trans hright
+    exact (ne_of_lt hlt_e₀) h_eq
+  · have h_eq : e = e₀ := Prod.ext hleft hright
+    exact hne_single (by simp [h_eq])
+  · have hbad : e₀.2 < e₀.1 := by simpa [hleft, hright] using hlt_e
+    exact (not_lt_of_ge (le_of_lt hlt_e₀)) hbad
+  · have h_eq : e₀.1 = e₀.2 := hleft.symm.trans hright
+    exact (ne_of_lt hlt_e₀) h_eq
+
+lemma extendPairEdgeTuple_eq_of_same_left {p m : ℕ} {e₀ : Fin m × Fin m}
+    (r : PairEdgeRestAssignment p m e₀) (u w w' : ZMod p) {k : Fin m}
+    (h2 : k ≠ e₀.2) :
+    extendPairEdgeTuple e₀ r u w k = extendPairEdgeTuple e₀ r u w' k := by
+  by_cases h1 : k = e₀.1
+  · subst h1
+    simp [extendPairEdgeTuple]
+  · rw [extendPairEdgeTuple_rest e₀ r u w h1 h2,
+      extendPairEdgeTuple_rest e₀ r u w' h1 h2]
+
+lemma extendPairEdgeTuple_eq_of_same_right {p m : ℕ} {e₀ : Fin m × Fin m}
+    (r : PairEdgeRestAssignment p m e₀) (u u' w : ZMod p) {k : Fin m}
+    (h1 : k ≠ e₀.1) :
+    extendPairEdgeTuple e₀ r u w k = extendPairEdgeTuple e₀ r u' w k := by
+  by_cases h2 : k = e₀.2
+  · subst h2
+    simp [extendPairEdgeTuple, h1]
+  · rw [extendPairEdgeTuple_rest e₀ r u w h1 h2,
+      extendPairEdgeTuple_rest e₀ r u' w h1 h2]
+
+lemma extendPairEdgeTuple_eq_of_not_endpoints {p m : ℕ} {e₀ : Fin m × Fin m}
+    (r : PairEdgeRestAssignment p m e₀) (u w u' w' : ZMod p) {k : Fin m}
+    (h1 : k ≠ e₀.1) (h2 : k ≠ e₀.2) :
+    extendPairEdgeTuple e₀ r u w k = extendPairEdgeTuple e₀ r u' w' k := by
+  rw [extendPairEdgeTuple_rest e₀ r u w h1 h2,
+    extendPairEdgeTuple_rest e₀ r u' w' h1 h2]
+
+noncomputable def remainingLeftPairTest {p m : ℕ} [NeZero p]
+    (H : (Fin m × Fin m) → ZMod p → ℂ) (E : Finset (Fin m × Fin m))
+    (e₀ : Fin m × Fin m) (r : PairEdgeRestAssignment p m e₀) (u : ZMod p) : ℂ :=
+  ∏ e ∈ leftPairEdges E e₀,
+    H e (extendPairEdgeTuple e₀ r u 0 e.1 - extendPairEdgeTuple e₀ r u 0 e.2)
+
+noncomputable def remainingRightPairTest {p m : ℕ} [NeZero p]
+    (H : (Fin m × Fin m) → ZMod p → ℂ) (E : Finset (Fin m × Fin m))
+    (e₀ : Fin m × Fin m) (r : PairEdgeRestAssignment p m e₀) (w : ZMod p) : ℂ :=
+  ∏ e ∈ rightPairEdges E e₀,
+    H e (extendPairEdgeTuple e₀ r 0 w e.1 - extendPairEdgeTuple e₀ r 0 w e.2)
+
+noncomputable def remainingConstPairFactor {p m : ℕ} [NeZero p]
+    (H : (Fin m × Fin m) → ZMod p → ℂ) (E : Finset (Fin m × Fin m))
+    (e₀ : Fin m × Fin m) (r : PairEdgeRestAssignment p m e₀) : ℂ :=
+  ∏ e ∈ constantPairEdges E e₀,
+    H e (extendPairEdgeTuple e₀ r 0 0 e.1 - extendPairEdgeTuple e₀ r 0 0 e.2)
+
+lemma prod_remainingPairEdges_split {m : ℕ}
+    (E : Finset (Fin m × Fin m)) (e₀ : Fin m × Fin m)
+    (K : Fin m × Fin m → ℂ) :
+    (∏ e ∈ remainingPairEdges E e₀, K e) =
+      (∏ e ∈ leftPairEdges E e₀, K e) *
+        (∏ e ∈ rightPairEdges E e₀, K e) *
+          (∏ e ∈ constantPairEdges E e₀, K e) := by
+  classical
+  unfold leftPairEdges rightPairEdges constantPairEdges
+  let s := remainingPairEdges E e₀
+  let P : Fin m × Fin m → Prop := fun e => pairEdgeUsesVertex e e₀.1
+  let Q : Fin m × Fin m → Prop := fun e => pairEdgeUsesVertex e e₀.2
+  have h1 := Finset.prod_filter_mul_prod_filter_not (s := s) (p := P) (f := K)
+  have h2 := Finset.prod_filter_mul_prod_filter_not
+    (s := s.filter (fun e => ¬ P e)) (p := Q) (f := K)
+  dsimp [P, Q, s] at h1 h2 ⊢
+  rw [← h1]
+  rw [← h2]
+  simp [Finset.filter_filter, mul_assoc]
+
+lemma prod_leftPairEdges_actual_eq {p m : ℕ} [NeZero p]
+    {H : (Fin m × Fin m) → ZMod p → ℂ} {E : Finset (Fin m × Fin m)}
+    {e₀ : Fin m × Fin m}
+    (hE : E ⊆ pairEdgePairs m) (he₀ : e₀ ∈ pairEdgePairs m)
+    (r : PairEdgeRestAssignment p m e₀) (u w : ZMod p) :
+    (∏ e ∈ leftPairEdges E e₀,
+      H e (extendPairEdgeTuple e₀ r u w e.1 - extendPairEdgeTuple e₀ r u w e.2)) =
+    remainingLeftPairTest H E e₀ r u := by
+  classical
+  unfold remainingLeftPairTest
+  refine Finset.prod_congr rfl ?_
+  intro e he
+  have he_rem : e ∈ remainingPairEdges E e₀ := (Finset.mem_filter.mp he).1
+  have hleft : pairEdgeUsesVertex e e₀.1 := (Finset.mem_filter.mp he).2
+  have hnot_right : ¬ pairEdgeUsesVertex e e₀.2 := by
+    intro hright
+    exact pairEdge_not_uses_both_endpoints_of_mem_remaining hE he₀ he_rem hleft hright
+  have hnr := not_or.mp hnot_right
+  rw [extendPairEdgeTuple_eq_of_same_left r u w 0 hnr.1,
+    extendPairEdgeTuple_eq_of_same_left r u w 0 hnr.2]
+
+lemma prod_rightPairEdges_actual_eq {p m : ℕ} [NeZero p]
+    {H : (Fin m × Fin m) → ZMod p → ℂ} {E : Finset (Fin m × Fin m)}
+    {e₀ : Fin m × Fin m}
+    (r : PairEdgeRestAssignment p m e₀) (u w : ZMod p) :
+    (∏ e ∈ rightPairEdges E e₀,
+      H e (extendPairEdgeTuple e₀ r u w e.1 - extendPairEdgeTuple e₀ r u w e.2)) =
+    remainingRightPairTest H E e₀ r w := by
+  classical
+  unfold remainingRightPairTest
+  refine Finset.prod_congr rfl ?_
+  intro e he
+  have hnot_left : ¬ pairEdgeUsesVertex e e₀.1 := (Finset.mem_filter.mp he).2.1
+  have hnl := not_or.mp hnot_left
+  rw [extendPairEdgeTuple_eq_of_same_right r u 0 w hnl.1,
+    extendPairEdgeTuple_eq_of_same_right r u 0 w hnl.2]
+
+lemma prod_constantPairEdges_actual_eq {p m : ℕ} [NeZero p]
+    {H : (Fin m × Fin m) → ZMod p → ℂ} {E : Finset (Fin m × Fin m)}
+    {e₀ : Fin m × Fin m}
+    (r : PairEdgeRestAssignment p m e₀) (u w : ZMod p) :
+    (∏ e ∈ constantPairEdges E e₀,
+      H e (extendPairEdgeTuple e₀ r u w e.1 - extendPairEdgeTuple e₀ r u w e.2)) =
+    remainingConstPairFactor H E e₀ r := by
+  classical
+  unfold remainingConstPairFactor
+  refine Finset.prod_congr rfl ?_
+  intro e he
+  have hnot_left : ¬ pairEdgeUsesVertex e e₀.1 := (Finset.mem_filter.mp he).2.1
+  have hnot_right : ¬ pairEdgeUsesVertex e e₀.2 := (Finset.mem_filter.mp he).2.2
+  have hnl := not_or.mp hnot_left
+  have hnr := not_or.mp hnot_right
+  rw [extendPairEdgeTuple_eq_of_not_endpoints r u w 0 0 hnl.1 hnr.1,
+    extendPairEdgeTuple_eq_of_not_endpoints r u w 0 0 hnl.2 hnr.2]
+
+lemma remainingPairEdgeProduct_factorization {p m : ℕ} [NeZero p]
+    {H : (Fin m × Fin m) → ZMod p → ℂ} {E : Finset (Fin m × Fin m)}
+    {e₀ : Fin m × Fin m}
+    (hE : E ⊆ pairEdgePairs m) (he₀ : e₀ ∈ pairEdgePairs m)
+    (r : PairEdgeRestAssignment p m e₀) (u w : ZMod p) :
+    (∏ e ∈ E \ {e₀},
+      H e (extendPairEdgeTuple e₀ r u w e.1 - extendPairEdgeTuple e₀ r u w e.2)) =
+        (remainingConstPairFactor H E e₀ r * remainingLeftPairTest H E e₀ r u) *
+          remainingRightPairTest H E e₀ r w := by
+  classical
+  change (∏ e ∈ remainingPairEdges E e₀,
+      H e (extendPairEdgeTuple e₀ r u w e.1 - extendPairEdgeTuple e₀ r u w e.2)) = _
+  rw [prod_remainingPairEdges_split]
+  rw [prod_leftPairEdges_actual_eq hE he₀ r u w,
+    prod_rightPairEdges_actual_eq r u w,
+    prod_constantPairEdges_actual_eq r u w]
+  ring
+
+noncomputable def pairVertexRestFinset {m : ℕ} (e₀ : Fin m × Fin m) : Finset (Fin m) :=
+  ((Finset.univ : Finset (Fin m)) \ {e₀.1}) \ {e₀.2}
+
+noncomputable def remainingVertexFactor {p m : ℕ}
+    (v : ZMod p → ℂ) (e₀ : Fin m × Fin m)
+    (r : PairEdgeRestAssignment p m e₀) : ℂ :=
+  ∏ i ∈ pairVertexRestFinset e₀, v (extendPairEdgeTuple e₀ r 0 0 i)
+
+lemma vertexProduct_factorization {p m : ℕ} {e₀ : Fin m × Fin m}
+    (hne : e₀.1 ≠ e₀.2) (v : ZMod p → ℂ)
+    (r : PairEdgeRestAssignment p m e₀) (u w : ZMod p) :
+    (∏ i : Fin m, v (extendPairEdgeTuple e₀ r u w i)) =
+      (remainingVertexFactor v e₀ r * v u) * v w := by
+  classical
+  rw [Finset.prod_eq_mul_prod_diff_singleton (Finset.mem_univ e₀.1)
+      (fun i => v (extendPairEdgeTuple e₀ r u w i))]
+  have hmem2 : e₀.2 ∈ (Finset.univ : Finset (Fin m)) \ {e₀.1} := by
+    simp [hne.symm]
+  rw [Finset.prod_eq_mul_prod_diff_singleton hmem2]
+  have hrest :
+      (∏ i ∈ (((Finset.univ : Finset (Fin m)) \ {e₀.1}) \ {e₀.2}),
+        v (extendPairEdgeTuple e₀ r u w i)) =
+      remainingVertexFactor v e₀ r := by
+    unfold remainingVertexFactor pairVertexRestFinset
+    refine Finset.prod_congr rfl ?_
+    intro i hi
+    have hi2 : i ∈ ((Finset.univ : Finset (Fin m)) \ {e₀.1}) ∧
+        i ∉ ({e₀.2} : Finset (Fin m)) :=
+      Finset.mem_sdiff.mp hi
+    have hi1 : i ∉ ({e₀.1} : Finset (Fin m)) := (Finset.mem_sdiff.mp hi2.1).2
+    have h1 : i ≠ e₀.1 := by simpa using hi1
+    have h2 : i ≠ e₀.2 := by simpa using hi2.2
+    rw [extendPairEdgeTuple_eq_of_not_endpoints r u w 0 0 h1 h2]
+  rw [hrest]
+  simp [extendPairEdgeTuple_right (e₀ := e₀) (show e₀.2 ≠ e₀.1 from hne.symm)]
+  ring
+
+noncomputable def weightedLeftPairTest {p m : ℕ} [NeZero p]
+    (H : (Fin m × Fin m) → ZMod p → ℂ) (E : Finset (Fin m × Fin m))
+    (v : ZMod p → ℂ) (e₀ : Fin m × Fin m)
+    (r : PairEdgeRestAssignment p m e₀) (u : ZMod p) : ℂ :=
+  (remainingVertexFactor v e₀ r * v u) *
+    (remainingConstPairFactor H E e₀ r * remainingLeftPairTest H E e₀ r u)
+
+noncomputable def weightedRightPairTest {p m : ℕ} [NeZero p]
+    (H : (Fin m × Fin m) → ZMod p → ℂ) (E : Finset (Fin m × Fin m))
+    (v : ZMod p → ℂ) (e₀ : Fin m × Fin m)
+    (r : PairEdgeRestAssignment p m e₀) (w : ZMod p) : ℂ :=
+  v w * remainingRightPairTest H E e₀ r w
+
+lemma weightedPairRemainingProduct_factorization {p m : ℕ} [NeZero p]
+    {H : (Fin m × Fin m) → ZMod p → ℂ} {E : Finset (Fin m × Fin m)}
+    {e₀ : Fin m × Fin m}
+    (hE : E ⊆ pairEdgePairs m) (he₀ : e₀ ∈ pairEdgePairs m)
+    (v : ZMod p → ℂ)
+    (r : PairEdgeRestAssignment p m e₀) (u w : ZMod p) :
+    (∏ i : Fin m, v (extendPairEdgeTuple e₀ r u w i)) *
+      (∏ e ∈ E \ {e₀},
+        H e (extendPairEdgeTuple e₀ r u w e.1 -
+          extendPairEdgeTuple e₀ r u w e.2)) =
+        weightedLeftPairTest H E v e₀ r u *
+          weightedRightPairTest H E v e₀ r w := by
+  rw [vertexProduct_factorization (pairEdgePairs_left_ne_right he₀) v r u w,
+    remainingPairEdgeProduct_factorization hE he₀ r u w]
+  unfold weightedLeftPairTest weightedRightPairTest
+  ring
+
+lemma finiteWeightedPatternEdge_replace_sub_eq_avgFinite_weightedCayleyCutFunctional
+    {p m : ℕ} [NeZero p] {E : Finset (Fin m × Fin m)}
+    {H : (Fin m × Fin m) → ZMod p → ℂ} {e₀ : Fin m × Fin m}
+    (hE : E ⊆ pairEdgePairs m) (he₀E : e₀ ∈ E) (he₀ : e₀ ∈ pairEdgePairs m)
+    (g v : ZMod p → ℂ) :
+    finiteWeightedPatternEdge E (replacePairEdgeKernel H e₀ g) v -
+        finiteWeightedPatternEdge E H v =
+      avgFinite (PairEdgeRestAssignment p m e₀)
+        (fun r => weightedCayleyCutFunctional
+          (fun z => g z - H e₀ z)
+          (weightedLeftPairTest H E v e₀ r)
+          (weightedRightPairTest H E v e₀ r)) := by
+  exact finiteWeightedPatternEdge_replace_sub_eq_avgFinite_weightedCayleyCutFunctional_of_factorization
+    he₀E (pairEdgePairs_left_ne_right he₀) g v
+    (weightedLeftPairTest H E v e₀)
+    (weightedRightPairTest H E v e₀)
+    (weightedPairRemainingProduct_factorization hE he₀ v)
+
+/-- Every edge kernel in a weighted pattern is uniformly bounded by `1`. -/
+def PairKernelBoundedByOne {p m : ℕ}
+    (H : (Fin m × Fin m) → ZMod p → ℂ) : Prop :=
+  ∀ e z, ‖H e z‖ ≤ 1
+
+/-- The vertex weight in a weighted pattern is uniformly bounded by `1`. -/
+def VertexWeightBoundedByOne {p : ℕ} (v : ZMod p → ℂ) : Prop :=
+  ∀ z, ‖v z‖ ≤ 1
+
+lemma indicatorC_norm_le_one {p : ℕ} (T : Finset (ZMod p)) (z : ZMod p) :
+    ‖indicatorC T z‖ ≤ 1 := by
+  classical
+  by_cases h : z ∈ T
+  · simp [indicatorC, h]
+  · simp [indicatorC, h]
+
+lemma vertexWeightBoundedByOne_indicatorC {p : ℕ} (U : Finset (ZMod p)) :
+    VertexWeightBoundedByOne (indicatorC U) :=
+  indicatorC_norm_le_one U
+
+lemma pairKernelBoundedByOne_const_indicatorC {p m : ℕ} (F : Finset (ZMod p)) :
+    PairKernelBoundedByOne (m := m) (fun _ : Fin m × Fin m => indicatorC F) := by
+  intro _e z
+  exact indicatorC_norm_le_one F z
+
+lemma norm_remainingLeftPairTest_le_one {p m : ℕ} [NeZero p]
+    {H : (Fin m × Fin m) → ZMod p → ℂ} (hH : PairKernelBoundedByOne H)
+    (E : Finset (Fin m × Fin m)) (e₀ : Fin m × Fin m)
+    (r : PairEdgeRestAssignment p m e₀) (u : ZMod p) :
+    ‖remainingLeftPairTest H E e₀ r u‖ ≤ 1 := by
+  classical
+  unfold remainingLeftPairTest
+  rw [norm_prod]
+  exact Finset.prod_le_one
+    (fun e _he =>
+      norm_nonneg
+        (H e (extendPairEdgeTuple e₀ r u 0 e.1 - extendPairEdgeTuple e₀ r u 0 e.2)))
+    (fun e _he =>
+      hH e (extendPairEdgeTuple e₀ r u 0 e.1 - extendPairEdgeTuple e₀ r u 0 e.2))
+
+lemma norm_remainingRightPairTest_le_one {p m : ℕ} [NeZero p]
+    {H : (Fin m × Fin m) → ZMod p → ℂ} (hH : PairKernelBoundedByOne H)
+    (E : Finset (Fin m × Fin m)) (e₀ : Fin m × Fin m)
+    (r : PairEdgeRestAssignment p m e₀) (w : ZMod p) :
+    ‖remainingRightPairTest H E e₀ r w‖ ≤ 1 := by
+  classical
+  unfold remainingRightPairTest
+  rw [norm_prod]
+  exact Finset.prod_le_one
+    (fun e _he =>
+      norm_nonneg
+        (H e (extendPairEdgeTuple e₀ r 0 w e.1 - extendPairEdgeTuple e₀ r 0 w e.2)))
+    (fun e _he =>
+      hH e (extendPairEdgeTuple e₀ r 0 w e.1 - extendPairEdgeTuple e₀ r 0 w e.2))
+
+lemma norm_remainingConstPairFactor_le_one {p m : ℕ} [NeZero p]
+    {H : (Fin m × Fin m) → ZMod p → ℂ} (hH : PairKernelBoundedByOne H)
+    (E : Finset (Fin m × Fin m)) (e₀ : Fin m × Fin m)
+    (r : PairEdgeRestAssignment p m e₀) :
+    ‖remainingConstPairFactor H E e₀ r‖ ≤ 1 := by
+  classical
+  unfold remainingConstPairFactor
+  rw [norm_prod]
+  exact Finset.prod_le_one
+    (fun e _he =>
+      norm_nonneg
+        (H e (extendPairEdgeTuple e₀ r 0 0 e.1 - extendPairEdgeTuple e₀ r 0 0 e.2)))
+    (fun e _he =>
+      hH e (extendPairEdgeTuple e₀ r 0 0 e.1 - extendPairEdgeTuple e₀ r 0 0 e.2))
+
+lemma norm_remainingVertexFactor_le_one {p m : ℕ}
+    {v : ZMod p → ℂ} (hv : VertexWeightBoundedByOne v)
+    (e₀ : Fin m × Fin m) (r : PairEdgeRestAssignment p m e₀) :
+    ‖remainingVertexFactor v e₀ r‖ ≤ 1 := by
+  classical
+  unfold remainingVertexFactor
+  rw [norm_prod]
+  exact Finset.prod_le_one
+    (fun i _hi => norm_nonneg (v (extendPairEdgeTuple e₀ r 0 0 i)))
+    (fun i _hi => hv (extendPairEdgeTuple e₀ r 0 0 i))
+
+lemma norm_weightedLeftPairTest_le_one {p m : ℕ} [NeZero p]
+    {H : (Fin m × Fin m) → ZMod p → ℂ} {v : ZMod p → ℂ}
+    (hH : PairKernelBoundedByOne H) (hv : VertexWeightBoundedByOne v)
+    (E : Finset (Fin m × Fin m)) (e₀ : Fin m × Fin m)
+    (r : PairEdgeRestAssignment p m e₀) (u : ZMod p) :
+    ‖weightedLeftPairTest H E v e₀ r u‖ ≤ 1 := by
+  unfold weightedLeftPairTest
+  rw [norm_mul]
+  have hvertex : ‖remainingVertexFactor v e₀ r * v u‖ ≤ 1 := by
+    rw [norm_mul]
+    have hrv := norm_remainingVertexFactor_le_one hv e₀ r
+    have hvu := hv u
+    have hrv_nonneg : 0 ≤ ‖remainingVertexFactor v e₀ r‖ := norm_nonneg _
+    have hvu_nonneg : 0 ≤ ‖v u‖ := norm_nonneg _
+    nlinarith
+  have hedge : ‖remainingConstPairFactor H E e₀ r * remainingLeftPairTest H E e₀ r u‖ ≤ 1 := by
+    rw [norm_mul]
+    have hc := norm_remainingConstPairFactor_le_one hH E e₀ r
+    have hl := norm_remainingLeftPairTest_le_one hH E e₀ r u
+    have hc_nonneg : 0 ≤ ‖remainingConstPairFactor H E e₀ r‖ := norm_nonneg _
+    have hl_nonneg : 0 ≤ ‖remainingLeftPairTest H E e₀ r u‖ := norm_nonneg _
+    nlinarith
+  have hvertex_nonneg : 0 ≤ ‖remainingVertexFactor v e₀ r * v u‖ := norm_nonneg _
+  have hedge_nonneg :
+      0 ≤ ‖remainingConstPairFactor H E e₀ r * remainingLeftPairTest H E e₀ r u‖ :=
+    norm_nonneg _
+  nlinarith
+
+lemma norm_weightedRightPairTest_le_one {p m : ℕ} [NeZero p]
+    {H : (Fin m × Fin m) → ZMod p → ℂ} {v : ZMod p → ℂ}
+    (hH : PairKernelBoundedByOne H) (hv : VertexWeightBoundedByOne v)
+    (E : Finset (Fin m × Fin m)) (e₀ : Fin m × Fin m)
+    (r : PairEdgeRestAssignment p m e₀) (w : ZMod p) :
+    ‖weightedRightPairTest H E v e₀ r w‖ ≤ 1 := by
+  unfold weightedRightPairTest
+  rw [norm_mul]
+  have hvw := hv w
+  have hr := norm_remainingRightPairTest_le_one hH E e₀ r w
+  have hvw_nonneg : 0 ≤ ‖v w‖ := norm_nonneg _
+  have hr_nonneg : 0 ≤ ‖remainingRightPairTest H E e₀ r w‖ := norm_nonneg _
+  nlinarith
+
+/-- Concrete Route A one-edge replacement estimate. Once all unreplaced edge
+kernels and the vertex weight are bounded by `1`, replacing the chosen edge is
+controlled by the weighted Cayley cut bound of the replacement difference. -/
+lemma norm_finiteWeightedPatternEdge_replace_sub_le_of_cutBound
+    {p m : ℕ} [NeZero p] {E : Finset (Fin m × Fin m)}
+    {H : (Fin m × Fin m) → ZMod p → ℂ} {e₀ : Fin m × Fin m}
+    {g v : ZMod p → ℂ} {M : ℝ}
+    (hE : E ⊆ pairEdgePairs m) (he₀E : e₀ ∈ E) (he₀ : e₀ ∈ pairEdgePairs m)
+    (hH : PairKernelBoundedByOne H) (hv : VertexWeightBoundedByOne v)
+    (hcut : WeightedCayleyCutBound (fun z => g z - H e₀ z) M) :
+    ‖finiteWeightedPatternEdge E (replacePairEdgeKernel H e₀ g) v -
+        finiteWeightedPatternEdge E H v‖ ≤ M := by
+  exact norm_finiteWeightedPatternEdge_replace_sub_le_of_cut_representation
+    (ι := PairEdgeRestAssignment p m e₀)
+    (weightedLeftPairTest H E v e₀)
+    (weightedRightPairTest H E v e₀)
+    (finiteWeightedPatternEdge_replace_sub_eq_avgFinite_weightedCayleyCutFunctional
+      hE he₀E he₀ g v)
+    hcut
+    (by intro r u; exact norm_weightedLeftPairTest_le_one hH hv E e₀ r u)
+    (by intro r w; exact norm_weightedRightPairTest_le_one hH hv E e₀ r w)
+
+lemma PairKernelBoundedByOne.patch {p m : ℕ}
+    {H G : (Fin m × Fin m) → ZMod p → ℂ}
+    (hH : PairKernelBoundedByOne H) (hG : PairKernelBoundedByOne G)
+    (S : Finset (Fin m × Fin m)) :
+    PairKernelBoundedByOne (patchPairEdgeKernel H G S) := by
+  intro e z
+  by_cases he : e ∈ S
+  · simpa [patchPairEdgeKernel, he] using hG e z
+  · simpa [patchPairEdgeKernel, he] using hH e z
+
+/-- Concrete one-edge patch estimate for the telescoping proof. -/
+lemma norm_finiteWeightedPatternEdge_patch_insert_sub_le_of_cutBound
+    {p m : ℕ} [NeZero p] {E S : Finset (Fin m × Fin m)}
+    {H G : (Fin m × Fin m) → ZMod p → ℂ} {e₀ : Fin m × Fin m}
+    {v : ZMod p → ℂ} {M : ℝ}
+    (hE : E ⊆ pairEdgePairs m) (he₀E : e₀ ∈ E) (he₀S : e₀ ∉ S)
+    (hH : PairKernelBoundedByOne H) (hG : PairKernelBoundedByOne G)
+    (hv : VertexWeightBoundedByOne v)
+    (hcut : WeightedCayleyCutBound (fun z => G e₀ z - H e₀ z) M) :
+    ‖finiteWeightedPatternEdge E (patchPairEdgeKernel H G (insert e₀ S)) v -
+        finiteWeightedPatternEdge E (patchPairEdgeKernel H G S) v‖ ≤ M := by
+  rw [patchPairEdgeKernel_insert_eq_replace]
+  exact norm_finiteWeightedPatternEdge_replace_sub_le_of_cutBound
+    hE he₀E (hE he₀E)
+    ((PairKernelBoundedByOne.patch hH hG S))
+    hv
+    (by simpa [patchPairEdgeKernel, he₀S] using hcut)
+
+/-- Finite telescoping estimate for Route A weighted patterns from concrete
+edgewise weighted Cayley cut bounds. -/
+lemma norm_finiteWeightedPatternEdge_sub_le_card_mul_cutBound
+    {p m : ℕ} [NeZero p] {E : Finset (Fin m × Fin m)}
+    {H G : (Fin m × Fin m) → ZMod p → ℂ} {v : ZMod p → ℂ} {M : ℝ}
+    (hE : E ⊆ pairEdgePairs m)
+    (hH : PairKernelBoundedByOne H) (hG : PairKernelBoundedByOne G)
+    (hv : VertexWeightBoundedByOne v)
+    (hcut : ∀ e ∈ E, WeightedCayleyCutBound (fun z => G e z - H e z) M) :
+    ‖finiteWeightedPatternEdge E G v - finiteWeightedPatternEdge E H v‖ ≤
+      (E.card : ℝ) * M := by
+  exact norm_finiteWeightedPatternEdge_sub_le_card_mul
+    (E := E) (H := H) (G := G) (v := v) (M := M)
+    (fun e heE S hS _heS =>
+      norm_finiteWeightedPatternEdge_patch_insert_sub_le_of_cutBound
+        hE heE _heS hH hG hv (hcut e heE))
+
+/-- Route A finite weighted counting estimate from edgewise normalized Fourier
+coefficient bounds. -/
+lemma norm_finiteWeightedPatternEdge_sub_le_card_mul_spectralBound
+    {p m : ℕ} [NeZero p] {E : Finset (Fin m × Fin m)}
+    {H G : (Fin m × Fin m) → ZMod p → ℂ} {v : ZMod p → ℂ} {M : ℝ}
+    (hE : E ⊆ pairEdgePairs m) (hMnonneg : 0 ≤ M)
+    (hH : PairKernelBoundedByOne H) (hG : PairKernelBoundedByOne G)
+    (hv : VertexWeightBoundedByOne v)
+    (hspec : ∀ e ∈ E, WeightedSpectralBound (fun z => G e z - H e z) M) :
+    ‖finiteWeightedPatternEdge E G v - finiteWeightedPatternEdge E H v‖ ≤
+      (E.card : ℝ) * M := by
+  exact norm_finiteWeightedPatternEdge_sub_le_card_mul_cutBound
+    hE hH hG hv
+    (fun e he => weightedCayleyCutBound_of_spectralBound
+      (fun z => G e z - H e z) hMnonneg (hspec e he))
+
+/-- Common-kernel specialization of the Route A finite weighted counting
+estimate. -/
+lemma norm_finiteWeightedPattern_sub_le_card_mul_spectralBound
+    {p m : ℕ} [NeZero p] {E : Finset (Fin m × Fin m)}
+    {h g v : ZMod p → ℂ} {M : ℝ}
+    (hE : E ⊆ pairEdgePairs m) (hMnonneg : 0 ≤ M)
+    (hh : ∀ z, ‖h z‖ ≤ 1) (hg : ∀ z, ‖g z‖ ≤ 1)
+    (hv : VertexWeightBoundedByOne v)
+    (hspec : WeightedSpectralBound (fun z => g z - h z) M) :
+    ‖finiteWeightedPattern E g v - finiteWeightedPattern E h v‖ ≤
+      (E.card : ℝ) * M := by
+  simpa [finiteWeightedPatternEdge_const] using
+    norm_finiteWeightedPatternEdge_sub_le_card_mul_spectralBound
+      (E := E) (H := fun _ : Fin m × Fin m => h) (G := fun _ : Fin m × Fin m => g)
+      (v := v) hE hMnonneg
+      (by intro _e z; exact hh z)
+      (by intro _e z; exact hg z)
+      hv
+      (by intro _e _he; exact hspec)
+
+/-- Indicator-kernel specialization used in the Route A counting-convergence
+setup. -/
+lemma norm_finiteWeightedPattern_sub_indicator_le_card_mul_spectralBound
+    {p m : ℕ} [NeZero p] {E : Finset (Fin m × Fin m)}
+    {F U : Finset (ZMod p)} {g : ZMod p → ℂ} {M : ℝ}
+    (hE : E ⊆ pairEdgePairs m) (hMnonneg : 0 ≤ M)
+    (hg : ∀ z, ‖g z‖ ≤ 1)
+    (hspec : WeightedSpectralBound (fun z => g z - indicatorC F z) M) :
+    ‖finiteWeightedPattern E g (indicatorC U) -
+        finiteWeightedPattern E (indicatorC F) (indicatorC U)‖ ≤
+      (E.card : ℝ) * M := by
+  exact norm_finiteWeightedPattern_sub_le_card_mul_spectralBound
+    hE hMnonneg
+    (indicatorC_norm_le_one F) hg
+    (vertexWeightBoundedByOne_indicatorC U)
+    hspec
+
+/-- Oriented finite-avoidance predicate using only the edges `i < j`. For
+symmetric forbidden sets this is equivalent to `AvoidsForbiddenDiffs`, which is
+stated over all ordered pairs. -/
+def AvoidsForbiddenDiffsOriented {p m : ℕ}
+    (F U : Finset (ZMod p)) (x : Fin m → ZMod p) : Prop :=
+  (∀ i, x i ∈ U) ∧
+    ∀ e ∈ pairEdgePairs m, x e.1 - x e.2 ∉ F
+
+lemma avoidsForbiddenDiffs_iff_oriented_of_symmetric {p m : ℕ} [NeZero p]
+    {F U : Finset (ZMod p)} (hFsym : SymmetricFinset F) (x : Fin m → ZMod p) :
+    AvoidsForbiddenDiffs F U x ↔ AvoidsForbiddenDiffsOriented F U x := by
+  constructor
+  · intro h
+    refine ⟨h.1, ?_⟩
+    intro e he
+    exact h.2 e.1 e.2 (pairEdgePairs_left_ne_right he)
+  · intro h
+    refine ⟨h.1, ?_⟩
+    intro i j hij
+    rcases lt_or_gt_of_ne hij with hlt | hgt
+    · exact h.2 (i, j) (by simp [pairEdgePairs, hlt])
+    · intro hmem
+      have hneg : -(x i - x j) ∈ F := (hFsym (x i - x j)).mp hmem
+      have hji : x j - x i ∈ F := by
+        simpa [sub_eq_add_neg, add_comm, add_left_comm, add_assoc] using hneg
+      exact h.2 (j, i) (by simp [pairEdgePairs, hgt]) hji
+
+/-- Pointwise integrand for the finite avoidance density. -/
+noncomputable def finiteAvoidanceWeight {p m : ℕ} [NeZero p]
+    (F U : Finset (ZMod p)) (x : Fin m → ZMod p) : ℂ :=
+  (∏ i : Fin m, indicatorC U (x i)) *
+    ∏ e ∈ pairEdgePairs m, (1 - indicatorC F (x e.1 - x e.2))
+
+/-- Finite avoidance density:
+
+`E_x (prod_i 1_U(x_i)) prod_{i<j} (1 - 1_F(x_i - x_j))`.
+
+This is the normalized ordered density counted in the Route A contradiction
+argument. -/
+noncomputable def finiteAvoidanceDensity {p m : ℕ} [NeZero p]
+    (F U : Finset (ZMod p)) : ℂ :=
+  ((Fintype.card (Fin m → ZMod p) : ℂ)⁻¹) *
+    ∑ x : Fin m → ZMod p, finiteAvoidanceWeight F U x
+
+lemma finiteAvoidanceWeight_eq_indicator_oriented {p m : ℕ} [NeZero p]
+    (F U : Finset (ZMod p)) (x : Fin m → ZMod p) :
+    finiteAvoidanceWeight F U x =
+      if AvoidsForbiddenDiffsOriented F U x then 1 else 0 := by
+  classical
+  by_cases hx : AvoidsForbiddenDiffsOriented F U x
+  · rw [if_pos hx]
+    have hU : ∀ i : Fin m, x i ∈ U := hx.1
+    have hF : ∀ e ∈ pairEdgePairs m, x e.1 - x e.2 ∉ F := hx.2
+    have hvertex : (∏ i : Fin m, indicatorC U (x i)) = 1 := by
+      apply Finset.prod_eq_one
+      intro i _hi
+      simp [indicatorC, hU i]
+    have hedge :
+        (∏ e ∈ pairEdgePairs m, (1 - indicatorC F (x e.1 - x e.2))) = 1 := by
+      apply Finset.prod_eq_one
+      intro e he
+      simp [indicatorC, hF e he]
+    simp [finiteAvoidanceWeight, hvertex, hedge]
+  · rw [if_neg hx]
+    unfold finiteAvoidanceWeight
+    by_cases hU : ∀ i : Fin m, x i ∈ U
+    · have hFbad : ¬ ∀ e ∈ pairEdgePairs m, x e.1 - x e.2 ∉ F := by
+        intro hF
+        exact hx ⟨hU, hF⟩
+      rw [not_forall] at hFbad
+      rcases hFbad with ⟨e, hebad⟩
+      have he : e ∈ pairEdgePairs m := by
+        by_contra hne
+        exact hebad (fun he => False.elim (hne he))
+      have hmem : x e.1 - x e.2 ∈ F := by
+        by_contra hnot
+        exact hebad (fun _he => hnot)
+      have hprod :
+          (∏ e ∈ pairEdgePairs m, (1 - indicatorC F (x e.1 - x e.2))) = 0 := by
+        refine Finset.prod_eq_zero (i := e) he ?_
+        simp [indicatorC, hmem]
+      simp [hprod]
+    · rw [not_forall] at hU
+      rcases hU with ⟨i, hi⟩
+      have hprod : (∏ i : Fin m, indicatorC U (x i)) = 0 := by
+        refine Finset.prod_eq_zero (i := i) (by simp) ?_
+        simp [indicatorC, hi]
+      simp [hprod]
+
+/-- The oriented avoiding tuples counted by `finiteAvoidanceDensity`. -/
+noncomputable def finiteAvoidingTupleFinsetOriented {p m : ℕ} [NeZero p]
+    (F U : Finset (ZMod p)) : Finset (Fin m → ZMod p) :=
+  (Finset.univ : Finset (Fin m → ZMod p)).filter
+    (fun x => AvoidsForbiddenDiffsOriented F U x)
+
+/-- The all-ordered-pair avoiding tuples from the Route A finite avoidance
+axiom. -/
+noncomputable def finiteAvoidingTupleFinset {p m : ℕ} [NeZero p]
+    (F U : Finset (ZMod p)) : Finset (Fin m → ZMod p) :=
+  (Finset.univ : Finset (Fin m → ZMod p)).filter
+    (fun x => AvoidsForbiddenDiffs F U x)
+
+/-- Real normalized count of all-ordered-pair avoiding tuples. This is the
+`Lambda_n` density before inclusion-exclusion rewrites it as a weighted pattern
+count. -/
+noncomputable def normalizedAvoidanceDensity {p m : ℕ} [NeZero p]
+    (F U : Finset (ZMod p)) : ℝ :=
+  ((finiteAvoidingTupleFinset (m := m) F U).card : ℝ) / (p : ℝ) ^ m
+
+lemma normalizedAvoidanceDensity_nonneg {p m : ℕ} [NeZero p]
+    (F U : Finset (ZMod p)) :
+    0 ≤ normalizedAvoidanceDensity (m := m) F U := by
+  unfold normalizedAvoidanceDensity
+  positivity
+
+lemma FourierAvoidanceCounterSeq.normalizedAvoidanceDensity_le_c
+    {m : ℕ} {α ρ : ℝ} (S : FourierAvoidanceCounterSeq m α ρ) (n : ℕ) :
+    (letI : NeZero (S.p n) := ⟨(S.prime n).ne_zero⟩;
+      normalizedAvoidanceDensity (m := m) (S.F n) (S.U n)) ≤ S.c n := by
+  letI : NeZero (S.p n) := ⟨(S.prime n).ne_zero⟩
+  have hp_pos : 0 < (S.p n : ℝ) := by
+    exact_mod_cast (S.prime n).pos
+  have hpow_pos : 0 < (S.p n : ℝ) ^ m := pow_pos hp_pos m
+  unfold normalizedAvoidanceDensity finiteAvoidingTupleFinset
+  rw [div_le_iff₀ hpow_pos]
+  exact le_of_lt (by simpa using S.count_small n)
+
+lemma FourierAvoidanceCounterSeq.normalizedAvoidanceDensity_tendsto_zero
+    {m : ℕ} {α ρ : ℝ} (S : FourierAvoidanceCounterSeq m α ρ) :
+    Tendsto
+      (fun n =>
+        letI : NeZero (S.p n) := ⟨(S.prime n).ne_zero⟩;
+        normalizedAvoidanceDensity (m := m) (S.F n) (S.U n))
+      atTop (𝓝 0) := by
+  refine squeeze_zero ?_ ?_ S.c_tendsto_zero
+  · intro n
+    letI : NeZero (S.p n) := ⟨(S.prime n).ne_zero⟩
+    exact normalizedAvoidanceDensity_nonneg (m := m) (S.F n) (S.U n)
+  · intro n
+    exact S.normalizedAvoidanceDensity_le_c n
+
+lemma finiteAvoidingTupleFinset_eq_oriented_of_symmetric {p m : ℕ} [NeZero p]
+    {F U : Finset (ZMod p)} (hFsym : SymmetricFinset F) :
+    finiteAvoidingTupleFinset (m := m) F U =
+      finiteAvoidingTupleFinsetOriented (m := m) F U := by
+  classical
+  ext x
+  simp [finiteAvoidingTupleFinset, finiteAvoidingTupleFinsetOriented,
+    avoidsForbiddenDiffs_iff_oriented_of_symmetric hFsym x]
+
+theorem finiteAvoidanceDensity_eq_oriented_count {p m : ℕ} [NeZero p]
+    (F U : Finset (ZMod p)) :
+    finiteAvoidanceDensity (m := m) F U =
+      ((Fintype.card (Fin m → ZMod p) : ℂ)⁻¹) *
+        ((finiteAvoidingTupleFinsetOriented (m := m) F U).card : ℂ) := by
+  classical
+  simp [finiteAvoidanceDensity, finiteAvoidanceWeight_eq_indicator_oriented,
+    finiteAvoidingTupleFinsetOriented]
+
+theorem finiteAvoidanceDensity_eq_count_of_symmetric {p m : ℕ} [NeZero p]
+    {F U : Finset (ZMod p)} (hFsym : SymmetricFinset F) :
+    finiteAvoidanceDensity (m := m) F U =
+      ((Fintype.card (Fin m → ZMod p) : ℂ)⁻¹) *
+        ((finiteAvoidingTupleFinset (m := m) F U).card : ℂ) := by
+  rw [finiteAvoidanceDensity_eq_oriented_count,
+    ← finiteAvoidingTupleFinset_eq_oriented_of_symmetric hFsym]
+
+lemma card_fun_fin_zmod (p m : ℕ) [NeZero p] :
+    Fintype.card (Fin m → ZMod p) = p ^ m := by
+  simp [ZMod.card]
+
+lemma finiteAvoidanceDensity_eq_normalizedAvoidanceDensity_of_symmetric
+    {p m : ℕ} [NeZero p] {F U : Finset (ZMod p)}
+    (hFsym : SymmetricFinset F) :
+    finiteAvoidanceDensity (m := m) F U =
+      (normalizedAvoidanceDensity (m := m) F U : ℂ) := by
+  rw [finiteAvoidanceDensity_eq_count_of_symmetric hFsym]
+  unfold normalizedAvoidanceDensity
+  rw [card_fun_fin_zmod]
+  norm_num [div_eq_inv_mul]
+
+lemma finiteAvoidanceDensity_re_eq_normalizedAvoidanceDensity_of_symmetric
+    {p m : ℕ} [NeZero p] {F U : Finset (ZMod p)}
+    (hFsym : SymmetricFinset F) :
+    (finiteAvoidanceDensity (m := m) F U).re =
+      normalizedAvoidanceDensity (m := m) F U := by
+  rw [finiteAvoidanceDensity_eq_normalizedAvoidanceDensity_of_symmetric hFsym]
+  simp
+
+lemma FourierAvoidanceCounterSeq.finiteAvoidanceDensity_tendsto_zero
+    {m : ℕ} {α ρ : ℝ} (S : FourierAvoidanceCounterSeq m α ρ) :
+    Tendsto
+      (fun n =>
+        letI : NeZero (S.p n) := ⟨(S.prime n).ne_zero⟩;
+        finiteAvoidanceDensity (m := m) (S.F n) (S.U n))
+      atTop (𝓝 0) := by
+  have hreal := S.normalizedAvoidanceDensity_tendsto_zero
+  have hcomplex :
+      Tendsto
+        (fun n =>
+          ((letI : NeZero (S.p n) := ⟨(S.prime n).ne_zero⟩;
+            normalizedAvoidanceDensity (m := m) (S.F n) (S.U n)) : ℂ))
+        atTop (𝓝 ((0 : ℝ) : ℂ)) :=
+    Complex.continuous_ofReal.tendsto 0 |>.comp hreal
+  have heq :
+      (fun n =>
+        letI : NeZero (S.p n) := ⟨(S.prime n).ne_zero⟩;
+        finiteAvoidanceDensity (m := m) (S.F n) (S.U n)) =
+      (fun n =>
+        ((letI : NeZero (S.p n) := ⟨(S.prime n).ne_zero⟩;
+          normalizedAvoidanceDensity (m := m) (S.F n) (S.U n)) : ℂ)) := by
+    funext n
+    letI : NeZero (S.p n) := ⟨(S.prime n).ne_zero⟩
+    exact finiteAvoidanceDensity_eq_normalizedAvoidanceDensity_of_symmetric (S.F_sym n)
+  rw [heq]
+  simpa using hcomplex
+
+lemma FourierAvoidanceCounterSeq.finiteAvoidanceDensity_re_tendsto_zero
+    {m : ℕ} {α ρ : ℝ} (S : FourierAvoidanceCounterSeq m α ρ) :
+    Tendsto
+      (fun n =>
+        (letI : NeZero (S.p n) := ⟨(S.prime n).ne_zero⟩;
+          finiteAvoidanceDensity (m := m) (S.F n) (S.U n)).re)
+      atTop (𝓝 0) := by
+  simpa using (Complex.continuous_re.tendsto (0 : ℂ)).comp
+    S.finiteAvoidanceDensity_tendsto_zero
+
+lemma avoidanceProduct_inclusion_exclusion {p m : ℕ} [NeZero p]
+    (F : Finset (ZMod p)) (x : Fin m → ZMod p) :
+    (∏ e ∈ pairEdgePairs m, (1 - indicatorC F (x e.1 - x e.2))) =
+      ∑ E ∈ (pairEdgePairs m).powerset,
+        (-1 : ℂ) ^ E.card *
+          ∏ e ∈ E, indicatorC F (x e.1 - x e.2) := by
+  classical
+  rw [Finset.prod_sub]
+  refine Finset.sum_congr rfl ?_
+  intro E hE
+  simp
+
+/-- Inclusion-exclusion expansion of the finite avoidance density into Route A
+weighted pattern counts. -/
+theorem finiteAvoidanceDensity_inclusion_exclusion {p m : ℕ} [NeZero p]
+    (F U : Finset (ZMod p)) :
+    finiteAvoidanceDensity (m := m) F U =
+      ∑ E ∈ (pairEdgePairs m).powerset,
+        (-1 : ℂ) ^ E.card *
+          finiteWeightedPattern E (indicatorC F) (indicatorC U) := by
+  classical
+  unfold finiteAvoidanceDensity finiteWeightedPattern
+  unfold finiteAvoidanceWeight
+  simp_rw [avoidanceProduct_inclusion_exclusion F]
+  simp only [Finset.mul_sum]
+  rw [Finset.sum_comm]
+  simp [mul_left_comm]
+
+/-! ## Generic kernel avoidance density -/
+
+/-- Route A avoidance density with an arbitrary edge kernel `h` and vertex
+weight `v`. This is the finite object that Fejer-smoothed kernels converge
+through before taking the compact limit. -/
+noncomputable def finiteKernelAvoidanceDensity {p m : ℕ} [NeZero p]
+    (h v : ZMod p → ℂ) : ℂ :=
+  ((Fintype.card (Fin m → ZMod p) : ℂ)⁻¹) *
+    ∑ x : Fin m → ZMod p,
+      (∏ i : Fin m, v (x i)) *
+        ∏ e ∈ pairEdgePairs m, (1 - h (x e.1 - x e.2))
+
+lemma kernelAvoidanceProduct_inclusion_exclusion {p m : ℕ} [NeZero p]
+    (h : ZMod p → ℂ) (x : Fin m → ZMod p) :
+    (∏ e ∈ pairEdgePairs m, (1 - h (x e.1 - x e.2))) =
+      ∑ E ∈ (pairEdgePairs m).powerset,
+        (-1 : ℂ) ^ E.card *
+          ∏ e ∈ E, h (x e.1 - x e.2) := by
+  classical
+  rw [Finset.prod_sub]
+  refine Finset.sum_congr rfl ?_
+  intro E hE
+  simp
+
+/-- Inclusion-exclusion expansion of the generic kernel avoidance density. -/
+theorem finiteKernelAvoidanceDensity_inclusion_exclusion {p m : ℕ} [NeZero p]
+    (h v : ZMod p → ℂ) :
+    finiteKernelAvoidanceDensity (m := m) h v =
+      ∑ E ∈ (pairEdgePairs m).powerset,
+        (-1 : ℂ) ^ E.card * finiteWeightedPattern E h v := by
+  classical
+  unfold finiteKernelAvoidanceDensity finiteWeightedPattern
+  simp_rw [kernelAvoidanceProduct_inclusion_exclusion h]
+  simp only [Finset.mul_sum]
+  rw [Finset.sum_comm]
+  simp [mul_left_comm]
+
+lemma finiteKernelAvoidanceDensity_indicatorC_eq {p m : ℕ} [NeZero p]
+    (F U : Finset (ZMod p)) :
+    finiteKernelAvoidanceDensity (m := m) (indicatorC F) (indicatorC U) =
+      finiteAvoidanceDensity (m := m) F U := by
+  unfold finiteKernelAvoidanceDensity finiteAvoidanceDensity finiteAvoidanceWeight
+  rfl
+
+/-- The full finite Route A avoidance density is stable under replacing `1_F`
+by a bounded kernel whose normalized Fourier coefficients are uniformly close
+to those of `1_F`. -/
+lemma norm_finiteKernelAvoidanceDensity_sub_finiteAvoidanceDensity_le_spectral
+    {p m : ℕ} [NeZero p] {F U : Finset (ZMod p)} {g : ZMod p → ℂ} {M : ℝ}
+    (hMnonneg : 0 ≤ M)
+    (hg : ∀ z, ‖g z‖ ≤ 1)
+    (hspec : WeightedSpectralBound (fun z => g z - indicatorC F z) M) :
+    ‖finiteKernelAvoidanceDensity (m := m) g (indicatorC U) -
+        finiteAvoidanceDensity (m := m) F U‖ ≤
+      ∑ E ∈ (pairEdgePairs m).powerset, (E.card : ℝ) * M := by
+  classical
+  rw [← finiteKernelAvoidanceDensity_indicatorC_eq (m := m) F U]
+  rw [finiteKernelAvoidanceDensity_inclusion_exclusion,
+    finiteKernelAvoidanceDensity_inclusion_exclusion]
+  have hdiff :
+      (∑ E ∈ (pairEdgePairs m).powerset,
+          (-1 : ℂ) ^ E.card * finiteWeightedPattern E g (indicatorC U)) -
+        (∑ E ∈ (pairEdgePairs m).powerset,
+          (-1 : ℂ) ^ E.card * finiteWeightedPattern E (indicatorC F) (indicatorC U)) =
+        ∑ E ∈ (pairEdgePairs m).powerset,
+          (-1 : ℂ) ^ E.card *
+            (finiteWeightedPattern E g (indicatorC U) -
+              finiteWeightedPattern E (indicatorC F) (indicatorC U)) := by
+    rw [← Finset.sum_sub_distrib]
+    refine Finset.sum_congr rfl ?_
+    intro E hE
+    ring
+  rw [hdiff]
+  calc
+    ‖∑ E ∈ (pairEdgePairs m).powerset,
+        (-1 : ℂ) ^ E.card *
+          (finiteWeightedPattern E g (indicatorC U) -
+            finiteWeightedPattern E (indicatorC F) (indicatorC U))‖
+        ≤ ∑ E ∈ (pairEdgePairs m).powerset,
+            ‖(-1 : ℂ) ^ E.card *
+              (finiteWeightedPattern E g (indicatorC U) -
+                finiteWeightedPattern E (indicatorC F) (indicatorC U))‖ := by
+          exact norm_sum_le _ _
+    _ = ∑ E ∈ (pairEdgePairs m).powerset,
+          ‖finiteWeightedPattern E g (indicatorC U) -
+            finiteWeightedPattern E (indicatorC F) (indicatorC U)‖ := by
+          refine Finset.sum_congr rfl ?_
+          intro E hE
+          simp
+    _ ≤ ∑ E ∈ (pairEdgePairs m).powerset, (E.card : ℝ) * M := by
+          refine Finset.sum_le_sum ?_
+          intro E hE
+          have hEsub : E ⊆ pairEdgePairs m := Finset.mem_powerset.mp hE
+          exact norm_finiteWeightedPattern_sub_indicator_le_card_mul_spectralBound
+            hEsub hMnonneg hg hspec
+
+lemma sum_powerset_card_mul_le_card_mul_two_pow
+    {α : Type*} (s : Finset α) {M : ℝ} (hMnonneg : 0 ≤ M) :
+    (∑ E ∈ s.powerset, (E.card : ℝ) * M) ≤
+      (s.card : ℝ) * ((2 ^ s.card : ℕ) : ℝ) * M := by
+  classical
+  calc
+    (∑ E ∈ s.powerset, (E.card : ℝ) * M)
+        ≤ ∑ _E ∈ s.powerset, (s.card : ℝ) * M := by
+          refine Finset.sum_le_sum ?_
+          intro E hE
+          have hsub : E ⊆ s := Finset.mem_powerset.mp hE
+          have hcard : E.card ≤ s.card := Finset.card_le_card hsub
+          have hcardR : (E.card : ℝ) ≤ (s.card : ℝ) := by exact_mod_cast hcard
+          exact mul_le_mul_of_nonneg_right hcardR hMnonneg
+    _ = (s.powerset.card : ℝ) * ((s.card : ℝ) * M) := by
+          simp [mul_comm, mul_assoc]
+    _ = (s.card : ℝ) * ((2 ^ s.card : ℕ) : ℝ) * M := by
+          rw [Finset.card_powerset]
+          ring
+
+/-- Coarse closed-form version of
+`norm_finiteKernelAvoidanceDensity_sub_finiteAvoidanceDensity_le_spectral`. -/
+lemma norm_finiteKernelAvoidanceDensity_sub_finiteAvoidanceDensity_le_spectral_closed
+    {p m : ℕ} [NeZero p] {F U : Finset (ZMod p)} {g : ZMod p → ℂ} {M : ℝ}
+    (hMnonneg : 0 ≤ M)
+    (hg : ∀ z, ‖g z‖ ≤ 1)
+    (hspec : WeightedSpectralBound (fun z => g z - indicatorC F z) M) :
+    ‖finiteKernelAvoidanceDensity (m := m) g (indicatorC U) -
+        finiteAvoidanceDensity (m := m) F U‖ ≤
+      ((pairEdgePairs m).card : ℝ) * ((2 ^ (pairEdgePairs m).card : ℕ) : ℝ) * M := by
+  exact (norm_finiteKernelAvoidanceDensity_sub_finiteAvoidanceDensity_le_spectral
+    (m := m) hMnonneg hg hspec).trans
+      (sum_powerset_card_mul_le_card_mul_two_pow (pairEdgePairs m) hMnonneg)
+
+end Erdos42.FourierPositive
 
 /-! =============================================================
     Section from: Erdos/P42/FourierPositive/Main.lean
@@ -1419,9 +3453,10 @@ end Erdos42
 /-
 Erdős Problem 42 — Route A application.
 
-Derives Theorem 1.1 (Erdős statement, `Finset ℤ` form) from the single
-trust-boundary axiom `finite_fourier_avoidance_exists`. Pipeline (combined PDF /
-Ulam note Section 3, with Tao's greedy-Sidon simplification):
+Derives Theorem 1.1 (Erdős statement, `Finset ℤ` form) from the Route A
+counting trust-boundary axiom `finite_fourier_avoidance_count`, through the
+derived existence theorem `finite_fourier_avoidance_exists`. Pipeline
+(combined PDF / Ulam note Section 3, with Tao's greedy-Sidon simplification):
 
   1. Forbidden set: `F := (A − A) mod p` for `p` a prime in `(4N, 8N)`.
      Symmetric, `0 ∈ F`, `|F| ≤ 2N − 1 ≤ (1 − 1/2) p`.
@@ -1506,7 +3541,7 @@ lemma forbiddenDiffSetMod_card_le
 lemma forbiddenDiffSetMod_eq_insert_offDiagDiffSetMod
     {p : ℕ} [NeZero p] (A : Finset ℤ) (hA : A.Nonempty) :
     forbiddenDiffSetMod p A =
-      insert 0 (Erdos42.CompactCayley.offDiagDiffSetMod p A) := by
+      insert 0 (Erdos42.offDiagDiffSetMod p A) := by
   classical
   ext t
   constructor
@@ -1518,7 +3553,7 @@ lemma forbiddenDiffSetMod_eq_insert_offDiagDiffSetMod
     by_cases hzero : ((a - b : ℤ) : ZMod p) = 0
     · exact Finset.mem_insert.mpr (Or.inl hzero)
     · refine Finset.mem_insert.mpr (Or.inr ?_)
-      rw [Erdos42.CompactCayley.offDiagDiffSetMod, Finset.mem_image]
+      rw [Erdos42.offDiagDiffSetMod, Finset.mem_image]
       have hab : a ≠ b := by
         intro hab
         subst b
@@ -1531,7 +3566,7 @@ lemma forbiddenDiffSetMod_eq_insert_offDiagDiffSetMod
     rcases ht with ht0 | ht
     · subst t
       exact zero_mem_forbiddenDiffSetMod p A hA
-    · rw [Erdos42.CompactCayley.offDiagDiffSetMod, Finset.mem_image] at ht
+    · rw [Erdos42.offDiagDiffSetMod, Finset.mem_image] at ht
       rcases ht with ⟨ab, hab, rfl⟩
       rw [Finset.mem_offDiag] at hab
       rcases hab with ⟨ha, hb, _hne⟩
@@ -1566,28 +3601,28 @@ lemma sidon_forbidden_fourier_lower
   · have hF_eq :=
       forbiddenDiffSetMod_eq_insert_offDiagDiffSetMod (p := p) A hA
     have hsum_allowed :=
-      Erdos42.CompactCayley.sum_allowedDiffSetMod_eq_neg_forbidden
+      Erdos42.sum_allowedDiffSetMod_eq_neg_forbidden
         (p := p) A hr
     have hsum_forbidden :
-        ∑ x ∈ insert 0 (Erdos42.CompactCayley.offDiagDiffSetMod p A),
+        ∑ x ∈ insert 0 (Erdos42.offDiagDiffSetMod p A),
             ZMod.stdAddChar (-(x * r)) =
-          - ∑ x ∈ Erdos42.CompactCayley.allowedDiffSetMod p A,
+          - ∑ x ∈ Erdos42.allowedDiffSetMod p A,
               ZMod.stdAddChar (-(x * r)) := by
       calc
-        ∑ x ∈ insert 0 (Erdos42.CompactCayley.offDiagDiffSetMod p A),
+        ∑ x ∈ insert 0 (Erdos42.offDiagDiffSetMod p A),
             ZMod.stdAddChar (-(x * r))
-            = -(-∑ x ∈ insert 0 (Erdos42.CompactCayley.offDiagDiffSetMod p A),
+            = -(-∑ x ∈ insert 0 (Erdos42.offDiagDiffSetMod p A),
                 ZMod.stdAddChar (-(x * r))) := by simp
-        _ = -∑ x ∈ Erdos42.CompactCayley.allowedDiffSetMod p A,
+        _ = -∑ x ∈ Erdos42.allowedDiffSetMod p A,
                 ZMod.stdAddChar (-(x * r)) := by rw [← hsum_allowed]
     have hcoeff :
         normalizedDftCoeff (forbiddenDiffSetMod p A) r =
-          - normalizedDftCoeff (Erdos42.CompactCayley.allowedDiffSetMod p A) r := by
+          - normalizedDftCoeff (Erdos42.allowedDiffSetMod p A) r := by
       rw [hF_eq, normalizedDftCoeff_eq_sum, normalizedDftCoeff_eq_sum, hsum_forbidden]
       ring
     have hupper :
-        (normalizedDftCoeff (Erdos42.CompactCayley.allowedDiffSetMod p A) r).re ≤ ε :=
-      Erdos42.CompactCayley.allowedDiffs_fourier_upper
+        (normalizedDftCoeff (Erdos42.allowedDiffSetMod p A) r).re ≤ ε :=
+      Erdos42.allowedDiffs_fourier_upper
         (p := p) (N := N) _hbig A hAint hSidon ε hε r hr
     rw [hcoeff]
     simp
@@ -1608,16 +3643,16 @@ theorem theorem_1_1_from_finite_fourier_avoidance
           IsSidonInt B ∧ B.card = M ∧
           AvoidsNonzeroDiff A B := by
   classical
-  let R := Erdos42.CompactCayley.greedySidonThreshold M
+  let R := Erdos42.greedySidonThreshold M
   have hRpos : 0 < R := by
-    dsimp [R, Erdos42.CompactCayley.greedySidonThreshold]
+    dsimp [R, Erdos42.greedySidonThreshold]
     omega
   have hRge : 1 ≤ R := Nat.succ_le_of_lt hRpos
   obtain ⟨ε, hεpos, p₀, havoid⟩ :=
     finite_fourier_avoidance_exists R (1 / 8 : ℝ) (1 / 2 : ℝ)
       hRge (by norm_num) (by norm_num)
   obtain ⟨Nε, hNε⟩ :=
-    Erdos42.CompactCayley.sidon_card_minus_one_div_prime_eventually_small ε hεpos
+    Erdos42.sidon_card_minus_one_div_prime_eventually_small ε hεpos
   refine ⟨max (p₀ + 1) Nε, ?_⟩
   intro N hN A hAint hSidon hAnonempty
   have hNpos : 0 < N := by
@@ -1676,7 +3711,7 @@ theorem theorem_1_1_from_finite_fourier_avoidance
       change i ∈ (Finset.Icc 1 N : Finset ℕ) at hi
       change j ∈ (Finset.Icc 1 N : Finset ℕ) at hj
       rw [Finset.mem_Icc] at hi hj
-      exact Erdos42.CompactCayley.nat_eq_of_zmod_eq_of_lt
+      exact Erdos42.nat_eq_of_zmod_eq_of_lt
         (p := p) (i := i) (j := j) (by omega) (by omega) hij
     rw [Finset.card_image_of_injOn hinj]
     simp
@@ -1763,7 +3798,7 @@ theorem theorem_1_1_from_finite_fourier_avoidance
               norm_num
       exact (hxAvoid i j hij) hFmem
   obtain ⟨B, hBX, hBcard, hBsidon⟩ :=
-    Erdos42.CompactCayley.exists_sidon_subset_of_card_ge M X (by simpa [R] using hXcard)
+    Erdos42.exists_sidon_subset_of_card_ge M X (by simpa [R] using hXcard)
   refine ⟨B, ?_, hBsidon, hBcard, ?_⟩
   · intro b hb
     exact hXint b (hBX hb)

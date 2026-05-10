@@ -8,7 +8,7 @@ Lean 4 / Mathlib formalizations of problems from
 | [694](https://www.erdosproblems.com/694) | Totient fibre extremes | [compact_cayley_proof.pdf](Erdos/P694/compact_cayley_proof.pdf) | [Proof.lean](Erdos/P694/Proof.lean) · [live](https://live.lean-lang.org/#project=mathlib-v4.28.0&url=https%3A%2F%2Fraw.githubusercontent.com%2FShashi456%2Ferdos-formalizations%2Frefs%2Fheads%2Fmain%2FErdos%2FP694%2FProof.lean) |
 | [750](https://www.erdosproblems.com/750) | Almost-half independent sets in graphs of infinite chromatic number | [compact_cayley_proof.pdf](Erdos/P750/compact_cayley_proof.pdf) | [Proof.lean](Erdos/P750/Proof.lean) · [live](https://live.lean-lang.org/#project=mathlib-v4.27.0&url=https%3A%2F%2Fraw.githubusercontent.com%2FShashi456%2Ferdos-formalizations%2Frefs%2Fheads%2Fmain%2FErdos%2FP750%2FProof.lean) |
 | [283](https://www.erdosproblems.com/283) + [351](https://www.erdosproblems.com/351) | Polynomial Egyptian sums | [compact_cayley_proof.pdf](Erdos/P283/compact_cayley_proof.pdf) | [Proof.lean](Erdos/P283/Proof.lean) |
-| [42](https://www.erdosproblems.com/42) (in progress) | Sidon difference avoidance | [compact_cayley_proof.pdf](Erdos/P42/compact_cayley_proof.pdf) | [Proof.lean](Erdos/P42/Proof.lean) (Route B axiom) |
+| [42](https://www.erdosproblems.com/42) (in progress) | Sidon difference avoidance | [compact_cayley_proof.pdf](Erdos/P42/compact_cayley_proof.pdf) | [Proof.lean](Erdos/P42/Proof.lean) · Route B axiom removed |
 
 See each problem's per-folder README for the full statement, trust boundary,
 and notes on alignment with the upstream

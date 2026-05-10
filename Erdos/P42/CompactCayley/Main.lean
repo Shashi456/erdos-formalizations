@@ -1,14 +1,18 @@
 /-
 Erdős Problem 42 — Route B final assembly.
 
-This is the only compact-Cayley downstream file that imports the
-`compact_cayley_clique` trust-boundary axiom. The finite allowed-difference
-Fourier estimates and greedy Sidon extraction stay in `Application.lean` so
-Route A can reuse them without importing this axiom.
+This is the compact-Cayley downstream file that imports the proved
+`compact_cayley_clique` theorem. The finite allowed-difference Fourier
+estimates and greedy Sidon extraction stay in `FiniteReduction.lean`, outside
+the compact-Cayley namespace, so Route A can reuse them independently.
 -/
 
 import Erdos.P42.CompactCayley.CliqueAxiom
-import Erdos.P42.CompactCayley.FiniteReduction
+import Erdos.P42.CompactCayley.CountingConvergence
+import Erdos.P42.CompactCayley.Counterexample
+import Erdos.P42.CompactCayley.PositiveDefinite
+import Erdos.P42.CompactCayley.SpectralCutNorm
+import Erdos.P42.Shared.FiniteReduction
 
 namespace Erdos42.CompactCayley
 
@@ -18,8 +22,8 @@ open Finset Erdos42
 
 /-- **Theorem 1.1, Route B.** For every `M ≥ 1`, there is `N₀` such that for
 all `N ≥ N₀` and every non-empty Sidon `A ⊆ [1, N] ⊂ ℤ`, there is a Sidon
-`B ⊆ [1, N]` with `|B| = M` and no nonzero common difference. Proved
-conditional on `compact_cayley_clique`. -/
+`B ⊆ [1, N]` with `|B| = M` and no nonzero common difference, using the
+proved compact-Cayley clique theorem. -/
 theorem theorem_1_1_from_compact_cayley
     (M : ℕ) (_hM : 1 ≤ M) :
     ∃ N₀ : ℕ, ∀ N : ℕ, N₀ ≤ N →

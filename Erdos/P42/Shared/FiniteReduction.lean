@@ -1,8 +1,7 @@
 /-
-Erdős Problem 42 — shared compact-Cayley downstream machinery.
+Erdős Problem 42 — shared finite-reduction machinery.
 
-This file contains the finite pieces used by the compact-Cayley route and now
-also reused by the Fourier-positive Route A:
+This file contains the route-neutral finite pieces used by both the Fourier-positive Route A and the compact-Cayley Route B:
 
   1. Greedy Sidon subset lemma: any sufficiently large finite integer set
      contains a Sidon subset of any prescribed size.
@@ -15,15 +14,15 @@ also reused by the Fourier-positive Route A:
   4. Lift the clique-in-interval to an integer set `X ⊆ [1, N]` avoiding
      `A − A`; greedily extract a Sidon subset `B ⊆ X` of size `M`.
 
-The Route B theorem that actually invokes `compact_cayley_clique` lives in
-`CompactCayley/Main.lean`.
+The Route-specific theorem files import this module; this file imports no analytic
+trust-boundary axiom.
 -/
 
-import Erdos.P42.Common
-import Erdos.P42.Sidon
-import Erdos.P42.FiniteFourier
+import Erdos.P42.Shared.Common
+import Erdos.P42.Shared.Sidon
+import Erdos.P42.Shared.FiniteFourier
 
-namespace Erdos42.CompactCayley
+namespace Erdos42
 
 open Finset Erdos42
 
@@ -992,4 +991,4 @@ theorem exists_large_intersection_cyclicInterval
       simpa [fiber] using hs
     exact (Nat.le_of_lt hs').trans hfiber_le
 
-end Erdos42.CompactCayley
+end Erdos42

@@ -8,7 +8,7 @@ ordered tuple whose pairwise differences lie in the allowed set, `0 ∉ T`
 turns that tuple into an actual finite clique.
 -/
 
-import Erdos.P42.CompactCayley.CliqueAxiom
+import Erdos.P42.Shared.FiniteFourier
 
 namespace Erdos42.CompactCayley
 
@@ -138,6 +138,22 @@ lemma cliqueTupleFinset_nonempty_iff_exists_clique
 order to avoid double-counting. -/
 def cliqueEdgePairs (ℓ : ℕ) : Finset (Fin ℓ × Fin ℓ) :=
   (Finset.univ : Finset (Fin ℓ × Fin ℓ)).filter (fun e => e.1 < e.2)
+
+lemma cliqueEdgePairs_left_lt_right {ℓ : ℕ} {e : Fin ℓ × Fin ℓ}
+    (he : e ∈ cliqueEdgePairs ℓ) : e.1 < e.2 := by
+  exact (Finset.mem_filter.mp he).2
+
+lemma cliqueEdgePairs_left_ne_right {ℓ : ℕ} {e : Fin ℓ × Fin ℓ}
+    (he : e ∈ cliqueEdgePairs ℓ) : e.1 ≠ e.2 :=
+  ne_of_lt (cliqueEdgePairs_left_lt_right he)
+
+lemma cliqueEdgePairs_card_le_sq (ℓ : ℕ) :
+    (cliqueEdgePairs ℓ).card ≤ ℓ * ℓ := by
+  classical
+  unfold cliqueEdgePairs
+  have h := Finset.card_filter_le (s := (Finset.univ : Finset (Fin ℓ × Fin ℓ)))
+    (p := fun e : Fin ℓ × Fin ℓ => e.1 < e.2)
+  simpa [Fintype.card_prod, Fintype.card_fin] using h
 
 /-- Product weight for the finite Cayley `K_ℓ` homomorphism density. For
 indicator functions this is `1` exactly on ordered clique tuples and `0`
