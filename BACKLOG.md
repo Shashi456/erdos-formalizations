@@ -2,24 +2,38 @@
 
 Work that is **not** the active focus, kept here so it isn't forgotten.
 
-> Active focus: **Erdős #283 + #351** — see `Erdos/P283/`. Everything below is on hold until that ships.
+> Active focus: **Erdős #42** — see `Erdos/P42/`. P283 + #351 shipped axiom-free
+> via the formalized RSG theorem; Route B of #42 is now also fully axiom-free
+> after the compact-Cayley axiom was discharged.
 
-## Adjacent Erdős problems we could pick up later
+## Currently active
 
 ### Erdős #42 — Sidon difference avoidance
-- **Status**: scaffolded (`Erdos/P42/`), not in progress.
-- All three proof PDFs (`proof.pdf`, `proof_combined_42_43.pdf`, `proof_ulam_note.pdf`), forum thread snapshot, informal outline, and Lean stub are in place.
-- Trust-boundary axioms identified: `complexity_one_counting_lemma` (Green-Tao 2008), `compact_U2_regularity_subsequential_limit` (classical compactness packaging).
-- 3-layer structure: Tao's continuous-version key lemma → finite avoidance lemma → Erdős statement.
-- Estimated effort to complete: ~500–1000 lines of Lean.
+- **Status**: in progress (`Erdos/P42/`). Two parallel routes.
+- **Route B (compact-Cayley) — axiom-free.** The compact-Cayley clique theorem
+  (compact PDF Theorem 2.1) is now proved end-to-end. `compact_cayley_clique`
+  and `theorem_1_1_from_compact_cayley` depend only on Mathlib core
+  (`propext`, `Classical.choice`, `Quot.sound`). Independently confirmed by
+  SafeVerify against the flat bundle `CompactCayley/Proof.lean` (49 spec
+  declarations, 1140 in submission, no extra allowed axiom).
+- **Route A (Fourier-positive, active public wrapper).** Drives `theorem_1_1`
+  and `erdos_42` over `Set ℕ`. Conditional on
+  `finite_fourier_avoidance_count` (Green-Tao `U²` regularity / complexity-1
+  counting). Existence interface used downstream is derived from the count
+  statement. Confirmed by SafeVerify under the count-axiom allow-list.
+- **Remaining work for axiom-free Route A**: prove
+  `finite_fourier_avoidance_count` from the compact extraction-dual model
+  scaffolding already in place (see `FourierPositive/CompactDual.lean`,
+  `CompactModel.lean`, `Counterexample.lean`).
 
 ### Erdős #43 — Sharp asymptotic Sidon-pair bound
-- **Status**: not scaffolded.
-- Closed by the *same proof file* as #42 (`Erdos/P42/proof_combined_42_43.pdf`):
-  - First half (asymptotic upper bound) ← negative answer follows from #42 by Tao's argument.
-  - Second half (equal-cardinality strengthening) ← Bose-Chowla parity construction by Kevin Barreto.
-- **Reason on hold**: `BryanKim` is the listed formalization volunteer on the forum (`I am working on formalising the results on this problem`), and FC has no skeleton yet (404 on `FormalConjectures/ErdosProblems/43.lean`). Don't duplicate.
-- If we revisit: the first half can be derived from our `theorem_1_1` in `Erdos/P42/Proof.lean`; second half is ~50-line independent argument.
+- **Status**: scaffolded (`Erdos/P43/`), bodies still `sorry`.
+- First half (asymptotic upper bound) ← negative answer follows from #42 by
+  Tao's argument; can be derived directly from `Erdos.P42.theorem_1_1`.
+- Second half (equal-cardinality strengthening) ← Bose-Chowla parity
+  construction (Section 4 of `Erdos/P42/docs/combined_42_43_proof.pdf`).
+- Live #43 thread reports an Aristotle/Harmonic Lean formalization of the
+  Erdős-Turán bound + Bose-Chowla; option to port that for the second half.
 
 ## Mathlib upstream PRs
 
@@ -39,19 +53,18 @@ Work that is **not** the active focus, kept here so it isn't forgotten.
 - Effort: weeks.
 - Payoff: drops `mertens_product` axiom from P694 → trust boundary becomes just `linnik_dvd`.
 
-### PR #3 (stretch): Green-Tao `U²` complexity-1 counting lemma
-- Would unblock half of P42's trust boundary (`complexity_one_counting_lemma`).
-- Effort: months. Out of scope unless we make P42 a flagship project.
+### PR #3 (stretch): Green-Tao `U²` complexity-1 counting + arithmetic regularity
+- Would discharge `finite_fourier_avoidance_count` and make Route A of P42
+  axiom-free, matching the already-axiom-free Route B.
+- Compact-extraction scaffolding for this is partially in place under
+  `Erdos/P42/FourierPositive/{CompactDual,CompactModel,Counterexample,Counting,Fejer,LargeSpectrum,Limit,TrigPolynomial}.lean`;
+  remaining gap is constructing the extraction-dual model and proving the
+  level-one subgroup is null / infinite-index (see `FourierPositive/Main.lean`).
+- Effort: weeks-to-months.
 
-### PR #4 (stretch): `U²` arithmetic regularity packaging
-- Would unblock the other half of P42's trust boundary.
-- Effort: months.
-
-### PR #5 (flagship): Roth-Szekeres-Graham / Graham complete polynomial sequences
-- Would remove the `roth_szekeres_graham` trust-boundary axiom from P283 + P351.
-- Preferred source: Graham, "Complete sequences of polynomial values", Duke Math. J. 31 (1964), 275-285.
-- Working plan and references: [`Erdos/RSG/README.md`](Erdos/RSG/README.md).
-- Effort: 3000-6000 lines, likely weeks. The reusable route formalizes Graham's complete-sequence API rather than only the bespoke P283 `qPoly` instance.
+### PR #4 (already shipped): Roth-Szekeres-Graham / Graham complete polynomial sequences
+- Closed: `Erdos/P283/RSG/` formalizes Graham 1964 axiom-free.
+- P283 + #351 are now Mathlib-core-only.
 
 ## Earlier polynomial-Egyptian-fraction work (Woett, August 2025)
 
