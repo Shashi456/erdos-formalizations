@@ -28,7 +28,7 @@ combinatorics. The compact-Cayley route remains preserved separately in
 |------|------|
 | [`Proof.lean`](Proof.lean) | Thin modular active-proof alias; currently imports `FC/Shape.lean`. |
 | [`FourierPositive/Proof.lean`](FourierPositive/Proof.lean) | Standalone flat Route A bundle: shared machinery + Fourier-positive proof + public wrappers. |
-| [`CompactCayley/Proof.lean`](CompactCayley/Proof.lean) | Standalone flat Route B bundle: shared machinery + compact-Cayley proof + axiom audit. |
+| [`CompactCayley/Proof.lean`](CompactCayley/Proof.lean) | Standalone flat Route B bundle: shared machinery + compact-Cayley proof + Set ℕ wrapper + FC-shape iff form + axiom audit. |
 | [`Shared/Common.lean`](Shared/Common.lean), [`Shared/Sidon.lean`](Shared/Sidon.lean), [`Shared/FiniteFourier.lean`](Shared/FiniteFourier.lean) | Shared finite-combinatorial, Sidon, and normalized `ZMod.dft` API used by both routes. |
 | [`Shared/FiniteReduction.lean`](Shared/FiniteReduction.lean) | Route-neutral greedy Sidon, finite Fourier, allowed-difference, and cyclic-interval lemmas. |
 | [`Common.lean`](Common.lean), [`Sidon.lean`](Sidon.lean), [`FiniteFourier.lean`](FiniteFourier.lean), [`FiniteReduction.lean`](FiniteReduction.lean) | Compatibility import shims for older module paths; P42 route files import `Shared/*` directly. |
@@ -67,7 +67,7 @@ lake build Erdos.P42.CompactCayley.Proof
 
 - Route A (Fourier-positive, active):
   [live.lean-lang.org](https://live.lean-lang.org/#project=mathlib-v4.28.0&url=https%3A%2F%2Fraw.githubusercontent.com%2FShashi456%2Ferdos-formalizations%2Frefs%2Fheads%2Fmain%2FErdos%2FP42%2FFourierPositive%2FProof.lean)
-- Route B (compact-Cayley, alternative; axiom-free):
+- Route B (compact-Cayley, alternative; only Mathlib core axioms, includes FC bridge):
   [live.lean-lang.org](https://live.lean-lang.org/#project=mathlib-v4.28.0&url=https%3A%2F%2Fraw.githubusercontent.com%2FShashi456%2Ferdos-formalizations%2Frefs%2Fheads%2Fmain%2FErdos%2FP42%2FCompactCayley%2FProof.lean)
 
 ## Current state
