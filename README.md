@@ -8,7 +8,7 @@ Lean 4 / Mathlib formalizations of problems from
 | [694](https://www.erdosproblems.com/694) | Totient fibre extremes | [compact_cayley_proof.pdf](Erdos/P694/compact_cayley_proof.pdf) | [Proof.lean](Erdos/P694/Proof.lean) · [live](https://live.lean-lang.org/#project=mathlib-v4.28.0&url=https%3A%2F%2Fraw.githubusercontent.com%2FShashi456%2Ferdos-formalizations%2Frefs%2Fheads%2Fmain%2FErdos%2FP694%2FProof.lean) |
 | [750](https://www.erdosproblems.com/750) | Almost-half independent sets in graphs of infinite chromatic number | [compact_cayley_proof.pdf](Erdos/P750/compact_cayley_proof.pdf) | [Proof.lean](Erdos/P750/Proof.lean) · [live](https://live.lean-lang.org/#project=mathlib-v4.27.0&url=https%3A%2F%2Fraw.githubusercontent.com%2FShashi456%2Ferdos-formalizations%2Frefs%2Fheads%2Fmain%2FErdos%2FP750%2FProof.lean) |
 | [283](https://www.erdosproblems.com/283) + [351](https://www.erdosproblems.com/351) | Polynomial Egyptian sums | [compact_cayley_proof.pdf](Erdos/P283/compact_cayley_proof.pdf) | [Proof.lean](Erdos/P283/Proof.lean) |
-| [42](https://www.erdosproblems.com/42) (in progress) | Sidon difference avoidance | [compact_cayley_proof.pdf](Erdos/P42/docs/compact_cayley_proof.pdf) | [Proof.lean](Erdos/P42/Proof.lean) · live: [Route A](https://live.lean-lang.org/#project=mathlib-v4.27.0&url=https%3A%2F%2Fraw.githubusercontent.com%2FShashi456%2Ferdos-formalizations%2Frefs%2Fheads%2Fmain%2FErdos%2FP42%2FFourierPositive%2FProof.lean) · [Route B](https://live.lean-lang.org/#project=mathlib-v4.27.0&url=https%3A%2F%2Fraw.githubusercontent.com%2FShashi456%2Ferdos-formalizations%2Frefs%2Fheads%2Fmain%2FErdos%2FP42%2FCompactCayley%2FProof.lean) |
+| [42](https://www.erdosproblems.com/42) (in progress) | Sidon difference avoidance | [compact_cayley_proof.pdf](Erdos/P42/docs/compact_cayley_proof.pdf) | [Proof.lean](Erdos/P42/Proof.lean) · live: [Route A](https://live.lean-lang.org/#project=mathlib-v4.28.0&url=https%3A%2F%2Fraw.githubusercontent.com%2FShashi456%2Ferdos-formalizations%2Frefs%2Fheads%2Fmain%2FErdos%2FP42%2FFourierPositive%2FProof.lean) · [Route B](https://live.lean-lang.org/#project=mathlib-v4.28.0&url=https%3A%2F%2Fraw.githubusercontent.com%2FShashi456%2Ferdos-formalizations%2Frefs%2Fheads%2Fmain%2FErdos%2FP42%2FCompactCayley%2FProof.lean) |
 
 See each problem's per-folder README for the full statement, trust boundary,
 and notes on alignment with the upstream
@@ -49,8 +49,8 @@ Toolchain: Lean 4 `v4.27.0`, Mathlib `v4.27.0`. Single-file `Proof.lean`
 (P694, P750), `Proof_flat.lean` (P283), and the per-route flat bundles
 `FourierPositive/Proof.lean` and `CompactCayley/Proof.lean` (P42) typecheck
 standalone on [live.lean-lang.org](https://live.lean-lang.org/), so they can
-be loaded in the browser without a Lake project (P694/P750 verified on
-`v4.28.0`; P283/P42 currently only on `v4.27.0`).
+be loaded in the browser without a Lake project (P694, P750, and P42's two
+flat bundles verified on `v4.28.0`; P283 currently only on `v4.27.0`).
 
 ## License
 

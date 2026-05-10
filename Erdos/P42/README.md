@@ -63,12 +63,12 @@ lake build Erdos.P42.FourierPositive.Proof
 lake build Erdos.P42.CompactCayley.Proof
 ```
 
-**Online (single-file flat snapshots, Mathlib v4.27.0):**
+**Online (single-file flat snapshots, Mathlib v4.28.0):**
 
 - Route A (Fourier-positive, active):
-  [live.lean-lang.org](https://live.lean-lang.org/#project=mathlib-v4.27.0&url=https%3A%2F%2Fraw.githubusercontent.com%2FShashi456%2Ferdos-formalizations%2Frefs%2Fheads%2Fmain%2FErdos%2FP42%2FFourierPositive%2FProof.lean)
-- Route B (compact-Cayley, alternative):
-  [live.lean-lang.org](https://live.lean-lang.org/#project=mathlib-v4.27.0&url=https%3A%2F%2Fraw.githubusercontent.com%2FShashi456%2Ferdos-formalizations%2Frefs%2Fheads%2Fmain%2FErdos%2FP42%2FCompactCayley%2FProof.lean)
+  [live.lean-lang.org](https://live.lean-lang.org/#project=mathlib-v4.28.0&url=https%3A%2F%2Fraw.githubusercontent.com%2FShashi456%2Ferdos-formalizations%2Frefs%2Fheads%2Fmain%2FErdos%2FP42%2FFourierPositive%2FProof.lean)
+- Route B (compact-Cayley, alternative; axiom-free):
+  [live.lean-lang.org](https://live.lean-lang.org/#project=mathlib-v4.28.0&url=https%3A%2F%2Fraw.githubusercontent.com%2FShashi456%2Ferdos-formalizations%2Frefs%2Fheads%2Fmain%2FErdos%2FP42%2FCompactCayley%2FProof.lean)
 
 ## Current state
 
