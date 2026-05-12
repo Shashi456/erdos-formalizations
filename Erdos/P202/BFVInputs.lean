@@ -83,7 +83,13 @@ lemma PrunedData.card_le_f {N : ℕ} (D : PrunedData N) :
 `f(N)` we can extract a `PrunedData N` whose cardinality is at least
 `f(N) · L(-ε, N)` for any prescribed `ε > 0`, eventually.
 
-To be discharged from BFV's pruning argument. -/
+Note: this is a slightly strengthened BFV pruning interface. The PDF
+(Proposition 3.1) states pruning for an extremal family `Q` with
+`Q.card = f N`; here we allow any admissible `Q` of near-extremal size
+`Q.card ≥ f N · L(-ε, N)`. The later proof must derive this stronger form
+by applying the same BFV deletions (small moduli, large ω, large h, radical
+pigeonhole) together with `bfv_lower_bound_input` to show the discarded
+sets are negligible. To be discharged from BFV's pruning argument. -/
 axiom bfv_pruning_input :
   ∀ ε : ℝ, 0 < ε → ∀ᶠ N : ℕ in atTop,
     ∀ Q : Finset ℕ, ∀ a : ResidueAssignment Q,
@@ -95,15 +101,21 @@ axiom bfv_pruning_input :
 
 /-! ## §3 BFV ω-count estimate -/
 
-/-- **BFV ω-count input.** Uniform in the BFV range `K ≤ 3 M(N)` and
+/-- **BFV ω-count input.** Uniform in `1 ≤ y ≤ N`, `K ≤ 3 M(N)`, and
 `0 ≤ W ≤ K`, the count of integers up to `y` with `ω(n) = K - W` is at most
 `y · L(-d/2 + ε, N) · (log N)^{W/2}`, where `d = K / M(N)`.
+
+The `y ≤ N` hypothesis matches BFV Lemma 3.1's range (the original is stated
+for `2 ≤ y ≤ x`); without it the count estimate is not BFV and is probably
+false for arbitrarily large `y` relative to `N`. The PDF's quotient count
+(Lemma 3.2) likewise requires `1 ≤ y ≤ x`.
 
 The `(log N)^{W/2}` is real-exponentiated; we phrase it as
 `exp((W/2) · log log N)` to avoid `Real.rpow` overhead. -/
 axiom bfv_omega_count_input :
   ∀ ε : ℝ, 0 < ε → ∀ᶠ N : ℕ in atTop,
     ∀ y K W : ℕ,
+      y ≤ N →
       W ≤ K →
       (K : ℝ) ≤ 3 * Mscale N →
       let d : ℝ := (K : ℝ) / Mscale N

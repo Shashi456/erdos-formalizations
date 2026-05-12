@@ -523,6 +523,7 @@ lemma ChainState.coreSurvivors_card_le_bfv_omega_count
     (ε : ℝ)
     (hCount :
       ∀ y K W : ℕ,
+        y ≤ N →
         W ≤ K →
         (K : ℝ) ≤ 3 * Mscale N →
         let d : ℝ := (K : ℝ) / Mscale N
@@ -535,13 +536,14 @@ lemma ChainState.coreSurvivors_card_le_bfv_omega_count
         ((N : ℝ) * Real.exp ((-((D.K : ℝ) / Mscale N) / 2 + ε) * Zscale N)
           * Real.exp (((S.W : ℝ) / 2) * Real.log (Real.log (N : ℝ)))) := by
   exact (S.coreSurvivors_card_le_omegaCount C).trans
-    (hCount N D.K S.W S.W_le_K D.K_bound)
+    (hCount N D.K S.W le_rfl S.W_le_K D.K_bound)
 
 lemma ChainState.coreSurvivors_card_real_le_bfv_omega_count
     {N : ℕ} {D : PrunedData N} (S : ChainState N D) (C : Finset ℕ)
     (ε : ℝ)
     (hCount :
       ∀ y K W : ℕ,
+        y ≤ N →
         W ≤ K →
         (K : ℝ) ≤ 3 * Mscale N →
         let d : ℝ := (K : ℝ) / Mscale N
@@ -778,6 +780,7 @@ lemma ChainState.selectedFiber_card_real_le_bfv_omega_count_div
     {C : Finset ℕ} {P : ℕ} (hP : P ∈ S.coreBlocks C) (ε : ℝ)
     (hCount :
       ∀ y K W : ℕ,
+        y ≤ N →
         W ≤ K →
         (K : ℝ) ≤ 3 * Mscale N →
         let d : ℝ := (K : ℝ) / Mscale N
@@ -848,7 +851,7 @@ lemma ChainState.selectedFiber_card_real_le_bfv_omega_count_div
       ((Finset.Icc 1 (N / dP)).filter (fun n => omega n = D.K - (S.W + C.card))).card := by
     rw [← Finset.card_image_of_injOn hinj]
     exact Finset.card_le_card hsubset
-  have hcount := hCount (N / dP) D.K (S.W + C.card) hWle D.K_bound
+  have hcount := hCount (N / dP) D.K (S.W + C.card) (Nat.div_le_self N dP) hWle D.K_bound
   dsimp only at hcount
   have hfloor :
       T.card ≤ Nat.floor
@@ -864,6 +867,7 @@ lemma ChainState.selectedFiber_card_real_le_bfv_omega_count
     {C : Finset ℕ} {P : ℕ} (hP : P ∈ S.coreBlocks C) (ε : ℝ)
     (hCount :
       ∀ y K W : ℕ,
+        y ≤ N →
         W ≤ K →
         (K : ℝ) ≤ 3 * Mscale N →
         let d : ℝ := (K : ℝ) / Mscale N
@@ -1177,6 +1181,7 @@ lemma ChainState.coreBlocks_card_le_bfv_omega_count {N : ℕ} {D : PrunedData N}
     (hCore : (S.coreSurvivors C).Nonempty)
     (hCount :
       ∀ y K W : ℕ,
+        y ≤ N →
         W ≤ K →
         (K : ℝ) ≤ 3 * Mscale N →
         let d : ℝ := (K : ℝ) / Mscale N
@@ -1191,7 +1196,7 @@ lemma ChainState.coreBlocks_card_le_bfv_omega_count {N : ℕ} {D : PrunedData N}
   have hcard : (S.coreBlocks C).card ≤
       ((Finset.Icc 1 N).filter (fun n => omega n = C.card)).card :=
     Finset.card_le_card hsubset
-  have hcount := hCount N C.card 0 (Nat.zero_le _) (S.coreBlock_card_bound_real hCore)
+  have hcount := hCount N C.card 0 le_rfl (Nat.zero_le _) (S.coreBlock_card_bound_real hCore)
   dsimp only at hcount
   have hsimp :
       Nat.floor
@@ -1207,6 +1212,7 @@ lemma ChainState.coreBlocks_card_real_le_bfv_omega_count {N : ℕ} {D : PrunedDa
     (hCore : (S.coreSurvivors C).Nonempty)
     (hCount :
       ∀ y K W : ℕ,
+        y ≤ N →
         W ≤ K →
         (K : ℝ) ≤ 3 * Mscale N →
         let d : ℝ := (K : ℝ) / Mscale N
@@ -2059,6 +2065,7 @@ theorem chain_step_structural_with_counts
     (ε : ℝ)
     (hCount :
       ∀ y K W : ℕ,
+        y ≤ N →
         W ≤ K →
         (K : ℝ) ≤ 3 * Mscale N →
         let d : ℝ := (K : ℝ) / Mscale N
@@ -2101,6 +2108,7 @@ theorem chain_step_structural_with_counts_and_lowerBound
     (ε : ℝ)
     (hCount :
       ∀ y K W : ℕ,
+        y ≤ N →
         W ≤ K →
         (K : ℝ) ≤ 3 * Mscale N →
         let d : ℝ := (K : ℝ) / Mscale N
@@ -2649,6 +2657,7 @@ theorem chain_step_selected_block_bound
     (ε : ℝ) (_hε : 0 < ε)
     (hCount :
       ∀ y K W : ℕ,
+        y ≤ N →
         W ≤ K →
         (K : ℝ) ≤ 3 * Mscale N →
         let d : ℝ := (K : ℝ) / Mscale N
@@ -2750,6 +2759,7 @@ theorem chain_step
     (ε : ℝ) (_hε : 0 < ε)
     (hCount :
       ∀ y K W : ℕ,
+        y ≤ N →
         W ≤ K →
         (K : ℝ) ≤ 3 * Mscale N →
         let d : ℝ := (K : ℝ) / Mscale N
@@ -2793,6 +2803,7 @@ theorem chain_inequality
     (N : ℕ) (D : PrunedData N) (ε : ℝ) (_hε : 0 < ε)
     (hCount :
       ∀ y K W : ℕ,
+        y ≤ N →
         W ≤ K →
         (K : ℝ) ≤ 3 * Mscale N →
         let d : ℝ := (K : ℝ) / Mscale N
