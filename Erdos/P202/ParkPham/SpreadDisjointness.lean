@@ -25,7 +25,7 @@ so that this file proves `spread_disjointness_theorem` cleanly.
 -/
 
 import Mathlib
-import Erdos.P202.SpreadCore
+import Erdos.P202.SpreadDefs
 import Erdos.P202.ParkPham.BooleanFamilies
 import Erdos.P202.ParkPham.ProductMeasure
 import Erdos.P202.ParkPham.Smallness

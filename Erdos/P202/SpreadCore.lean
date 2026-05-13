@@ -16,6 +16,8 @@ the descending chain needs.
 
 import Mathlib
 import Erdos.P202.P202Basic
+import Erdos.P202.SpreadDefs
+import Erdos.P202.ParkPham.SpreadDisjointness
 
 namespace Erdos202
 
@@ -24,34 +26,20 @@ open scoped BigOperators
 
 universe u
 
-/-- A `k`-uniform family: every member has cardinality exactly `k`. -/
-def UniformFamily {α : Type*} [DecidableEq α]
-    (A : Finset (Finset α)) (k : ℕ) : Prop :=
-  ∀ S ∈ A, S.card = k
+/-! ## Spread-disjointness (discharged via Park–Pham layer)
 
-/-- A `κ`-spread family: for every nonempty `T`, the count of members
-containing `T` is at most `|A| / κ^{|T|}`. -/
-def SpreadFamily {α : Type*} [DecidableEq α]
-    (A : Finset (Finset α)) (κ : ℝ) : Prop :=
-  ∀ T : Finset α, T.Nonempty →
-    ((A.filter fun S => T ⊆ S).card : ℝ) ≤
-      (A.card : ℝ) / κ ^ T.card
+Definitions `UniformFamily`, `SpreadFamily`, `PairwiseDisjointMembers`
+live in `Erdos.P202.SpreadDefs`. The finite spread-disjointness
+consequence of Park–Pham is now proved as
+`Erdos202.ParkPham.spread_disjointness_theorem`; the historical name
+`spread_disjointness_input` is preserved here as a derived theorem so
+downstream consumers (chain, dense-core, optimization) need no edits. -/
 
-/-- Members of `B` are pairwise disjoint. -/
-def PairwiseDisjointMembers {α : Type*} [DecidableEq α]
-    (B : Finset (Finset α)) : Prop :=
-  ∀ S ∈ B, ∀ T ∈ B, S ≠ T → Disjoint S T
-
-/-! ## Spread-disjointness input (theorem interface) -/
-
-/-- **Spread-disjointness input** — the finite consequence of Park–Pham
-that the descending chain needs. There exists an absolute constant
-`Csp > 0` such that any sufficiently spread `k`-uniform family contains
-`r` pairwise disjoint members.
-
-To be discharged by formalizing Park–Pham (Kahn–Kalai expectation-threshold
-conjecture, arXiv:2203.17207). Until then this is a project-level axiom. -/
-axiom spread_disjointness_input :
+/-- **Spread-disjointness input** — preserved name, now a derived theorem
+discharging the Park–Pham layer (`spread_disjointness_theorem`).
+Trust boundary moves to `CKK_const` + `park_pham_threshold` +
+`partition_density_to_disjoint_members`. -/
+theorem spread_disjointness_input :
   ∃ Csp : ℝ, 0 < Csp ∧
     ∀ {α : Type*} [DecidableEq α]
       (A : Finset (Finset α)) (r k : ℕ) (κ : ℝ),
@@ -62,7 +50,8 @@ axiom spread_disjointness_input :
       SpreadFamily A κ →
       Csp * (r : ℝ) * Real.log (Real.exp 1 * (k : ℝ)) ≤ κ →
       ∃ B : Finset (Finset α),
-        B ⊆ A ∧ B.card = r ∧ PairwiseDisjointMembers B
+        B ⊆ A ∧ B.card = r ∧ PairwiseDisjointMembers B :=
+  Erdos202.ParkPham.spread_disjointness_theorem
 
 /-! ## Dense-core corollary -/
 

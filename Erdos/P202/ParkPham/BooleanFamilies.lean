@@ -11,7 +11,7 @@ avoid any general measure theory; subsets of `X` are represented as
 -/
 
 import Mathlib
-import Erdos.P202.SpreadCore
+import Erdos.P202.SpreadDefs
 
 namespace Erdos202
 namespace ParkPham

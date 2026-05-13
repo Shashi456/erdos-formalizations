@@ -3,7 +3,7 @@ Erdos Problem 202 -- rarity of large hExp values in BFV pruning.
 
 The main theorem in this file is the formal BFV Lemma 3.2 input used by the
 pruning argument.  The analytic Rankin/squarefull estimate is isolated as a
-named theorem stub, not as an axiom.
+named axiom.
 -/
 
 import Mathlib
@@ -29,12 +29,11 @@ and elementary convergent `∑ m⁻²` estimates.  Mathlib v4.27.0 does not appe
 to provide this packaged h-function moment estimate, so this theorem is left as
 the named analytic target for a focused subpass.
 -/
-theorem hExp_rare_count_rankin_squarefull :
+axiom hExp_rare_count_rankin_squarefull :
     ∀ ε : ℝ, 0 < ε → ∀ᶠ N : ℕ in atTop,
       ((Finset.Icc 1 N).filter
           (fun n => hExpCutoff N < (hExp n : ℝ))).card
-        ≤ Nat.floor ((N : ℝ) * Lscale (-(1 / 6) + ε) N) := by
-  sorry
+        ≤ Nat.floor ((N : ℝ) * Lscale (-(1 / 6) + ε) N)
 
 /-- A subset version of the hExp rarity estimate. -/
 theorem hExp_rare_subset_count

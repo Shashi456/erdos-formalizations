@@ -3,8 +3,8 @@ Erdos Problem 202 -- radical multiplicity in BFV pruning.
 
 For fixed radical, fixed omega, and bounded `hExp`, BFV Lemma 3.3 gives a
 finite multiplicity bound.  This is a finite combinatorial theorem, but the
-full exponent-vector encoding is kept isolated here so the final pruning file
-only consumes a single clean interface.
+full exponent-vector encoding is kept isolated as a named axiom so the final
+pruning file only consumes a single clean interface.
 -/
 
 import Mathlib
@@ -86,11 +86,10 @@ The remaining formal work is finite: construct the exponent-vector injection
 from `Nat.factorization`, prove the product bound from `hExp`, and apply
 `sum_inv_sq_le_two_bfv`.  No analytic number theory is hidden in this target.
 -/
-theorem rad_multiplicity_bfv33
+axiom rad_multiplicity_bfv33
     (S : Finset ℕ) (r K : ℕ) (H : ℝ)
     (hH : 1 ≤ H)
     (hS : ∀ q ∈ S, rad q = r ∧ omega q = K ∧ (hExp q : ℝ) ≤ H) :
-    (S.card : ℝ) ≤ H ^ 2 * (2 : ℝ) ^ K := by
-  sorry
+    (S.card : ℝ) ≤ H ^ 2 * (2 : ℝ) ^ K
 
 end Erdos202

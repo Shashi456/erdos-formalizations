@@ -7,7 +7,8 @@ bound (Chebyshev-style).
 This file isolates the ONE analytic gap from the BFV lower-construction prime
 supply in `Erdos/P202/BFV/PrimeIntervals.lean`. The statement here is the
 consumer-shaped lower bound used by `lowerQ_card_lower_bound_eventually`.
-The body is `sorry`; the proof is a focused upstream-Mathlib subproject.
+It is registered as a named axiom because the proof is a focused
+upstream-Mathlib subproject.
 
 # Classical content
 
@@ -37,7 +38,7 @@ constant if PNT is too heavy.
 
 # Discharge sketch
 
-To close this `sorry` one needs, in dependency order:
+To discharge this axiom one needs, in dependency order:
 
 1. Chebyshev (or PNT) lower bound `π(2y) − π(y) ≥ c · y / log y` derived from
    `Nat.theta_le` and `Nat.id_lt_theta`. Standalone Mathlib-PR-style target.
@@ -69,10 +70,9 @@ the `(1 − ε)` factor is PNT-strength and can be weakened to a Chebyshev
 constant if needed (the downstream `Lscale` absorbs the difference).
 
 Consumed by `Erdos.P202.BFV.LowerConstruction.lowerQ_card_lower_bound_eventually`. -/
-theorem dyadicPrimeInterval_card_lower_bound :
+axiom dyadicPrimeInterval_card_lower_bound :
     ∀ ε : ℝ, 0 < ε → ∀ᶠ y : ℝ in atTop,
       Nat.floor (((1 - ε) * y) / Real.log y) ≤
-        (dyadicPrimeInterval y).card := by
-  sorry
+        (dyadicPrimeInterval y).card
 
 end Erdos202

@@ -21,6 +21,7 @@ import Erdos.P202.P202Arithmetic
 import Erdos.P202.SpreadCore
 import Erdos.P202.BFVInputs
 import Erdos.P202.P202Chain
+import Erdos.P202.BFV.LowerBoundInput
 import Erdos.P202.P202Optimization
 
 namespace Erdos202
@@ -40,7 +41,7 @@ theorem erdos202_upper_bound_from_inputs :
 `f(N) = N · exp(-(1 + o(1)) · sqrt(log N · log log N))`. -/
 theorem erdos202_main : Erdos202Statement := by
   intro ε hε
-  filter_upwards [bfv_lower_bound_input ε hε, f_upper_bound ε hε] with N hLow hUp
+  filter_upwards [bfv_lower_bound_theorem ε hε, f_upper_bound ε hε] with N hLow hUp
   exact ⟨hLow, hUp⟩
 
 /-! ## Axiom audit

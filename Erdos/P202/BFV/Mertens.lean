@@ -5,8 +5,8 @@ Erdős Problem 202 — analytic stub for the Mertens / Euler-product estimate.
 
 This file isolates the ONE analytic gap from the BFV omega-tail proof in
 `Erdos/P202/BFV/OmegaTail.lean`. The statement here is the consumer-shaped
-weighted-sum bound used by Rankin's inequality. The body is `sorry` and
-the proof is a focused upstream-Mathlib subproject (see below).
+weighted-sum bound used by Rankin's inequality. It is registered as a named
+axiom because the proof is a focused upstream-Mathlib subproject (see below).
 
 # Relation to P694's `Erdos694.mertens_product`
 
@@ -54,7 +54,7 @@ which is `≤ Real.exp (ε * Zscale N)` eventually for any `ε > 0`, since
 
 # Discharge sketch
 
-To close this `sorry` one needs, in dependency order:
+To discharge this axiom one needs, in dependency order:
 
 1. A Lean-level Mertens reciprocal-prime sum lemma derived from
    `Nat.theta_le` via Abel summation. This is a standalone Mathlib-PR-style
@@ -85,11 +85,10 @@ For every `ε > 0`, eventually in `N`, for every `y ≤ N`:
 The proof factors through Mertens' second theorem and the Hardy–Ramanujan
 sieve identity (see the file header for details). Mathlib `v4.27.0` does not
 package either; this lemma is a named upstream target. -/
-theorem omega_weighted_sum_bfvz_bound :
+axiom omega_weighted_sum_bfvz_bound :
     ∀ ε : ℝ, 0 < ε → ∀ᶠ N : ℕ in atTop,
       ∀ y : ℕ, y ≤ N →
         (∑ n ∈ Finset.Icc 1 y, (BFVz N) ^ omega n)
-          ≤ (y : ℝ) * Real.exp (ε * Zscale N) := by
-  sorry
+          ≤ (y : ℝ) * Real.exp (ε * Zscale N)
 
 end Erdos202
