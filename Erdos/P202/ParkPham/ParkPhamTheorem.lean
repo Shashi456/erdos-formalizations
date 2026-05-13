@@ -154,13 +154,74 @@ lemma Csp_pos : 0 < Csp := by
   refine lt_of_lt_of_le ?_ (le_max_left _ _)
   norm_num
 
-/-- **Partition-density lower bound.** If `A` is a `κ`-spread `k`-uniform
-nonempty family with `κ ≥ Csp · r · log(ek)`, `r ≥ 2`, `k ≥ 1`, and all
-members of `A` are subsets of `X`, then the Bernoulli measure of
-`upClosureIn X A` at density `1/(2r)` is at least `1/2`.
+lemma Csp_ge_ten : (10 : ℝ) ≤ Csp := le_max_left _ _
 
-Proved against `park_pham_threshold`; the algebraic bookkeeping that
-converts the κ-bound into a density bound is left as a named target. -/
+lemma Csp_ge_two_CKK :
+    2 * Classical.choose park_pham_threshold.{0} ≤ Csp := by
+  unfold Csp
+  refine le_trans ?_ (le_max_right _ _)
+  have hCKK_pos : 0 < Classical.choose park_pham_threshold.{0} :=
+    (Classical.choose_spec park_pham_threshold).1
+  linarith
+
+/-- Helper: universe-monomorphic density bound. Takes `CKK` as an opaque
+real parameter so elaboration doesn't drag `Classical.choose` through. -/
+private lemma density_bound_from_kappa_aux
+    (CKK : ℝ) (hCKK_pos : 0 < CKK) (hCsp_ge_2CKK : 2 * CKK ≤ Csp)
+    {ell_real κ : ℝ} {r k : ℕ}
+    (hr : 2 ≤ r) (hk : 1 ≤ k)
+    (hell_real_pos : 0 < ell_real)
+    (hell_ge_one : 1 ≤ ell_real)
+    (hell_le_ek : ell_real ≤ Real.exp 1 * (k : ℝ))
+    (hκ_pos : 0 < κ)
+    (hκ : Csp * (r : ℝ) * Real.log (Real.exp 1 * (k : ℝ)) ≤ κ) :
+    CKK * κ⁻¹ * Real.log ell_real ≤ (1 : ℝ) / (2 * (r : ℝ)) := by
+  have hr_real_ge_two : (2 : ℝ) ≤ (r : ℝ) := by exact_mod_cast hr
+  have hr_real_pos : (0 : ℝ) < (r : ℝ) := by linarith
+  have hk_real_ge_one : (1 : ℝ) ≤ (k : ℝ) := by exact_mod_cast hk
+  have hek_pos : 0 < Real.exp 1 * (k : ℝ) := by
+    have : (0 : ℝ) < (k : ℝ) := lt_of_lt_of_le zero_lt_one hk_real_ge_one
+    positivity
+  have hlog_ek_pos : 0 < Real.log (Real.exp 1 * (k : ℝ)) := by
+    have he : (1 : ℝ) < Real.exp 1 := by
+      have := Real.exp_one_gt_d9; linarith
+    have hek_ge_e : Real.exp 1 ≤ Real.exp 1 * (k : ℝ) := by
+      nlinarith [Real.exp_pos (1 : ℝ)]
+    refine Real.log_pos ?_
+    linarith
+  have hlog_ell_le : Real.log ell_real ≤ Real.log (Real.exp 1 * (k : ℝ)) :=
+    Real.log_le_log hell_real_pos hell_le_ek
+  have hlog_ell_nonneg : 0 ≤ Real.log ell_real := Real.log_nonneg hell_ge_one
+  have h2CKKr_nn : 0 ≤ 2 * CKK * (r : ℝ) := by positivity
+  have hκ_lower : 2 * CKK * (r : ℝ) * Real.log ell_real ≤ κ := by
+    have s1 : 2 * CKK * (r : ℝ) * Real.log ell_real ≤
+        2 * CKK * (r : ℝ) * Real.log (Real.exp 1 * (k : ℝ)) :=
+      mul_le_mul_of_nonneg_left hlog_ell_le h2CKKr_nn
+    have s2 : 2 * CKK * (r : ℝ) * Real.log (Real.exp 1 * (k : ℝ)) ≤
+        Csp * (r : ℝ) * Real.log (Real.exp 1 * (k : ℝ)) := by
+      have hrlog_nn : 0 ≤ (r : ℝ) * Real.log (Real.exp 1 * (k : ℝ)) := by
+        positivity
+      nlinarith
+    linarith
+  have h2r_pos : (0 : ℝ) < 2 * (r : ℝ) := by linarith
+  have hLHS_eq : CKK * κ⁻¹ * Real.log ell_real =
+      CKK * Real.log ell_real / κ := by ring
+  rw [hLHS_eq, div_le_div_iff₀ hκ_pos h2r_pos]
+  have heq : CKK * Real.log ell_real * (2 * (r : ℝ)) =
+      2 * CKK * (r : ℝ) * Real.log ell_real := by ring
+  rw [heq, one_mul]
+  exact hκ_lower
+
+/-- **Partition-density lower bound.** Body is `sorry` — the full proof
+chains `not_pSmall_of_spread`, `qSmallUpper_of_not_pSmall`,
+`density_bound_from_kappa_aux` (algebraic core, proved above), and the
+`park_pham_threshold` stub. Composing them in a single tactic block
+triggered a `whnf` timeout >2M heartbeats during elaboration of the
+universe-polymorphic `Classical.choose park_pham_threshold` against the
+`muP X (upClosureIn X A) ...` goal. A focused subpass that restructures
+the threshold's existential (e.g. takes CKK as an explicit input) is the
+cleanest closure path; all the analytical content is already in
+`density_bound_from_kappa_aux`. -/
 theorem mu_at_partition_density_ge_half
     {X : Finset α} {A : Finset (Finset α)} {r k : ℕ} {κ : ℝ}
     (hA : A.Nonempty) (hr : 2 ≤ r) (hk : 1 ≤ k)
