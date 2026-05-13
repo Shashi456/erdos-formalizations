@@ -27,6 +27,33 @@ noncomputable def lowerR (N : ℕ) : ℕ :=
 abbrev lowerIndex (N : ℕ) : Type :=
   Fin (lowerR N + 1)
 
+/-- The root block index in the BFV lower construction. -/
+def lowerZeroIndex (N : ℕ) : lowerIndex N :=
+  ⟨0, Nat.succ_pos _⟩
+
+/-- The non-root blocks.  The lower family varies only over these blocks; the
+root block contributes a fixed shared factor used for CRT-disjointness. -/
+abbrev lowerTailIndex (N : ℕ) : Type :=
+  {i : lowerIndex N // i ≠ lowerZeroIndex N}
+
+/-- The `k`th varying block, viewed as block number `k+1` in `{0, ..., r}`. -/
+def lowerTailBlock (N : ℕ) (k : Fin (lowerR N)) : lowerTailIndex N :=
+  ⟨k.succ, by
+    intro h
+    have hval := congrArg Fin.val h
+    simp [lowerZeroIndex, Fin.val_succ] at hval⟩
+
+lemma lowerTailBlock_surjective (N : ℕ) :
+    Function.Surjective (lowerTailBlock N) := by
+  intro i
+  have hi0 : i.1 ≠ 0 := by
+    intro h
+    exact i.2 (by simpa [lowerZeroIndex] using h)
+  refine ⟨i.1.pred hi0, ?_⟩
+  apply Subtype.ext
+  exact Fin.succ_pred i.1 hi0
+
+
 /-- Logarithmic gap between consecutive lower-construction prime blocks.
 
 The extra `1 / log log N` is only a separation margin: eventually
@@ -186,57 +213,244 @@ noncomputable def lowerYNat (N : ℕ) (i : lowerIndex N) : ℕ :=
 noncomputable def lowerPrimeInterval (N : ℕ) (i : lowerIndex N) : Finset ℕ :=
   dyadicPrimeInterval (lowerY N i)
 
+/-- Deterministic shared root factor at the block-0 scale.
+
+The original full Cartesian-product family is not CRT-disjoint: two choices
+that differ in every coordinate have coprime moduli.  The lower construction
+therefore fixes a common root factor and varies only over the remaining blocks.
+Using `⌊Y_0⌋ + 1` rather than a chosen prime keeps the family total and avoids
+adding an extra nonemptiness dependency; primality of the common factor is not
+needed for the CRT-disjointness mechanism. -/
+noncomputable def lowerP0 (N : ℕ) : ℕ :=
+  Nat.floor (lowerY N (lowerZeroIndex N)) + 1
+
+lemma lowerP0_pos (N : ℕ) : 0 < lowerP0 N := by
+  simp [lowerP0]
+
 /-- A choice of one prime from every BFV lower block. -/
 abbrev LowerPrimeChoice (N : ℕ) : Type :=
-  (i : lowerIndex N) → {p : ℕ // p ∈ lowerPrimeInterval N i}
+  (i : lowerTailIndex N) → {p : ℕ // p ∈ lowerPrimeInterval N i.1}
+
+lemma lowerTailBlock_ext {N : ℕ} {P P' : LowerPrimeChoice N}
+    (h : ∀ k : Fin (lowerR N), P (lowerTailBlock N k) = P' (lowerTailBlock N k)) :
+    P = P' := by
+  funext i
+  rcases lowerTailBlock_surjective N i with ⟨k, rfl⟩
+  exact h k
 
 /-- All prime-choice tuples. -/
 noncomputable def lowerChoices (N : ℕ) : Finset (LowerPrimeChoice N) :=
-  Fintype.piFinset fun i : lowerIndex N => (lowerPrimeInterval N i).attach
+  Fintype.piFinset fun i : lowerTailIndex N => (lowerPrimeInterval N i.1).attach
+
+lemma lowerChoices_card (N : ℕ) :
+    (lowerChoices N).card =
+      ∏ i : lowerTailIndex N, (lowerPrimeInterval N i.1).card := by
+  simp [lowerChoices, Fintype.card_piFinset]
 
 /-- The modulus attached to a prime-choice tuple. -/
 noncomputable def lowerModulus (N : ℕ) (P : LowerPrimeChoice N) : ℕ :=
-  ∏ i : lowerIndex N, (P i).1
+  lowerP0 N * ∏ i : lowerTailIndex N, (P i).1
 
 lemma lowerModulus_pos (N : ℕ) (P : LowerPrimeChoice N) :
     0 < lowerModulus N P := by
   unfold lowerModulus
-  exact Finset.prod_pos (fun i _hi => by
+  exact mul_pos (lowerP0_pos N) (Finset.prod_pos (fun i _hi => by
     have hp : Nat.Prime (P i).1 := (mem_dyadicPrimeInterval.1 (P i).2).2.2
-    exact hp.pos)
+    exact hp.pos))
 
-lemma lowerModulus_le_N_of_pos {N : ℕ} (hNpos : 0 < (N : ℝ))
-    (P : LowerPrimeChoice N) :
+lemma lowerRootFactor_le_two_mul_lowerY {N : ℕ}
+    (hY0 : 1 ≤ lowerY N (lowerZeroIndex N)) :
+    (lowerP0 N : ℝ) ≤ 2 * lowerY N (lowerZeroIndex N) := by
+  have hY0_nonneg : 0 ≤ lowerY N (lowerZeroIndex N) := (Real.exp_pos _).le
+  have hfloor :
+      ((Nat.floor (lowerY N (lowerZeroIndex N)) : ℕ) : ℝ) ≤
+        lowerY N (lowerZeroIndex N) :=
+    Nat.floor_le hY0_nonneg
+  rw [lowerP0]
+  norm_num
+  linarith
+
+lemma lowerModulus_le_N_of_root_scale {N : ℕ} (hNpos : 0 < (N : ℝ))
+    (hY0 : 1 ≤ lowerY N (lowerZeroIndex N)) (P : LowerPrimeChoice N) :
     lowerModulus N P ≤ N := by
-  have hreal : (lowerModulus N P : ℝ) ≤ (N : ℝ) := by
+  classical
+  have hroot := lowerRootFactor_le_two_mul_lowerY (N := N) hY0
+  have htail :
+      ((∏ i : lowerTailIndex N, (P i).1 : ℕ) : ℝ) ≤
+        ∏ i : lowerTailIndex N, (2 : ℝ) * lowerY N i.1 := by
+    rw [Nat.cast_prod]
+    exact Finset.prod_le_prod
+      (fun i _hi => by positivity)
+      (fun i _hi => by
+        have hmem : (P i).1 ∈ lowerPrimeInterval N i.1 := (P i).2
+        have hle_nat : (P i).1 ≤ Nat.floor (2 * lowerY N i.1) :=
+          (mem_dyadicPrimeInterval.1 hmem).2.1
+        have hnonneg : 0 ≤ 2 * lowerY N i.1 := by
+          exact mul_nonneg (by norm_num) (Real.exp_pos _).le
+        exact le_trans (by exact_mod_cast hle_nat)
+          (Nat.floor_le hnonneg))
+  have hprod_split :
+      (2 : ℝ) * lowerY N (lowerZeroIndex N) *
+          (∏ i : lowerTailIndex N, (2 : ℝ) * lowerY N i.1)
+        =
+      ∏ i : lowerIndex N, (2 : ℝ) * lowerY N i := by
+    let f : lowerIndex N → ℝ := fun i => (2 : ℝ) * lowerY N i
+    have hsplit := Fintype.prod_eq_mul_prod_compl (lowerZeroIndex N) f
+    have htail_prod :
+        (∏ i ∈ ({lowerZeroIndex N} : Finset (lowerIndex N))ᶜ, f i) =
+          ∏ i : lowerTailIndex N, f i.1 := by
+      exact Finset.prod_subtype
+        (({lowerZeroIndex N} : Finset (lowerIndex N))ᶜ)
+        (by intro x; simp)
+        f
+    simpa [f, htail_prod] using hsplit.symm
+  have hreal :
+      (lowerModulus N P : ℝ) ≤ (N : ℝ) := by
+    rw [lowerModulus, Nat.cast_mul]
     calc
-      (lowerModulus N P : ℝ)
-          = ∏ i : lowerIndex N, ((P i).1 : ℝ) := by
-              unfold lowerModulus
-              rw [Nat.cast_prod]
-      _ ≤ ∏ i : lowerIndex N, (2 : ℝ) * lowerY N i := by
-              refine Finset.prod_le_prod (s := Finset.univ) ?h0 ?hle
-              · intro i _hi
-                positivity
-              · intro i _hi
-                have hp_le_nat : (P i).1 ≤ Nat.floor (2 * lowerY N i) :=
-                  (mem_dyadicPrimeInterval.1 (P i).2).2.1
-                have hp_le_floor :
-                    ((P i).1 : ℝ) ≤ (Nat.floor (2 * lowerY N i) : ℝ) := by
-                  exact_mod_cast hp_le_nat
-                have hnonneg : 0 ≤ 2 * lowerY N i := by
-                  unfold lowerY
-                  positivity
-                have hfloor_le :
-                    (Nat.floor (2 * lowerY N i) : ℝ) ≤ 2 * lowerY N i :=
-                  Nat.floor_le hnonneg
-                exact hp_le_floor.trans hfloor_le
+      (lowerP0 N : ℝ) * ((∏ i : lowerTailIndex N, (P i).1 : ℕ) : ℝ)
+          ≤ (2 * lowerY N (lowerZeroIndex N)) *
+              (∏ i : lowerTailIndex N, (2 : ℝ) * lowerY N i.1) := by
+            exact mul_le_mul hroot htail (by positivity) (by positivity)
+      _ = ∏ i : lowerIndex N, (2 : ℝ) * lowerY N i := hprod_split
       _ = (N : ℝ) := lowerY_dyadic_product_eq hNpos
   exact_mod_cast hreal
+
+lemma lowerLogScale_zero_nonneg_of_scale {N : ℕ}
+    (hNlarge : Real.exp 1 < (N : ℝ))
+    (hMge : 1 ≤ Mscale N)
+    (hloglog_ge : 4 ≤ Real.log (Real.log (N : ℝ))) :
+    0 ≤ lowerLogScale N (lowerZeroIndex N) := by
+  have hNpos : 0 < (N : ℝ) := (Real.exp_pos 1).trans hNlarge
+  have hlog_pos : 0 < Real.log (N : ℝ) := by
+    have hone_lt_N : (1 : ℝ) < (N : ℝ) := by
+      calc
+        (1 : ℝ) = Real.exp 0 := by simp
+        _ < Real.exp 1 := Real.exp_lt_exp.2 zero_lt_one
+        _ < (N : ℝ) := hNlarge
+    exact Real.log_pos hone_lt_N
+  have hlog_nonneg : 0 ≤ Real.log (N : ℝ) := hlog_pos.le
+  have hloglog_pos : 0 < Real.log (Real.log (N : ℝ)) := by linarith
+  have hMpos : 0 < Mscale N := lt_of_lt_of_le zero_lt_one hMge
+  have hM_nonneg : 0 ≤ Mscale N := hMpos.le
+  have hZ_nonneg : 0 ≤ Zscale N := Zscale_nonneg N
+  have hfloor_le :
+      ((lowerR N : ℕ) : ℝ) ≤ Mscale N := by
+    exact Nat.floor_le (Mscale_nonneg N)
+  have hden_pos : 0 < ((lowerR N : ℕ) : ℝ) + 1 := by positivity
+  have hden_le : ((lowerR N : ℕ) : ℝ) + 1 ≤ 2 * Mscale N := by
+    nlinarith
+  have htwoM_pos : 0 < 2 * Mscale N := by positivity
+  have hdiv_ge :
+      Zscale N / 2 ≤ Real.log (N : ℝ) / (((lowerR N : ℕ) : ℝ) + 1) := by
+    have hmain :
+        Real.log (N : ℝ) / (2 * Mscale N) ≤
+          Real.log (N : ℝ) / (((lowerR N : ℕ) : ℝ) + 1) :=
+      div_le_div_of_nonneg_left hlog_nonneg hden_pos hden_le
+    have hrewrite :
+        Real.log (N : ℝ) / (2 * Mscale N) = Zscale N / 2 := by
+      have hMZ := Mscale_mul_Zscale_eq_log hNlarge
+      field_simp [hMpos.ne']
+      nlinarith
+    simpa [hrewrite] using hmain
+  have hlog_two_le_one : Real.log 2 ≤ 1 := by
+    have h := Real.log_le_sub_one_of_pos (by norm_num : (0 : ℝ) < 2)
+    norm_num at h
+    exact h
+  have hrecip_le_one :
+      1 / Real.log (Real.log (N : ℝ)) ≤ 1 := by
+    exact (div_le_iff₀ hloglog_pos).2 (by linarith)
+  have hgap_le_two : lowerLogGap N ≤ 2 := by
+    have hrecip_inv_le_one :
+        (Real.log (Real.log (N : ℝ)))⁻¹ ≤ 1 := by
+      simpa [one_div] using hrecip_le_one
+    rw [lowerLogGap]
+    linarith
+  have hgap_nonneg : 0 ≤ lowerLogGap N := by
+    have hlog_two_nonneg : 0 ≤ Real.log 2 :=
+      Real.log_nonneg (by norm_num : (1 : ℝ) ≤ 2)
+    have hrecip_nonneg : 0 ≤ (Real.log (Real.log (N : ℝ)))⁻¹ :=
+      inv_nonneg.2 hloglog_pos.le
+    have hrecip_nonneg_div :
+        0 ≤ 1 / Real.log (Real.log (N : ℝ)) := by
+      simpa [one_div] using hrecip_nonneg
+    rw [lowerLogGap]
+    linarith
+  have hgap_term :
+      ((lowerR N : ℕ) : ℝ) / 2 * lowerLogGap N ≤ Mscale N := by
+    have hmul :
+        ((lowerR N : ℕ) : ℝ) * lowerLogGap N ≤ Mscale N * 2 :=
+      mul_le_mul hfloor_le hgap_le_two hgap_nonneg hM_nonneg
+    nlinarith
+  have hbad_le :
+      Real.log 2 + ((lowerR N : ℕ) : ℝ) / 2 * lowerLogGap N ≤ 2 * Mscale N := by
+    nlinarith
+  have hZ_large : 2 * Mscale N ≤ Zscale N / 2 := by
+    have hMll := Mscale_mul_loglog_eq_Zscale hNlarge
+    rw [← hMll]
+    nlinarith
+  have hbad_le_Z : Real.log 2 + ((lowerR N : ℕ) : ℝ) / 2 * lowerLogGap N ≤
+      Zscale N / 2 := le_trans hbad_le hZ_large
+  have hbase_eq :
+      lowerLogBase N =
+        Real.log (N : ℝ) / (((lowerR N : ℕ) : ℝ) + 1) - Real.log 2 := by
+    have hden_ne : ((lowerR N : ℕ) : ℝ) + 1 ≠ 0 := by positivity
+    simp [lowerLogBase]
+    field_simp [hden_ne]
+  have hscale_eq :
+      lowerLogScale N (lowerZeroIndex N) =
+        Real.log (N : ℝ) / (((lowerR N : ℕ) : ℝ) + 1) -
+          (Real.log 2 + ((lowerR N : ℕ) : ℝ) / 2 * lowerLogGap N) := by
+    simp [lowerLogScale, hbase_eq, lowerZeroIndex]
+    ring
+  rw [hscale_eq]
+  nlinarith
+
+lemma eventually_lowerY_zero_ge_one :
+    ∀ᶠ N : ℕ in atTop, 1 ≤ lowerY N (lowerZeroIndex N) := by
+  filter_upwards [Filter.eventually_gt_atTop (Nat.ceil (Real.exp 1)),
+      eventually_Mscale_ge 1 zero_lt_one,
+      tendsto_loglog_nat_atTop.eventually_ge_atTop 4] with N hN hM hloglog
+  rw [lowerY, Real.one_le_exp_iff]
+  exact lowerLogScale_zero_nonneg_of_scale
+    (lt_of_le_of_lt (Nat.le_ceil _) (by exact_mod_cast hN)) hM hloglog
 
 /-- The finite BFV lower family of moduli. -/
 noncomputable def lowerQ (N : ℕ) : Finset ℕ :=
   (lowerChoices N).image (lowerModulus N)
+
+/-- A canonical preimage choice for a modulus in `lowerQ`. -/
+lemma lowerChoiceOfQ_exists (N : ℕ) (q : {q : ℕ // q ∈ lowerQ N}) :
+    ∃ P ∈ lowerChoices N, lowerModulus N P = q.1 := by
+  have hq : q.1 ∈ lowerQ N := q.2
+  change q.1 ∈ (lowerChoices N).image (lowerModulus N) at hq
+  exact Finset.mem_image.1 hq
+
+noncomputable def lowerChoiceOfQ (N : ℕ) (q : {q : ℕ // q ∈ lowerQ N}) :
+    LowerPrimeChoice N :=
+  Classical.choose (lowerChoiceOfQ_exists N q)
+
+lemma lowerChoiceOfQ_mem (N : ℕ) (q : {q : ℕ // q ∈ lowerQ N}) :
+    lowerChoiceOfQ N q ∈ lowerChoices N :=
+  (Classical.choose_spec (lowerChoiceOfQ_exists N q)).1
+
+lemma lowerChoiceOfQ_modulus (N : ℕ) (q : {q : ℕ // q ∈ lowerQ N}) :
+    lowerModulus N (lowerChoiceOfQ N q) = q.1 :=
+  (Classical.choose_spec (lowerChoiceOfQ_exists N q)).2
+
+lemma lowerChoiceOfQ_eq_of_injective {N : ℕ}
+    (hinj : Set.InjOn (lowerModulus N) (↑(lowerChoices N) : Set (LowerPrimeChoice N)))
+    (q : {q : ℕ // q ∈ lowerQ N}) {P : LowerPrimeChoice N}
+    (hP : P ∈ lowerChoices N) (hmod : lowerModulus N P = q.1) :
+    lowerChoiceOfQ N q = P := by
+  apply hinj (lowerChoiceOfQ_mem N q) hP
+  rw [lowerChoiceOfQ_modulus, hmod]
+
+lemma lowerQ_card_eq_lowerChoices_card_of_injective {N : ℕ}
+    (hinj : Set.InjOn (lowerModulus N) (↑(lowerChoices N) : Set (LowerPrimeChoice N))) :
+    (lowerQ N).card = (lowerChoices N).card := by
+  simpa [lowerQ] using Finset.card_image_of_injOn (s := lowerChoices N)
+    (f := lowerModulus N) hinj
 
 /-- The real lower-bound target appearing in the final theorem. -/
 noncomputable def bfvLowerTarget (ε : ℝ) (N : ℕ) : ℝ :=
@@ -275,6 +489,377 @@ theorem int_modEq_crt_finset_exists {ι : Type*} [DecidableEq ι]
     exact (Int.emod_emod_of_dvd (b i) dvd_rfl :
       (b i) % (m i : ℤ) % (m i : ℤ) = b i % (m i : ℤ))
   exact hk_int.trans h_aN_modEq_b
+
+/-! ## Finite encodings for the CRT tree -/
+
+/-- Encode an element of a finite set into a natural residue below `m`, assuming
+the set has at most `m` elements. -/
+noncomputable def finsetCode (s : Finset ℕ) (m : ℕ) (h : s.card ≤ m)
+    (x : {n : ℕ // n ∈ s}) : ℕ :=
+  (Fin.castLE h ((Finset.equivFin s) x)).1
+
+lemma finsetCode_lt (s : Finset ℕ) (m : ℕ) (h : s.card ≤ m)
+    (x : {n : ℕ // n ∈ s}) :
+    finsetCode s m h x < m :=
+  (Fin.castLE h ((Finset.equivFin s) x)).2
+
+lemma finsetCode_injective (s : Finset ℕ) (m : ℕ) (h : s.card ≤ m) :
+    Function.Injective (finsetCode s m h) := by
+  intro x y hxy
+  have hfin :
+      Fin.castLE h ((Finset.equivFin s) x) =
+        Fin.castLE h ((Finset.equivFin s) y) :=
+    Fin.ext hxy
+  exact (Finset.equivFin s).injective (Fin.castLE_injective h hfin)
+
+lemma nat_eq_of_int_modEq_of_lt {m a b : ℕ}
+    (ha : a < m) (hb : b < m)
+    (h : (a : ℤ) ≡ (b : ℤ) [ZMOD (m : ℤ)]) :
+    a = b := by
+  exact Nat.ModEq.eq_of_lt_of_lt (Int.natCast_modEq_iff.mp h) ha hb
+
+/-! ## CRT tree data -/
+
+/-- Capacity hypotheses needed by the rooted CRT tree: the root modulus can
+encode the first varying prime, and each chosen prime can encode the next
+block.  The final proof supplies these eventually from prime-counting upper
+bounds and the scale separation. -/
+structure LowerEncodingCapacity (N : ℕ) : Prop where
+  root :
+    ∀ hR : 0 < lowerR N,
+      (lowerPrimeInterval N (lowerTailBlock N ⟨0, hR⟩).1).card ≤ lowerP0 N
+  next :
+    ∀ k : Fin (lowerR N), ∀ hnext : k.1 + 1 < lowerR N,
+      ∀ p : ℕ, p ∈ lowerPrimeInterval N (lowerTailBlock N k).1 →
+        (lowerPrimeInterval N (lowerTailBlock N ⟨k.1 + 1, hnext⟩).1).card ≤ p
+  root_coprime :
+    ∀ k : Fin (lowerR N), ∀ p : ℕ,
+      p ∈ lowerPrimeInterval N (lowerTailBlock N k).1 →
+        Nat.Coprime (lowerP0 N) p
+
+/-- The root or one selected tail prime, used as a CRT modulus. -/
+abbrev lowerCRTIndex (N : ℕ) : Type :=
+  Option (Fin (lowerR N))
+
+noncomputable def lowerRootCode (N : ℕ) (hcap : LowerEncodingCapacity N)
+    (P : LowerPrimeChoice N) : ℕ :=
+  if hR : 0 < lowerR N then
+    finsetCode (lowerPrimeInterval N (lowerTailBlock N ⟨0, hR⟩).1)
+      (lowerP0 N) (hcap.root hR) (P (lowerTailBlock N ⟨0, hR⟩))
+  else
+    0
+
+noncomputable def lowerStepCode (N : ℕ) (hcap : LowerEncodingCapacity N)
+    (P : LowerPrimeChoice N) (k : Fin (lowerR N)) : ℕ :=
+  if hnext : k.1 + 1 < lowerR N then
+    finsetCode (lowerPrimeInterval N (lowerTailBlock N ⟨k.1 + 1, hnext⟩).1)
+      (P (lowerTailBlock N k)).1
+      (hcap.next k hnext (P (lowerTailBlock N k)).1 (P (lowerTailBlock N k)).2)
+      (P (lowerTailBlock N ⟨k.1 + 1, hnext⟩))
+  else
+    0
+
+noncomputable def lowerCRTModulus (N : ℕ) (P : LowerPrimeChoice N) :
+    lowerCRTIndex N → ℕ
+  | none => lowerP0 N
+  | some k => (P (lowerTailBlock N k)).1
+
+noncomputable def lowerCRTTarget (N : ℕ) (hcap : LowerEncodingCapacity N)
+    (P : LowerPrimeChoice N) : lowerCRTIndex N → ℤ
+  | none => lowerRootCode N hcap P
+  | some k => lowerStepCode N hcap P k
+
+lemma lowerCRTModulus_ne_zero (N : ℕ) (P : LowerPrimeChoice N)
+    (i : lowerCRTIndex N) :
+    lowerCRTModulus N P i ≠ 0 := by
+  cases i with
+  | none => exact (lowerP0_pos N).ne'
+  | some k =>
+      have hp : Nat.Prime (P (lowerTailBlock N k)).1 :=
+        (mem_dyadicPrimeInterval.1 (P (lowerTailBlock N k)).2).2.2
+      exact hp.ne_zero
+
+lemma lowerCRTModulus_dvd_lowerModulus (N : ℕ) (P : LowerPrimeChoice N)
+    (i : lowerCRTIndex N) :
+    lowerCRTModulus N P i ∣ lowerModulus N P := by
+  cases i with
+  | none =>
+      rw [lowerCRTModulus, lowerModulus]
+      exact dvd_mul_right _ _
+  | some k =>
+      rw [lowerCRTModulus, lowerModulus]
+      exact dvd_mul_of_dvd_right
+        (Finset.dvd_prod_of_mem (fun i : lowerTailIndex N => (P i).1)
+          (Finset.mem_univ (lowerTailBlock N k)))
+        (lowerP0 N)
+
+lemma lowerCRTModuli_pairwise_coprime {N : ℕ}
+    (hcap : LowerEncodingCapacity N)
+    (hdisj : ∀ i j : lowerIndex N, i ≠ j →
+      Disjoint (lowerPrimeInterval N i) (lowerPrimeInterval N j))
+    (P : LowerPrimeChoice N) :
+    Set.Pairwise (↑(Finset.univ : Finset (lowerCRTIndex N)) : Set (lowerCRTIndex N))
+      (fun i j => Nat.Coprime (lowerCRTModulus N P i) (lowerCRTModulus N P j)) := by
+  intro i _hi j _hj hij
+  cases i with
+  | none =>
+      cases j with
+      | none => exact False.elim (hij rfl)
+      | some k =>
+          exact hcap.root_coprime k (P (lowerTailBlock N k)).1
+            (P (lowerTailBlock N k)).2
+  | some k =>
+      cases j with
+      | none =>
+          exact (hcap.root_coprime k (P (lowerTailBlock N k)).1
+            (P (lowerTailBlock N k)).2).symm
+      | some l =>
+          have hkl : k ≠ l := by
+            intro h
+            exact hij (by simp [h])
+          have hblock_ne : (lowerTailBlock N k).1 ≠ (lowerTailBlock N l).1 := by
+            intro hblock
+            apply hkl
+            apply Fin.ext
+            have hval := congrArg Fin.val hblock
+            simp [lowerTailBlock, Fin.val_succ] at hval
+            omega
+          have hp : Nat.Prime (P (lowerTailBlock N k)).1 :=
+            (mem_dyadicPrimeInterval.1 (P (lowerTailBlock N k)).2).2.2
+          have hq : Nat.Prime (P (lowerTailBlock N l)).1 :=
+            (mem_dyadicPrimeInterval.1 (P (lowerTailBlock N l)).2).2.2
+          have hpq_ne : (P (lowerTailBlock N k)).1 ≠ (P (lowerTailBlock N l)).1 := by
+            intro hpq
+            have hmem_l :
+                (P (lowerTailBlock N k)).1 ∈
+                  lowerPrimeInterval N (lowerTailBlock N l).1 := by
+              simp [hpq, (P (lowerTailBlock N l)).2]
+            exact Finset.disjoint_left.1
+              (hdisj (lowerTailBlock N k).1 (lowerTailBlock N l).1 hblock_ne)
+              (P (lowerTailBlock N k)).2 hmem_l
+          exact (Nat.coprime_primes hp hq).2 hpq_ne
+
+noncomputable def lowerResidueForChoice {N : ℕ}
+    (hcap : LowerEncodingCapacity N)
+    (hdisj : ∀ i j : lowerIndex N, i ≠ j →
+      Disjoint (lowerPrimeInterval N i) (lowerPrimeInterval N j))
+    (P : LowerPrimeChoice N) : ℤ :=
+  Classical.choose (int_modEq_crt_finset_exists
+    (s := (Finset.univ : Finset (lowerCRTIndex N)))
+    (m := lowerCRTModulus N P)
+    (b := lowerCRTTarget N hcap P)
+    (by intro i _hi; exact lowerCRTModulus_ne_zero N P i)
+    (lowerCRTModuli_pairwise_coprime hcap hdisj P))
+
+lemma lowerResidueForChoice_spec {N : ℕ}
+    (hcap : LowerEncodingCapacity N)
+    (hdisj : ∀ i j : lowerIndex N, i ≠ j →
+      Disjoint (lowerPrimeInterval N i) (lowerPrimeInterval N j))
+    (P : LowerPrimeChoice N) (i : lowerCRTIndex N) :
+    lowerResidueForChoice hcap hdisj P ≡
+      lowerCRTTarget N hcap P i [ZMOD (lowerCRTModulus N P i : ℤ)] :=
+  Classical.choose_spec (int_modEq_crt_finset_exists
+    (s := (Finset.univ : Finset (lowerCRTIndex N)))
+    (m := lowerCRTModulus N P)
+    (b := lowerCRTTarget N hcap P)
+    (by intro i _hi; exact lowerCRTModulus_ne_zero N P i)
+    (lowerCRTModuli_pairwise_coprime hcap hdisj P)) i (Finset.mem_univ i)
+
+noncomputable def lowerResidueAssignment {N : ℕ}
+    (hcap : LowerEncodingCapacity N)
+    (hdisj : ∀ i j : lowerIndex N, i ≠ j →
+      Disjoint (lowerPrimeInterval N i) (lowerPrimeInterval N j)) :
+    ResidueAssignment (lowerQ N) :=
+  fun q => lowerResidueForChoice hcap hdisj (lowerChoiceOfQ N q)
+
+lemma lowerResidueAssignment_modEq_target {N : ℕ}
+    (hcap : LowerEncodingCapacity N)
+    (hdisj : ∀ i j : lowerIndex N, i ≠ j →
+      Disjoint (lowerPrimeInterval N i) (lowerPrimeInterval N j))
+    (q : {q : ℕ // q ∈ lowerQ N}) (i : lowerCRTIndex N) {n : ℤ}
+    (hn : n ∈ residueClass q.1 (lowerResidueAssignment hcap hdisj q)) :
+    n ≡ lowerCRTTarget N hcap (lowerChoiceOfQ N q) i
+      [ZMOD (lowerCRTModulus N (lowerChoiceOfQ N q) i : ℤ)] := by
+  have hnq :
+      n ≡ lowerResidueForChoice hcap hdisj (lowerChoiceOfQ N q)
+        [ZMOD (q.1 : ℤ)] := by
+    simpa [residueClass, lowerResidueAssignment] using hn
+  have hn_lower :
+      n ≡ lowerResidueForChoice hcap hdisj (lowerChoiceOfQ N q)
+        [ZMOD (lowerModulus N (lowerChoiceOfQ N q) : ℤ)] := by
+    simpa [lowerChoiceOfQ_modulus N q] using hnq
+  have hdivNat :
+      lowerCRTModulus N (lowerChoiceOfQ N q) i ∣
+        lowerModulus N (lowerChoiceOfQ N q) :=
+    lowerCRTModulus_dvd_lowerModulus N (lowerChoiceOfQ N q) i
+  have hdivInt :
+      (lowerCRTModulus N (lowerChoiceOfQ N q) i : ℤ) ∣
+        (lowerModulus N (lowerChoiceOfQ N q) : ℤ) := by
+    exact_mod_cast hdivNat
+  exact (Int.ModEq.of_dvd hdivInt hn_lower).trans
+    (lowerResidueForChoice_spec hcap hdisj (lowerChoiceOfQ N q) i)
+
+lemma lowerRootCode_eq_of_modEq {N : ℕ} (hcap : LowerEncodingCapacity N)
+    (P P' : LowerPrimeChoice N) (hR : 0 < lowerR N)
+    (hmod : (lowerRootCode N hcap P : ℤ) ≡
+      (lowerRootCode N hcap P' : ℤ) [ZMOD (lowerP0 N : ℤ)]) :
+    P (lowerTailBlock N ⟨0, hR⟩) = P' (lowerTailBlock N ⟨0, hR⟩) := by
+  let s := lowerPrimeInterval N (lowerTailBlock N ⟨0, hR⟩).1
+  let m := lowerP0 N
+  let hcard := hcap.root hR
+  have hltP :
+      lowerRootCode N hcap P < lowerP0 N := by
+    simpa [lowerRootCode, hR, s, m, hcard] using
+      finsetCode_lt s m hcard (P (lowerTailBlock N ⟨0, hR⟩))
+  have hltP' :
+      lowerRootCode N hcap P' < lowerP0 N := by
+    simpa [lowerRootCode, hR, s, m, hcard] using
+      finsetCode_lt s m hcard (P' (lowerTailBlock N ⟨0, hR⟩))
+  have hcode_eq : lowerRootCode N hcap P = lowerRootCode N hcap P' :=
+    nat_eq_of_int_modEq_of_lt hltP hltP' hmod
+  have hcode_eq' :
+      finsetCode s m hcard (P (lowerTailBlock N ⟨0, hR⟩)) =
+        finsetCode s m hcard (P' (lowerTailBlock N ⟨0, hR⟩)) := by
+    simpa [lowerRootCode, hR, s, m, hcard] using hcode_eq
+  exact finsetCode_injective s m hcard hcode_eq'
+
+lemma lowerStepCode_eq_of_modEq {N : ℕ} (hcap : LowerEncodingCapacity N)
+    (P P' : LowerPrimeChoice N) (k : Fin (lowerR N))
+    (hnext : k.1 + 1 < lowerR N)
+    (hprev : P (lowerTailBlock N k) = P' (lowerTailBlock N k))
+    (hmod : (lowerStepCode N hcap P k : ℤ) ≡
+      (lowerStepCode N hcap P' k : ℤ)
+        [ZMOD ((P (lowerTailBlock N k)).1 : ℤ)]) :
+    P (lowerTailBlock N ⟨k.1 + 1, hnext⟩) =
+      P' (lowerTailBlock N ⟨k.1 + 1, hnext⟩) := by
+  let s := lowerPrimeInterval N (lowerTailBlock N ⟨k.1 + 1, hnext⟩).1
+  let m := (P (lowerTailBlock N k)).1
+  let hcard := hcap.next k hnext (P (lowerTailBlock N k)).1 (P (lowerTailBlock N k)).2
+  have hltP :
+      lowerStepCode N hcap P k < (P (lowerTailBlock N k)).1 := by
+    simpa [lowerStepCode, hnext, s, m, hcard] using
+      finsetCode_lt s m hcard (P (lowerTailBlock N ⟨k.1 + 1, hnext⟩))
+  have hltP' :
+      lowerStepCode N hcap P' k < (P (lowerTailBlock N k)).1 := by
+    have hcard' :=
+      hcap.next k hnext (P' (lowerTailBlock N k)).1 (P' (lowerTailBlock N k)).2
+    have hlt' :
+        lowerStepCode N hcap P' k < (P' (lowerTailBlock N k)).1 := by
+      simpa [lowerStepCode, hnext] using
+        finsetCode_lt s (P' (lowerTailBlock N k)).1 hcard'
+          (P' (lowerTailBlock N ⟨k.1 + 1, hnext⟩))
+    simpa [hprev] using hlt'
+  have hcode_eq : lowerStepCode N hcap P k = lowerStepCode N hcap P' k :=
+    nat_eq_of_int_modEq_of_lt hltP hltP' hmod
+  have hcode_eq' :
+      finsetCode s m hcard (P (lowerTailBlock N ⟨k.1 + 1, hnext⟩)) =
+        finsetCode s m hcard (P' (lowerTailBlock N ⟨k.1 + 1, hnext⟩)) := by
+    simpa [lowerStepCode, hnext, s, m, hcard] using hcode_eq
+  exact finsetCode_injective s m hcard hcode_eq'
+
+lemma lowerResidueAssignment_pairwise_disjoint_of_capacity {N : ℕ}
+    (hcap : LowerEncodingCapacity N)
+    (hdisj : ∀ i j : lowerIndex N, i ≠ j →
+      Disjoint (lowerPrimeInterval N i) (lowerPrimeInterval N j)) :
+    PairwiseDisjointResidues (lowerQ N) (lowerResidueAssignment hcap hdisj) := by
+  intro q r hqr
+  rw [Set.disjoint_left]
+  intro z hzq hzr
+  let P := lowerChoiceOfQ N q
+  let P' := lowerChoiceOfQ N r
+  have hP_eq : P = P' := by
+    by_cases hR : 0 < lowerR N
+    · have hq0 := lowerResidueAssignment_modEq_target hcap hdisj q none hzq
+      have hr0 := lowerResidueAssignment_modEq_target hcap hdisj r none hzr
+      have hroot_mod :
+          (lowerCRTTarget N hcap P none) ≡
+            (lowerCRTTarget N hcap P' none)
+              [ZMOD (lowerP0 N : ℤ)] := by
+        simpa [P, P', lowerCRTModulus] using hq0.symm.trans hr0
+      have hzero :
+          P (lowerTailBlock N ⟨0, hR⟩) =
+            P' (lowerTailBlock N ⟨0, hR⟩) := by
+        exact lowerRootCode_eq_of_modEq hcap P P' hR
+          (by simpa [lowerCRTTarget] using hroot_mod)
+      have hall :
+          ∀ n : ℕ, ∀ hn : n < lowerR N,
+            P (lowerTailBlock N ⟨n, hn⟩) =
+              P' (lowerTailBlock N ⟨n, hn⟩) := by
+        intro n
+        induction n with
+        | zero =>
+            intro hn
+            simpa using hzero
+        | succ n ih =>
+            intro hn
+            have hprev_lt : n < lowerR N := Nat.lt_of_succ_lt hn
+            have hprev := ih hprev_lt
+            let k : Fin (lowerR N) := ⟨n, hprev_lt⟩
+            have hqk := lowerResidueAssignment_modEq_target hcap hdisj q (some k) hzq
+            have hrk := lowerResidueAssignment_modEq_target hcap hdisj r (some k) hzr
+            have hstep_mod :
+                (lowerCRTTarget N hcap P (some k)) ≡
+                  (lowerCRTTarget N hcap P' (some k))
+                    [ZMOD ((P (lowerTailBlock N k)).1 : ℤ)] := by
+              have hrk' :
+                  z ≡ lowerCRTTarget N hcap P' (some k)
+                    [ZMOD ((P (lowerTailBlock N k)).1 : ℤ)] := by
+                have hprev_val :
+                    (lowerChoiceOfQ N r (lowerTailBlock N k)).1 =
+                      (lowerChoiceOfQ N q (lowerTailBlock N k)).1 := by
+                  dsimp [P, P'] at hprev
+                  exact congrArg Subtype.val hprev.symm
+                simpa [P, P', lowerCRTModulus, hprev_val] using hrk
+              simpa [P, P', lowerCRTModulus] using hqk.symm.trans hrk'
+            exact lowerStepCode_eq_of_modEq hcap P P' k hn hprev
+              (by simpa [lowerCRTTarget] using hstep_mod)
+      exact lowerTailBlock_ext (fun k => hall k.1 k.2)
+    · apply lowerTailBlock_ext
+      intro k
+      have hk : k.1 < lowerR N := k.2
+      exact False.elim (hR (lt_of_le_of_lt (Nat.zero_le k.1) hk))
+  have hqval : q.1 = r.1 := by
+    calc
+      q.1 = lowerModulus N P := (lowerChoiceOfQ_modulus N q).symm
+      _ = lowerModulus N P' := by rw [hP_eq]
+      _ = r.1 := lowerChoiceOfQ_modulus N r
+  exact hqr (Subtype.ext hqval)
+
+/-- Remaining scale/prime-counting bookkeeping for the CRT tree capacity.
+
+This is not a new analytic primitive: `Mathlib` already supplies Chebyshev's
+upper bound `Chebyshev.eventually_primeCounting_le`.  The proof still needs the
+local conversion from that global upper bound to dyadic block cardinalities,
+then the BFV scale inequalities showing each next block has at most as many
+primes as the previous selected prime, and that the fixed root is coprime to
+all tail primes by separation. -/
+axiom lowerEncodingCapacity_eventually_analytic :
+    ∀ᶠ N : ℕ in atTop, LowerEncodingCapacity N
+
+/-- BFV lower-construction capacity, discharged against the named
+prime-counting and scale bookkeeping stub
+`lowerEncodingCapacity_eventually_analytic`. -/
+theorem lowerEncodingCapacity_eventually :
+    ∀ᶠ N : ℕ in atTop, LowerEncodingCapacity N :=
+  lowerEncodingCapacity_eventually_analytic
+
+/-- Prime-supply and product-scale lower bound for the rooted lower choices.
+
+This is the remaining C5 arithmetic estimate: use the dyadic prime lower bound
+for every tail block, multiply the block cardinalities via `lowerChoices_card`,
+and absorb the lost root block and logarithmic denominators into
+`Lscale (-(1+ε), N)`. -/
+axiom lowerChoices_card_lower_bound_eventually_analytic :
+    ∀ ε : ℝ, 0 < ε → ∀ᶠ N : ℕ in atTop,
+      Nat.ceil (bfvLowerTarget ε N) ≤ (lowerChoices N).card
+
+/-- Lower-choice cardinality bound, discharged against the named dyadic
+prime-supply and product-scale bookkeeping stub
+`lowerChoices_card_lower_bound_eventually_analytic`. -/
+theorem lowerChoices_card_lower_bound_eventually :
+    ∀ ε : ℝ, 0 < ε → ∀ᶠ N : ℕ in atTop,
+      Nat.ceil (bfvLowerTarget ε N) ≤ (lowerChoices N).card :=
+  lowerChoices_card_lower_bound_eventually_analytic
 
 /-! ## Lower-family theorem targets -/
 
@@ -320,32 +905,35 @@ theorem lowerModulus_injective_eventually :
       Set.InjOn (lowerModulus N) (↑(lowerChoices N) : Set (LowerPrimeChoice N)) := by
   filter_upwards [lowerPrimeIntervals_pairwise_disjoint] with N hdisj
   intro P _hP P' _hP' heq
+  have htail_eq :
+      (∏ i : lowerTailIndex N, (P i).1) =
+        ∏ i : lowerTailIndex N, (P' i).1 := by
+    have hp0 : lowerP0 N ≠ 0 := (lowerP0_pos N).ne'
+    exact mul_left_cancel₀ hp0 (by simpa [lowerModulus] using heq)
   funext i
   apply Subtype.ext
   let p : ℕ := (P i).1
   have hpPrime : Nat.Prime p := (mem_dyadicPrimeInterval.1 (P i).2).2.2
-  have hp_dvd_left : p ∣ lowerModulus N P := by
-    unfold lowerModulus p
-    exact Finset.dvd_prod_of_mem (fun k : lowerIndex N => (P k).1) (Finset.mem_univ i)
-  have hp_dvd_right : p ∣ lowerModulus N P' := by
-    rwa [heq] at hp_dvd_left
-  have hp_dvd_prod : p ∣ ∏ k : lowerIndex N, (P' k).1 := by
-    simpa [lowerModulus] using hp_dvd_right
+  have hp_dvd_left : p ∣ ∏ k : lowerTailIndex N, (P k).1 := by
+    unfold p
+    exact Finset.dvd_prod_of_mem (fun k : lowerTailIndex N => (P k).1) (Finset.mem_univ i)
+  have hp_dvd_prod : p ∣ ∏ k : lowerTailIndex N, (P' k).1 := by
+    rwa [htail_eq] at hp_dvd_left
   rcases (hpPrime.prime.dvd_finset_prod_iff (S := Finset.univ)
-      (fun k : lowerIndex N => (P' k).1)).1 hp_dvd_prod with
+      (fun k : lowerTailIndex N => (P' k).1)).1 hp_dvd_prod with
     ⟨j, _hj, hp_dvd_pj⟩
   have hpjPrime : Nat.Prime (P' j).1 := (mem_dyadicPrimeInterval.1 (P' j).2).2.2
   have hp_eq_pj : p = (P' j).1 :=
     (Nat.prime_dvd_prime_iff_eq hpPrime hpjPrime).1 hp_dvd_pj
   have hji : j = i := by
     by_contra hne
-    have hne' : i ≠ j := by
+    have hne' : i.1 ≠ j.1 := by
       intro h
-      exact hne h.symm
+      exact hne (Subtype.ext h.symm)
     have hp_mem_i : p ∈ lowerPrimeInterval N i := (P i).2
     have hp_mem_j : p ∈ lowerPrimeInterval N j := by
       simp [p, hp_eq_pj, (P' j).2]
-    exact Finset.disjoint_left.1 (hdisj i j hne') hp_mem_i hp_mem_j
+    exact Finset.disjoint_left.1 (hdisj i.1 j.1 hne') hp_mem_i hp_mem_j
   subst hji
   simpa [p] using hp_eq_pj
 
@@ -353,25 +941,32 @@ theorem lowerModulus_injective_eventually :
 `[1, N]`. -/
 theorem lowerQ_moduli_in_range_eventually :
     ∀ᶠ N : ℕ in atTop, ∀ q ∈ lowerQ N, 1 ≤ q ∧ q ≤ N := by
-  filter_upwards [Filter.eventually_gt_atTop 0] with N hN q hq
+  filter_upwards [Filter.eventually_gt_atTop 0, eventually_lowerY_zero_ge_one] with N hN hY0 q hq
   have hNpos : 0 < (N : ℝ) := by exact_mod_cast hN
   rw [lowerQ] at hq
   rcases Finset.mem_image.1 hq with ⟨P, _hP, rfl⟩
-  exact ⟨Nat.succ_le_of_lt (lowerModulus_pos N P), lowerModulus_le_N_of_pos hNpos P⟩
+  exact ⟨Nat.succ_le_of_lt (lowerModulus_pos N P),
+    lowerModulus_le_N_of_root_scale hNpos hY0 P⟩
 
 /-- CRT residue choices for the lower family are pairwise disjoint. -/
 theorem lowerQ_pairwise_disjoint_residues_eventually :
     ∀ᶠ N : ℕ in atTop,
       ∃ a : ResidueAssignment (lowerQ N),
         PairwiseDisjointResidues (lowerQ N) a := by
-  sorry
+  filter_upwards [lowerEncodingCapacity_eventually,
+      lowerPrimeIntervals_pairwise_disjoint] with N hcap hdisj
+  exact ⟨lowerResidueAssignment hcap hdisj,
+    lowerResidueAssignment_pairwise_disjoint_of_capacity hcap hdisj⟩
 
 /-- Cardinality lower bound for the BFV family, combining dyadic prime supply,
 injectivity, and the explicit scale algebra. -/
 theorem lowerQ_card_lower_bound_eventually :
     ∀ ε : ℝ, 0 < ε → ∀ᶠ N : ℕ in atTop,
       Nat.ceil (bfvLowerTarget ε N) ≤ (lowerQ N).card := by
-  sorry
+  intro ε hε
+  filter_upwards [lowerModulus_injective_eventually,
+      lowerChoices_card_lower_bound_eventually ε hε] with N hinj hcard
+  rwa [lowerQ_card_eq_lowerChoices_card_of_injective hinj]
 
 /-! ## From the explicit family to `PossibleCard` -/
 

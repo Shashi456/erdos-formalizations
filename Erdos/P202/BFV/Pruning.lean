@@ -47,8 +47,8 @@ theorem bfv_pruning_bookkeeping_from_bfv_inputs :
         PairwiseDisjointResidues Q a →
         (Q.card : ℝ) ≥ (f N : ℝ) * Lscale (-ε) N →
         ∃ D : PrunedData N,
-          (D.Q.card : ℝ) ≥ (Q.card : ℝ) * Lscale (-ε) N := by
-  sorry
+          (D.Q.card : ℝ) ≥ (Q.card : ℝ) * Lscale (-ε) N :=
+  bfv_pruning_input
 
 /--
 BFV pruning theorem, matching `bfv_pruning_input`.
