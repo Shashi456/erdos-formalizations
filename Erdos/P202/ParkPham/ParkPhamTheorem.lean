@@ -147,7 +147,7 @@ this is the only sorry in `ParkPham/` outside `Threshold.lean`. -/
 
 /-- The Park–Pham constant for our application. -/
 noncomputable def Csp : ℝ :=
-  max 10 (8 * Classical.choose park_pham_threshold.{0})
+  max 10 (8 * CKK_const)
 
 lemma Csp_pos : 0 < Csp := by
   unfold Csp
@@ -156,12 +156,10 @@ lemma Csp_pos : 0 < Csp := by
 
 lemma Csp_ge_ten : (10 : ℝ) ≤ Csp := le_max_left _ _
 
-lemma Csp_ge_two_CKK :
-    2 * Classical.choose park_pham_threshold.{0} ≤ Csp := by
+lemma Csp_ge_two_CKK : 2 * CKK_const ≤ Csp := by
   unfold Csp
   refine le_trans ?_ (le_max_right _ _)
-  have hCKK_pos : 0 < Classical.choose park_pham_threshold.{0} :=
-    (Classical.choose_spec park_pham_threshold).1
+  have hCKK_pos : 0 < CKK_const := CKK_const_pos
   linarith
 
 /-- Helper: universe-monomorphic density bound. Takes `CKK` as an opaque
@@ -212,16 +210,10 @@ private lemma density_bound_from_kappa_aux
   rw [heq, one_mul]
   exact hκ_lower
 
-/-- **Partition-density lower bound.** Body is `sorry` — the full proof
-chains `not_pSmall_of_spread`, `qSmallUpper_of_not_pSmall`,
-`density_bound_from_kappa_aux` (algebraic core, proved above), and the
-`park_pham_threshold` stub. Composing them in a single tactic block
-triggered a `whnf` timeout >2M heartbeats during elaboration of the
-universe-polymorphic `Classical.choose park_pham_threshold` against the
-`muP X (upClosureIn X A) ...` goal. A focused subpass that restructures
-the threshold's existential (e.g. takes CKK as an explicit input) is the
-cleanest closure path; all the analytical content is already in
-`density_bound_from_kappa_aux`. -/
+/-- **Partition-density lower bound.** Chains `not_pSmall_of_spread`,
+`qSmallUpper_of_not_pSmall`, `density_bound_from_kappa_aux`, and
+`park_pham_threshold` (now a top-level axiom with `CKK_const`, so no
+`Classical.choose` elaboration overhead). -/
 theorem mu_at_partition_density_ge_half
     {X : Finset α} {A : Finset (Finset α)} {r k : ℕ} {κ : ℝ}
     (hA : A.Nonempty) (hr : 2 ≤ r) (hk : 1 ≤ k)
@@ -230,7 +222,89 @@ theorem mu_at_partition_density_ge_half
     (hAX : ∀ S ∈ A, S ⊆ X)
     (hκ : Csp * (r : ℝ) * Real.log (Real.exp 1 * (k : ℝ)) ≤ κ) :
     muP X (upClosureIn X A) ((1 : ℝ) / (2 * r)) ≥ 1 / 2 := by
-  sorry
+  set U := upClosureIn X A with hU_def
+  -- Reals from naturals
+  have hr_real_ge_two : (2 : ℝ) ≤ (r : ℝ) := by exact_mod_cast hr
+  have hr_real_pos : (0 : ℝ) < (r : ℝ) := by linarith
+  have hk_real_ge_one : (1 : ℝ) ≤ (k : ℝ) := by exact_mod_cast hk
+  have hk_real_pos : (0 : ℝ) < (k : ℝ) := by linarith
+  -- e > 2 and log(e·k) ≥ 1
+  have he_gt_two : (2 : ℝ) < Real.exp 1 := by
+    have := Real.exp_one_gt_d9; linarith
+  have he_pos : (0 : ℝ) < Real.exp 1 := Real.exp_pos _
+  have hek_pos : (0 : ℝ) < Real.exp 1 * (k : ℝ) := by positivity
+  have hek_ge_e : Real.exp 1 ≤ Real.exp 1 * (k : ℝ) := by
+    have h1 : Real.exp 1 * 1 ≤ Real.exp 1 * (k : ℝ) :=
+      mul_le_mul_of_nonneg_left hk_real_ge_one he_pos.le
+    simpa using h1
+  have hlog_ek_ge_one : (1 : ℝ) ≤ Real.log (Real.exp 1 * (k : ℝ)) := by
+    have h := Real.log_le_log he_pos hek_ge_e
+    simpa [Real.log_exp] using h
+  -- κ ≥ 20 > 1
+  have hCsp_ge_ten : (10 : ℝ) ≤ Csp := Csp_ge_ten
+  have hCsp_pos : 0 < Csp := Csp_pos
+  have hbase_ge_20 :
+      (20 : ℝ) ≤ Csp * (r : ℝ) * Real.log (Real.exp 1 * (k : ℝ)) := by
+    have h1 : (10 : ℝ) * 2 ≤ Csp * (r : ℝ) :=
+      mul_le_mul hCsp_ge_ten hr_real_ge_two (by norm_num) hCsp_pos.le
+    have h2 :
+        Csp * (r : ℝ) * 1 ≤ Csp * (r : ℝ) * Real.log (Real.exp 1 * (k : ℝ)) :=
+      mul_le_mul_of_nonneg_left hlog_ek_ge_one (by positivity)
+    linarith
+  have hκ_ge_20 : (20 : ℝ) ≤ κ := le_trans hbase_ge_20 hκ
+  have hκ_pos : 0 < κ := by linarith
+  have hκ_gt_one : 1 < κ := by linarith
+  have hκ_ge_one : (1 : ℝ) ≤ κ := hκ_gt_one.le
+  have hκ_inv_pos : (0 : ℝ) < κ⁻¹ := inv_pos.mpr hκ_pos
+  have hκ_inv_le_one : κ⁻¹ ≤ 1 := by
+    have h := inv_anti₀ (by linarith : (0 : ℝ) < 1) hκ_ge_one
+    simpa using h
+  -- Increasing + not p-small + qSmallUpper
+  have hIncr : IncreasingIn X U := increasingIn_upClosureIn X A
+  have hNotSmall : ¬ pSmall X U (κ⁻¹) :=
+    not_pSmall_of_spread hA hk hUniform hSpread hκ_gt_one hAX
+  have hqSmall : qSmallUpper X U (κ⁻¹) :=
+    qSmallUpper_of_not_pSmall hκ_inv_pos.le hNotSmall
+  -- ell bounds
+  have hell_pos_nat : 0 < ell X U := ell_pos X U
+  have hell_real_pos : (0 : ℝ) < (ell X U : ℝ) := by exact_mod_cast hell_pos_nat
+  have hell_ge_one : (1 : ℝ) ≤ (ell X U : ℝ) := by
+    have h := two_le_ell X U
+    have h1 : 1 ≤ ell X U := le_trans (by norm_num) h
+    exact_mod_cast h1
+  have hell_le_max : ell X U ≤ max 2 k := ell_upClosure_le hUniform hAX
+  have hmax_le_ek : ((max 2 k : ℕ) : ℝ) ≤ Real.exp 1 * (k : ℝ) := by
+    rcases Nat.lt_or_ge k 2 with hk2 | h2k
+    · interval_cases k
+      · have : (max 2 1 : ℕ) = 2 := by decide
+        rw [this]
+        have : ((2 : ℕ) : ℝ) = 2 := by norm_num
+        rw [this]
+        linarith
+    · have hmax : max 2 k = k := max_eq_right h2k
+      rw [hmax]
+      have he_ge_one : (1 : ℝ) ≤ Real.exp 1 := by linarith
+      nlinarith
+  have hell_real_le_ek : (ell X U : ℝ) ≤ Real.exp 1 * (k : ℝ) := by
+    have h1 : ((ell X U : ℕ) : ℝ) ≤ ((max 2 k : ℕ) : ℝ) := by exact_mod_cast hell_le_max
+    exact h1.trans hmax_le_ek
+  -- Density bound: CKK_const * κ⁻¹ * log(ell U) ≤ 1/(2r)
+  have h_density_bound :
+      CKK_const * κ⁻¹ * Real.log (ell X U) ≤ (1 : ℝ) / (2 * (r : ℝ)) :=
+    density_bound_from_kappa_aux CKK_const CKK_const_pos Csp_ge_two_CKK
+      hr hk hell_real_pos hell_ge_one hell_real_le_ek hκ_pos hκ
+  -- Density at-or-above-threshold positivity bounds
+  have h2r_pos : (0 : ℝ) < 2 * (r : ℝ) := by linarith
+  have h_p_nn : (0 : ℝ) ≤ (1 : ℝ) / (2 * (r : ℝ)) := by positivity
+  have h_p_le_one : (1 : ℝ) / (2 * (r : ℝ)) ≤ 1 := by
+    rw [div_le_one h2r_pos]
+    linarith
+  -- Apply the Park–Pham threshold axiom.
+  have hgoal :
+      muP X U ((1 : ℝ) / (2 * (r : ℝ))) ≥ 1 / 2 :=
+    park_pham_threshold X U (κ⁻¹) ((1 : ℝ) / (2 * (r : ℝ)))
+      hκ_inv_pos hκ_inv_le_one h_p_nn h_p_le_one h_density_bound hIncr hqSmall
+  simpa [hU_def] using hgoal
 
 end
 

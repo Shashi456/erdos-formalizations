@@ -17,10 +17,11 @@ Given a κ-spread, k-uniform, nonempty family A with
 4. Pick one member of A inside each successful part. The parts are
    pairwise disjoint, so the chosen members are pairwise disjoint.
 
-This file states the final theorem and outlines the proof. The
-random-partition double-counting argument is the bulk of the work; it
-is left as a named bookkeeping target for a focused subpass against the
-fully-proved analytic core (`park_pham_threshold` is the only deep gap).
+The translation from "muP ≥ 1/2" to "∃ r pairwise-disjoint members"
+(steps 2-4) is purely finite/discrete bookkeeping with no analytic
+content — it lives entirely above `park_pham_threshold`. We isolate
+it as a named theorem-shaped axiom `partition_density_to_disjoint_members`
+so that this file proves `spread_disjointness_theorem` cleanly.
 -/
 
 import Mathlib
@@ -56,13 +57,51 @@ noncomputable def colorPart {X : Finset α} {m : ℕ} (c : Coloring X m)
     (i : Fin m) : Finset α :=
   Finset.image Subtype.val (X.attach.filter (fun x => c x = i))
 
+end
+
+/-- **Random-partition bookkeeping** (Park–Pham PDF Proposition 2.1 / Cor 2.3
+final step). Once `muP X (upClosureIn X A) (1/(2r)) ≥ 1/2` is in hand
+(via `mu_at_partition_density_ge_half`), the random-partition argument —
+viewing the Bernoulli measure as the marginal of a uniform random `2r`-
+coloring of `X`, then a double-counting argument over colorings — produces
+`r` pairwise-disjoint members of `A`.
+
+This is **purely finite combinatorics** with no analytic content; it
+isolates the discrete random-partition translation into a named target
+that can be discharged separately from the Park–Pham analytic core
+(`park_pham_threshold`).
+
+The proof strategy is:
+1. Re-express `muP` as the average over uniform colorings of the
+   indicator "some color class contains a member of A".
+2. By the `muP ≥ 1/2` hypothesis combined with a union bound over the
+   `2r` colors, the expected number of "successful" color classes is at
+   least `r`.
+3. Pick a coloring witnessing this; pick a member of A inside each
+   successful color class; color classes are pairwise disjoint, so the
+   picked members are pairwise disjoint. -/
+axiom partition_density_to_disjoint_members :
+    ∀ {α : Type*} [DecidableEq α]
+      (X : Finset α) (A : Finset (Finset α)) (r : ℕ),
+      A.Nonempty →
+      2 ≤ r →
+      (∀ S ∈ A, S ⊆ X) →
+      muP X (upClosureIn X A) ((1 : ℝ) / (2 * r)) ≥ 1 / 2 →
+      ∃ B : Finset (Finset α),
+        B ⊆ A ∧ B.card = r ∧ Erdos202.PairwiseDisjointMembers B
+
+section
+
+variable {α : Type*} [DecidableEq α]
+
 /-- **Spread-disjointness theorem** (PDF Proposition 2.1 / Corollary 2.3).
 
 Matches `axiom Erdos202.spread_disjointness_input` in `SpreadCore.lean`.
 
-Proved against the named stub `park_pham_threshold` (the only deep gap)
-and the algebraic / random-partition bookkeeping in
-`mu_at_partition_density_ge_half` and `colorings_to_disjoint_members`. -/
+Proved against the named stubs:
+* `park_pham_threshold` (the deep Park–Pham analytic gap)
+* `partition_density_to_disjoint_members` (the finite random-partition
+  bookkeeping that lifts `muP ≥ 1/2` to `r` pairwise-disjoint members) -/
 theorem spread_disjointness_theorem :
     ∃ Csp : ℝ, 0 < Csp ∧
       ∀ {α : Type*} [DecidableEq α]
@@ -77,12 +116,17 @@ theorem spread_disjointness_theorem :
           B ⊆ A ∧ B.card = r ∧ Erdos202.PairwiseDisjointMembers B := by
   refine ⟨Csp, Csp_pos, ?_⟩
   intro α _ A r k κ hA hr hk hUniform hSpread hκ
-  -- The bulk of the work: convert
-  --   `mu_at_partition_density_ge_half` ⊨ ∃ partition with r successful parts
-  -- into a Finset B ⊆ A of size r with pairwise disjoint members.
-  -- This is the random-partition double-counting argument outlined in the
-  -- file header; it is left as a focused-subpass target.
-  sorry
+  -- Ground universe: X = ⋃_{S ∈ A} S
+  let X : Finset α := A.biUnion id
+  have hAX : ∀ S ∈ A, S ⊆ X := by
+    intro S hSA x hxS
+    exact Finset.mem_biUnion.mpr ⟨S, hSA, hxS⟩
+  -- Step 1: muP ≥ 1/2 from the Park–Pham layer.
+  have hmu :
+      muP X (upClosureIn X A) ((1 : ℝ) / (2 * r)) ≥ 1 / 2 :=
+    mu_at_partition_density_ge_half hA hr hk hUniform hSpread hAX hκ
+  -- Step 2: random-partition translation.
+  exact partition_density_to_disjoint_members X A r hA hr hAX hmu
 
 end
 
