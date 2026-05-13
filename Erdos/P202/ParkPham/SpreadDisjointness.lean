@@ -82,9 +82,11 @@ The proof strategy is:
    picked members are pairwise disjoint. -/
 axiom partition_density_to_disjoint_members :
     ∀ {α : Type*} [DecidableEq α]
-      (X : Finset α) (A : Finset (Finset α)) (r : ℕ),
+      (X : Finset α) (A : Finset (Finset α)) (r k : ℕ),
       A.Nonempty →
       2 ≤ r →
+      1 ≤ k →
+      Erdos202.UniformFamily A k →
       (∀ S ∈ A, S ⊆ X) →
       muP X (upClosureIn X A) ((1 : ℝ) / (2 * r)) ≥ 1 / 2 →
       ∃ B : Finset (Finset α),
@@ -126,7 +128,7 @@ theorem spread_disjointness_theorem :
       muP X (upClosureIn X A) ((1 : ℝ) / (2 * r)) ≥ 1 / 2 :=
     mu_at_partition_density_ge_half hA hr hk hUniform hSpread hAX hκ
   -- Step 2: random-partition translation.
-  exact partition_density_to_disjoint_members X A r hA hr hAX hmu
+  exact partition_density_to_disjoint_members X A r k hA hr hk hUniform hAX hmu
 
 end
 
