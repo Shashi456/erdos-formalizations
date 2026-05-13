@@ -10,6 +10,7 @@ injectivity, size, modulus bounds, and CRT residue disjointness.
 import Mathlib
 import Erdos.P202.P202Basic
 import Erdos.P202.BFV.PrimeIntervals
+import Erdos.P202.BFV.Chebyshev
 
 namespace Erdos202
 
@@ -58,6 +59,25 @@ lemma lowerLogScale_sub (N : ℕ) (i j : lowerIndex N) :
   simp [lowerLogScale]
   ring
 
+lemma lowerLogGap_gt_log_two_of_exp_one_lt_nat {N : ℕ}
+    (hN : Real.exp 1 < (N : ℝ)) :
+    Real.log 2 < lowerLogGap N := by
+  have hNpos : 0 < (N : ℝ) := (Real.exp_pos 1).trans hN
+  have hlog_gt_one : 1 < Real.log (N : ℝ) :=
+    (Real.lt_log_iff_exp_lt hNpos).2 hN
+  have hloglog_pos : 0 < Real.log (Real.log (N : ℝ)) :=
+    Real.log_pos hlog_gt_one
+  have hrecip_pos : 0 < (1 : ℝ) / Real.log (Real.log (N : ℝ)) := by
+    positivity
+  simp [lowerLogGap]
+  linarith
+
+lemma eventually_lowerLogGap_gt_log_two :
+    ∀ᶠ N : ℕ in atTop, Real.log 2 < lowerLogGap N := by
+  filter_upwards [Filter.eventually_gt_atTop (Nat.ceil (Real.exp 1))] with N hN
+  exact lowerLogGap_gt_log_two_of_exp_one_lt_nat
+    (lt_of_le_of_lt (Nat.le_ceil _) (by exact_mod_cast hN))
+
 /-- A concrete product-normalized exponentially spaced scale for the `i`th
 dyadic prime block.
 
@@ -65,6 +85,98 @@ The final BFV proof needs only eventual disjointness and product estimates for
 these named scales; those hard estimates are isolated below. -/
 noncomputable def lowerY (N : ℕ) (i : lowerIndex N) : ℝ :=
   Real.exp (lowerLogScale N i)
+
+lemma lowerY_dyadic_lt_of_lt_index {N : ℕ} {i j : lowerIndex N}
+    (hgap : Real.log 2 < lowerLogGap N) (hij : i.1 < j.1) :
+    2 * lowerY N i < lowerY N j := by
+  have hsucc : i.1 + 1 ≤ j.1 := Nat.succ_le_iff.2 hij
+  have hdiff_real : 1 ≤ (j.1 : ℝ) - (i.1 : ℝ) := by
+    have hsuccR : (i.1 : ℝ) + 1 ≤ (j.1 : ℝ) := by exact_mod_cast hsucc
+    linarith
+  have hgap_pos : 0 < lowerLogGap N :=
+    (Real.log_pos (by norm_num : (1 : ℝ) < 2)).trans hgap
+  have hmain :
+      Real.log 2 + lowerLogScale N i < lowerLogScale N j := by
+    have hsub := lowerLogScale_sub N j i
+    have hmul : Real.log 2 < ((j.1 : ℝ) - (i.1 : ℝ)) * lowerLogGap N := by
+      calc
+        Real.log 2 < lowerLogGap N := hgap
+        _ ≤ ((j.1 : ℝ) - (i.1 : ℝ)) * lowerLogGap N := by
+          nlinarith
+    nlinarith
+  calc
+    2 * lowerY N i
+        = Real.exp (Real.log 2 + lowerLogScale N i) := by
+            rw [lowerY, Real.exp_add, Real.exp_log (by norm_num : (0 : ℝ) < 2)]
+    _ < Real.exp (lowerLogScale N j) := Real.exp_lt_exp.2 hmain
+    _ = lowerY N j := by rw [lowerY]
+
+lemma lowerIndex_sum_centered (N : ℕ) :
+    (∑ i : lowerIndex N, ((i.1 : ℝ) - (lowerR N : ℝ) / 2)) = 0 := by
+  let r := lowerR N
+  change (∑ i : Fin (r + 1), ((i.1 : ℝ) - (r : ℝ) / 2)) = 0
+  rw [Finset.sum_fin_eq_sum_range]
+  calc
+    (∑ x ∈ Finset.range (r + 1),
+        if h : x < r + 1 then (x : ℝ) - (r : ℝ) / 2 else 0)
+        = ∑ x ∈ Finset.range (r + 1), ((x : ℝ) - (r : ℝ) / 2) := by
+          apply Finset.sum_congr rfl
+          intro x hx
+          simp [Finset.mem_range.mp hx]
+    _ = 0 := by
+          rw [Finset.sum_sub_distrib]
+          rw [Finset.sum_const, nsmul_eq_mul]
+          let S : ℝ := ∑ x ∈ Finset.range (r + 1), (x : ℝ)
+          have hnat : (∑ i ∈ Finset.range (r + 1), i) * 2 = (r + 1) * r := by
+            simpa using (Finset.sum_range_id_mul_two (r + 1))
+          have hS2 : S * 2 = ((r + 1 : ℕ) * r : ℝ) := by
+            dsimp [S]
+            rw [← Nat.cast_sum]
+            exact_mod_cast hnat
+          have hcard : ((Finset.range (r + 1)).card : ℝ) = r + 1 := by simp
+          rw [hcard]
+          dsimp [S] at hS2 ⊢
+          norm_num at hS2 ⊢
+          nlinarith
+
+lemma lowerLogScale_sum (N : ℕ) :
+    (∑ i : lowerIndex N, lowerLogScale N i) =
+      Real.log (N : ℝ) - ((lowerR N : ℝ) + 1) * Real.log 2 := by
+  have hcenter := lowerIndex_sum_centered N
+  have hcard : ((Finset.univ : Finset (lowerIndex N)).card : ℝ) =
+      (lowerR N : ℝ) + 1 := by
+    simp [lowerIndex]
+  simp [lowerLogScale, lowerLogBase]
+  rw [Finset.sum_add_distrib]
+  rw [Finset.sum_const, nsmul_eq_mul]
+  rw [← Finset.sum_mul]
+  rw [hcenter]
+  rw [zero_mul, add_zero]
+  rw [hcard]
+  have hden : (lowerR N : ℝ) + 1 ≠ 0 := by positivity
+  field_simp [hden]
+
+lemma lowerY_dyadic_product_eq {N : ℕ} (hNpos : 0 < (N : ℝ)) :
+    (∏ i : lowerIndex N, (2 : ℝ) * lowerY N i) = (N : ℝ) := by
+  calc
+    (∏ i : lowerIndex N, (2 : ℝ) * lowerY N i)
+        = ∏ i : lowerIndex N, Real.exp (Real.log 2 + lowerLogScale N i) := by
+          apply Finset.prod_congr rfl
+          intro i _hi
+          rw [lowerY, Real.exp_add, Real.exp_log (by norm_num : (0 : ℝ) < 2)]
+    _ = Real.exp (∑ i : lowerIndex N, (Real.log 2 + lowerLogScale N i)) := by
+          rw [← Real.exp_sum]
+    _ = Real.exp (Real.log (N : ℝ)) := by
+          congr 1
+          rw [Finset.sum_add_distrib]
+          rw [Finset.sum_const, nsmul_eq_mul]
+          rw [lowerLogScale_sum]
+          have hcard : ((Finset.univ : Finset (lowerIndex N)).card : ℝ) =
+              (lowerR N : ℝ) + 1 := by
+            simp [lowerIndex]
+          rw [hcard]
+          ring
+    _ = (N : ℝ) := Real.exp_log hNpos
 
 /-- Natural floor endpoint for the `i`th scale. -/
 noncomputable def lowerYNat (N : ℕ) (i : lowerIndex N) : ℕ :=
@@ -85,6 +197,42 @@ noncomputable def lowerChoices (N : ℕ) : Finset (LowerPrimeChoice N) :=
 /-- The modulus attached to a prime-choice tuple. -/
 noncomputable def lowerModulus (N : ℕ) (P : LowerPrimeChoice N) : ℕ :=
   ∏ i : lowerIndex N, (P i).1
+
+lemma lowerModulus_pos (N : ℕ) (P : LowerPrimeChoice N) :
+    0 < lowerModulus N P := by
+  unfold lowerModulus
+  exact Finset.prod_pos (fun i _hi => by
+    have hp : Nat.Prime (P i).1 := (mem_dyadicPrimeInterval.1 (P i).2).2.2
+    exact hp.pos)
+
+lemma lowerModulus_le_N_of_pos {N : ℕ} (hNpos : 0 < (N : ℝ))
+    (P : LowerPrimeChoice N) :
+    lowerModulus N P ≤ N := by
+  have hreal : (lowerModulus N P : ℝ) ≤ (N : ℝ) := by
+    calc
+      (lowerModulus N P : ℝ)
+          = ∏ i : lowerIndex N, ((P i).1 : ℝ) := by
+              unfold lowerModulus
+              rw [Nat.cast_prod]
+      _ ≤ ∏ i : lowerIndex N, (2 : ℝ) * lowerY N i := by
+              refine Finset.prod_le_prod (s := Finset.univ) ?h0 ?hle
+              · intro i _hi
+                positivity
+              · intro i _hi
+                have hp_le_nat : (P i).1 ≤ Nat.floor (2 * lowerY N i) :=
+                  (mem_dyadicPrimeInterval.1 (P i).2).2.1
+                have hp_le_floor :
+                    ((P i).1 : ℝ) ≤ (Nat.floor (2 * lowerY N i) : ℝ) := by
+                  exact_mod_cast hp_le_nat
+                have hnonneg : 0 ≤ 2 * lowerY N i := by
+                  unfold lowerY
+                  positivity
+                have hfloor_le :
+                    (Nat.floor (2 * lowerY N i) : ℝ) ≤ 2 * lowerY N i :=
+                  Nat.floor_le hnonneg
+                exact hp_le_floor.trans hfloor_le
+      _ = (N : ℝ) := lowerY_dyadic_product_eq hNpos
+  exact_mod_cast hreal
 
 /-- The finite BFV lower family of moduli. -/
 noncomputable def lowerQ (N : ℕ) : Finset ℕ :=
@@ -136,20 +284,80 @@ theorem lowerPrimeIntervals_pairwise_disjoint :
     ∀ᶠ N : ℕ in atTop,
       ∀ i j : lowerIndex N, i ≠ j →
         Disjoint (lowerPrimeInterval N i) (lowerPrimeInterval N j) := by
-  sorry
+  filter_upwards [eventually_lowerLogGap_gt_log_two] with N hgap
+  intro i j hij
+  have hijval : i.1 ≠ j.1 := by
+    intro h
+    exact hij (Fin.ext h)
+  rcases Nat.lt_or_gt_of_ne hijval with hlt | hgt
+  · have hsep : 2 * lowerY N i < lowerY N j :=
+      lowerY_dyadic_lt_of_lt_index hgap hlt
+    have hfloor : Nat.floor (2 * lowerY N i) ≤ Nat.floor (lowerY N j) :=
+      Nat.floor_mono hsep.le
+    have hIoc :
+        Disjoint
+          (Finset.Ioc (Nat.floor (lowerY N i)) (Nat.floor (2 * lowerY N i)))
+          (Finset.Ioc (Nat.floor (lowerY N j)) (Nat.floor (2 * lowerY N j))) :=
+      Finset.Ioc_disjoint_Ioc_of_le hfloor
+    simpa [lowerPrimeInterval, dyadicPrimeInterval] using
+      (Finset.disjoint_filter_filter (p := Nat.Prime) (q := Nat.Prime) hIoc)
+  · have hsep : 2 * lowerY N j < lowerY N i :=
+      lowerY_dyadic_lt_of_lt_index hgap hgt
+    have hfloor : Nat.floor (2 * lowerY N j) ≤ Nat.floor (lowerY N i) :=
+      Nat.floor_mono hsep.le
+    have hIoc :
+        Disjoint
+          (Finset.Ioc (Nat.floor (lowerY N j)) (Nat.floor (2 * lowerY N j)))
+          (Finset.Ioc (Nat.floor (lowerY N i)) (Nat.floor (2 * lowerY N i))) :=
+      Finset.Ioc_disjoint_Ioc_of_le hfloor
+    simpa [lowerPrimeInterval, dyadicPrimeInterval, disjoint_comm] using
+      (Finset.disjoint_filter_filter (p := Nat.Prime) (q := Nat.Prime) hIoc)
 
 /-- Unique factorization plus disjoint prime blocks makes the product map from
 prime-choice tuples to moduli injective. -/
 theorem lowerModulus_injective_eventually :
     ∀ᶠ N : ℕ in atTop,
       Set.InjOn (lowerModulus N) (↑(lowerChoices N) : Set (LowerPrimeChoice N)) := by
-  sorry
+  filter_upwards [lowerPrimeIntervals_pairwise_disjoint] with N hdisj
+  intro P _hP P' _hP' heq
+  funext i
+  apply Subtype.ext
+  let p : ℕ := (P i).1
+  have hpPrime : Nat.Prime p := (mem_dyadicPrimeInterval.1 (P i).2).2.2
+  have hp_dvd_left : p ∣ lowerModulus N P := by
+    unfold lowerModulus p
+    exact Finset.dvd_prod_of_mem (fun k : lowerIndex N => (P k).1) (Finset.mem_univ i)
+  have hp_dvd_right : p ∣ lowerModulus N P' := by
+    rwa [heq] at hp_dvd_left
+  have hp_dvd_prod : p ∣ ∏ k : lowerIndex N, (P' k).1 := by
+    simpa [lowerModulus] using hp_dvd_right
+  rcases (hpPrime.prime.dvd_finset_prod_iff (S := Finset.univ)
+      (fun k : lowerIndex N => (P' k).1)).1 hp_dvd_prod with
+    ⟨j, _hj, hp_dvd_pj⟩
+  have hpjPrime : Nat.Prime (P' j).1 := (mem_dyadicPrimeInterval.1 (P' j).2).2.2
+  have hp_eq_pj : p = (P' j).1 :=
+    (Nat.prime_dvd_prime_iff_eq hpPrime hpjPrime).1 hp_dvd_pj
+  have hji : j = i := by
+    by_contra hne
+    have hne' : i ≠ j := by
+      intro h
+      exact hne h.symm
+    have hp_mem_i : p ∈ lowerPrimeInterval N i := (P i).2
+    have hp_mem_j : p ∈ lowerPrimeInterval N j := by
+      simp [p, hp_eq_pj, (P' j).2]
+    exact Finset.disjoint_left.1 (hdisj i j hne') hp_mem_i hp_mem_j
+  subst hji
+  simpa [p] using hp_eq_pj
 
 /-- The BFV product estimate: all constructed moduli are eventually in
 `[1, N]`. -/
 theorem lowerQ_moduli_in_range_eventually :
     ∀ᶠ N : ℕ in atTop, ∀ q ∈ lowerQ N, 1 ≤ q ∧ q ≤ N := by
-  sorry
+  filter_upwards [Filter.eventually_gt_atTop 0] with N hN q hq
+  have hNpos : 0 < (N : ℝ) := by exact_mod_cast hN
+  rw [lowerQ] at hq
+  rcases Finset.mem_image.1 hq with ⟨P, _hP, rfl⟩
+  exact ⟨Nat.succ_le_of_lt (lowerModulus_pos N P), lowerModulus_le_N_of_pos hNpos P⟩
 
 /-- CRT residue choices for the lower family are pairwise disjoint. -/
 theorem lowerQ_pairwise_disjoint_residues_eventually :
