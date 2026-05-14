@@ -69,7 +69,7 @@ Local toolchain: Lean 4 `v4.27.0`, Mathlib `v4.27.0` (pinned in
 The standalone flat bundles loadable in
 [live.lean-lang.org](https://live.lean-lang.org/) are:
 
-- **v4.28.0** — P694 `Proof.lean`, P750 `Proof_v4.28.lean`, P42 `FourierPositive/Proof.lean`, P42 `CompactCayley/Proof.lean`.
+- **v4.28.0** — P694 `Proof.lean`, P750 `Proof_v4.28.lean`, P42 `FourierPositive/Proof.lean`, P42 `CompactCayley/Proof.lean`, P1190 `Proof.lean`.
 - **v4.27.0** — P750 `Proof.lean`, P283 `Proof_flat.lean`, P202 `Proof.lean` (~21k LOC).
 
 P43 does not yet ship a single-file bundle (scaffold).
