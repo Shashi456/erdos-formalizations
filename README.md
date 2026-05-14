@@ -23,7 +23,7 @@ Lean 4 / Mathlib formalizations of problems from
 | 283 + 351 | [PDF](Erdos/P283/proof.pdf) | [`Proof.lean`](Erdos/P283/Proof.lean) · [`Proof_flat.lean`](Erdos/P283/Proof_flat.lean) | — (v4.27 only) |
 | 42 | [PDF](Erdos/P42/docs/compact_cayley_proof.pdf) | [`Proof.lean`](Erdos/P42/Proof.lean) | Route A: [open](https://live.lean-lang.org/#project=mathlib-v4.28.0&url=https%3A%2F%2Fraw.githubusercontent.com%2FShashi456%2Ferdos-formalizations%2Frefs%2Fheads%2Fmain%2FErdos%2FP42%2FFourierPositive%2FProof.lean) · Route B: [open](https://live.lean-lang.org/#project=mathlib-v4.28.0&url=https%3A%2F%2Fraw.githubusercontent.com%2FShashi456%2Ferdos-formalizations%2Frefs%2Fheads%2Fmain%2FErdos%2FP42%2FCompactCayley%2FProof.lean) |
 | 43 | [combined P42/43 PDF](Erdos/P42/docs/combined_42_43_proof.pdf) | [`Proof.lean`](Erdos/P43/Proof.lean) | — (scaffold) |
-| 202 | [PDF](Erdos/P202/docs/erdos202.pdf) | [`P202Main.lean`](Erdos/P202/P202Main.lean) · [`Proof.lean`](Erdos/P202/Proof.lean) (flat) | — (v4.27 only) |
+| 202 | [PDF](Erdos/P202/docs/erdos202.pdf) | [`P202Main.lean`](Erdos/P202/P202Main.lean) · [`Proof.lean`](Erdos/P202/Proof.lean) (flat) | [open](https://live.lean-lang.org/#project=mathlib-v4.27.0&url=https%3A%2F%2Fraw.githubusercontent.com%2FShashi456%2Ferdos-formalizations%2Frefs%2Fheads%2Fmain%2FErdos%2FP202%2FProof.lean) |
 
 See each problem's per-folder `README.md` for the full statement, trust
 boundary, and notes on alignment with the upstream
