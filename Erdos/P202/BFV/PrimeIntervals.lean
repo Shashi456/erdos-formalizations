@@ -3,7 +3,7 @@ Erdos Problem 202 -- prime supply for the BFV lower construction.
 
 This file defines the `dyadicPrimeInterval` used by the explicit lower
 construction. The analytic lower bound on its cardinality lives in
-`Erdos.P202.BFV.Chebyshev` (a named stub); this file is sorry-free.
+`Erdos.P202.BFV.Chebyshev`; this file contains only definitions.
 -/
 
 import Mathlib

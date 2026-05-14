@@ -2,8 +2,8 @@
 Erdos Problem 202 -- BFV omega-tail estimates.
 
 This file contains the elementary Rankin counting step used before the
-BFV/Hardy-Ramanujan analytic input.  The analytic Euler-product estimate is
-kept as a theorem stub for the next formalization step; it is not an axiom.
+BFV/Hardy-Ramanujan analytic input.  The Euler-product estimate is proved in
+`Erdos.P202.BFV.Mertens`.
 -/
 
 import Mathlib
@@ -19,8 +19,8 @@ open scoped BigOperators
 /-! ## Rankin's inequality for omega tails
 
 The BFV Rankin parameter `BFVz N := √(log N) / log log N` lives in
-`Erdos.P202.BFV.Mertens`, alongside the analytic stub
-`omega_weighted_sum_bfvz_bound`. This file consumes both. -/
+`Erdos.P202.BFV.Mertens`, alongside the weighted omega-sum estimate consumed
+below. -/
 
 lemma card_le_floor_of_natCast_le {m : ℕ} {x : ℝ} (hx : 0 ≤ x)
     (hm : (m : ℝ) ≤ x) : m ≤ Nat.floor x :=

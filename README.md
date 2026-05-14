@@ -42,7 +42,7 @@ Beyond Mathlib core (`propext`, `Classical.choice`, `Quot.sound`):
 | 42 Route A (active) | `finite_fourier_avoidance_count` | Finite Fourier avoidance counting theorem (Green–Tao `U²` regularity / complexity-1 counting). Drives `theorem_1_1` and `erdos_42`; the existence interface used downstream is derived from the count statement. |
 | 42 Route B | none | Compact-Cayley clique theorem (compact PDF Theorem 2.1) proved end-to-end; Route B's `compact_cayley_clique` and `theorem_1_1_from_compact_cayley` depend only on Mathlib core. |
 | 43 | depends on #42 + Bose–Chowla parity (scaffold) | First half inherits Route A's axiom via #42; second half (Bose–Chowla parity construction) is still `sorry`. |
-| 202 | `spread_disjointness_input`, `bfv_pruning_input`, `bfv_omega_count_input`, `bfv_lower_bound_input` | Four theorem-shaped axioms isolating the BFV (Bourgain–Filaseta–Verstraëten) ingredients plus the Park–Pham spread-core lemma. Statement layer typechecks; chain / optimization layers contain `sorry`s. |
+| 202 | none | Sharp BFV (de la Bretèche–Ford–Vandehey, *On non-intersecting arithmetic progressions*, Acta Arith. 157) asymptotic `f(N) = N · exp(-(1+o(1))·√(log N · log log N))` for PDF Theorem 1.1 / Erdős Problem 202. `erdos202_main` depends only on Lean core (`propext`, `Classical.choice`, `Quot.sound`); BFV ingredients and the Park–Pham / Kahn–Kalai spread-core lemma are fully discharged. The integral / partial-summation Corollary 1.2 about Erdős Problem 1190 is NOT formalized. |
 
 Inspect by enabling the `#print axioms …` block at the bottom of each
 `Proof.lean`, or by reading the per-problem `README.md`. The trust boundaries

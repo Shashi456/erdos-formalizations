@@ -15,8 +15,9 @@ open scoped BigOperators
 
 /-- Proven replacement target for `bfv_omega_count_input`.
 
-At present this theorem depends on `bfv_omega_tail_theorem`, whose analytic
-Euler-product component is still a `sorry` in `OmegaTail.lean`. -/
+Depends on `bfv_omega_tail_theorem` (BFV/OmegaTail.lean); its analytic
+Euler-product component `omega_weighted_sum_bfvz_bound` is now fully
+discharged in `BFV/Mertens.lean`. -/
 theorem bfv_omega_count_theorem :
     ∀ ε : ℝ, 0 < ε → ∀ᶠ N : ℕ in atTop,
       ∀ y K W : ℕ,

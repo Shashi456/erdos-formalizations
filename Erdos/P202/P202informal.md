@@ -14,7 +14,7 @@ Let `f(N)` denote this maximum.
 f(N) = N · exp(-(1 + o(1)) · sqrt(log N · log log N))   as N → ∞.
 ```
 
-This matches BFV's (Bourgain–Filaseta–Verstraëten) unconditional lower
+This matches BFV's (de la Bretèche–Ford–Vandehey) unconditional lower
 bound, and tightens the BFV upper bound which had `(1 + o(1))` replaced by a
 larger constant.
 

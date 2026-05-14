@@ -2,7 +2,7 @@
 Erdos Problem 202 -- BFV lower construction skeleton.
 
 This file names the explicit lower-family objects used by the
-Bourgain--Filaseta--Verstraeten construction: dyadic prime choices, their
+de la Bretèche–Ford–Vandehey construction: dyadic prime choices, their
 product moduli, the finite modulus family, and the theorem targets asserting
 injectivity, size, modulus bounds, and CRT residue disjointness.
 -/
@@ -11,6 +11,7 @@ import Mathlib
 import Erdos.P202.P202Basic
 import Erdos.P202.BFV.PrimeIntervals
 import Erdos.P202.BFV.Chebyshev
+import Erdos.P202.BFV.LowerPathConstruction
 
 namespace Erdos202
 
@@ -213,6 +214,20 @@ noncomputable def lowerYNat (N : ℕ) (i : lowerIndex N) : ℕ :=
 noncomputable def lowerPrimeInterval (N : ℕ) (i : lowerIndex N) : Finset ℕ :=
   dyadicPrimeInterval (lowerY N i)
 
+lemma dyadicPrimeInterval_card_le_primeCounting (y : ℝ) :
+    (dyadicPrimeInterval y).card ≤ Nat.primeCounting (Nat.floor (2 * y)) := by
+  classical
+  have hsub :
+      dyadicPrimeInterval y ⊆
+        (Finset.range (Nat.floor (2 * y) + 1)).filter Nat.Prime := by
+    intro p hp
+    rw [Finset.mem_filter, Finset.mem_range]
+    have hp' := mem_dyadicPrimeInterval.1 hp
+    exact ⟨Nat.lt_succ_of_le hp'.2.1, hp'.2.2⟩
+  have hcard := Finset.card_le_card hsub
+  simpa [Nat.primeCounting, Nat.primeCounting',
+    Nat.count_eq_card_filter_range] using hcard
+
 /-- Deterministic shared root factor at the block-0 scale.
 
 The original full Cartesian-product family is not CRT-disjoint: two choices
@@ -406,6 +421,101 @@ lemma lowerLogScale_zero_nonneg_of_scale {N : ℕ}
   rw [hscale_eq]
   nlinarith
 
+lemma lowerLogGap_le_two_of_loglog_ge_four {N : ℕ}
+    (hloglog_ge : 4 ≤ Real.log (Real.log (N : ℝ))) :
+    lowerLogGap N ≤ 2 := by
+  have hloglog_pos : 0 < Real.log (Real.log (N : ℝ)) := by linarith
+  have hlog_two_le_one : Real.log 2 ≤ 1 := by
+    have h := Real.log_le_sub_one_of_pos (by norm_num : (0 : ℝ) < 2)
+    norm_num at h
+    exact h
+  have hrecip_le_one :
+      1 / Real.log (Real.log (N : ℝ)) ≤ 1 := by
+    exact (div_le_iff₀ hloglog_pos).2 (by linarith)
+  rw [lowerLogGap]
+  linarith
+
+lemma Mscale_le_lowerLogScale_zero_of_scale {N : ℕ}
+    (hNlarge : Real.exp 1 < (N : ℝ))
+    (hMge : 1 ≤ Mscale N)
+    (hloglog_ge : 6 ≤ Real.log (Real.log (N : ℝ))) :
+    Mscale N ≤ lowerLogScale N (lowerZeroIndex N) := by
+  have hNpos : 0 < (N : ℝ) := (Real.exp_pos 1).trans hNlarge
+  have hlog_pos : 0 < Real.log (N : ℝ) := by
+    have hone_lt_N : (1 : ℝ) < (N : ℝ) := by
+      calc
+        (1 : ℝ) = Real.exp 0 := by simp
+        _ < Real.exp 1 := Real.exp_lt_exp.2 zero_lt_one
+        _ < (N : ℝ) := hNlarge
+    exact Real.log_pos hone_lt_N
+  have hlog_nonneg : 0 ≤ Real.log (N : ℝ) := hlog_pos.le
+  have hloglog_pos : 0 < Real.log (Real.log (N : ℝ)) := by linarith
+  have hMpos : 0 < Mscale N := lt_of_lt_of_le zero_lt_one hMge
+  have hM_nonneg : 0 ≤ Mscale N := hMpos.le
+  have hfloor_le :
+      ((lowerR N : ℕ) : ℝ) ≤ Mscale N := by
+    exact Nat.floor_le (Mscale_nonneg N)
+  have hden_pos : 0 < ((lowerR N : ℕ) : ℝ) + 1 := by positivity
+  have hden_le : ((lowerR N : ℕ) : ℝ) + 1 ≤ 2 * Mscale N := by
+    nlinarith
+  have hdiv_ge :
+      Zscale N / 2 ≤ Real.log (N : ℝ) / (((lowerR N : ℕ) : ℝ) + 1) := by
+    have hmain :
+        Real.log (N : ℝ) / (2 * Mscale N) ≤
+          Real.log (N : ℝ) / (((lowerR N : ℕ) : ℝ) + 1) :=
+      div_le_div_of_nonneg_left hlog_nonneg hden_pos hden_le
+    have hrewrite :
+        Real.log (N : ℝ) / (2 * Mscale N) = Zscale N / 2 := by
+      have hMZ := Mscale_mul_Zscale_eq_log hNlarge
+      field_simp [hMpos.ne']
+      nlinarith
+    simpa [hrewrite] using hmain
+  have hgap_le_two : lowerLogGap N ≤ 2 :=
+    lowerLogGap_le_two_of_loglog_ge_four (by linarith : 4 ≤ Real.log (Real.log (N : ℝ)))
+  have hgap_nonneg : 0 ≤ lowerLogGap N := by
+    have hlog_two_nonneg : 0 ≤ Real.log 2 :=
+      Real.log_nonneg (by norm_num : (1 : ℝ) ≤ 2)
+    have hrecip_nonneg : 0 ≤ (1 : ℝ) / Real.log (Real.log (N : ℝ)) := by
+      positivity
+    rw [lowerLogGap]
+    linarith
+  have hgap_term :
+      ((lowerR N : ℕ) : ℝ) / 2 * lowerLogGap N ≤ Mscale N := by
+    have hmul :
+        ((lowerR N : ℕ) : ℝ) * lowerLogGap N ≤ Mscale N * 2 :=
+      mul_le_mul hfloor_le hgap_le_two hgap_nonneg hM_nonneg
+    nlinarith
+  have hbad_le :
+      Real.log 2 + ((lowerR N : ℕ) : ℝ) / 2 * lowerLogGap N ≤ 2 * Mscale N := by
+    have hlog_two_le_one : Real.log 2 ≤ 1 := by
+      have h := Real.log_le_sub_one_of_pos (by norm_num : (0 : ℝ) < 2)
+      norm_num at h
+      exact h
+    nlinarith
+  have hbase_eq :
+      lowerLogBase N =
+        Real.log (N : ℝ) / (((lowerR N : ℕ) : ℝ) + 1) - Real.log 2 := by
+    have hden_ne : ((lowerR N : ℕ) : ℝ) + 1 ≠ 0 := by positivity
+    simp [lowerLogBase]
+    field_simp [hden_ne]
+  have hscale_eq :
+      lowerLogScale N (lowerZeroIndex N) =
+        Real.log (N : ℝ) / (((lowerR N : ℕ) : ℝ) + 1) -
+          (Real.log 2 + ((lowerR N : ℕ) : ℝ) / 2 * lowerLogGap N) := by
+    simp [lowerLogScale, hbase_eq, lowerZeroIndex]
+    ring
+  have hscale_lower :
+      Zscale N / 2 - 2 * Mscale N ≤ lowerLogScale N (lowerZeroIndex N) := by
+    rw [hscale_eq]
+    nlinarith
+  have hMll := Mscale_mul_loglog_eq_Zscale hNlarge
+  have hZ_large : 6 * Mscale N ≤ Zscale N := by
+    rw [← hMll]
+    nlinarith
+  have hM_le : Mscale N ≤ Zscale N / 2 - 2 * Mscale N := by
+    nlinarith
+  exact hM_le.trans hscale_lower
+
 lemma eventually_lowerY_zero_ge_one :
     ∀ᶠ N : ℕ in atTop, 1 ≤ lowerY N (lowerZeroIndex N) := by
   filter_upwards [Filter.eventually_gt_atTop (Nat.ceil (Real.exp 1)),
@@ -414,6 +524,137 @@ lemma eventually_lowerY_zero_ge_one :
   rw [lowerY, Real.one_le_exp_iff]
   exact lowerLogScale_zero_nonneg_of_scale
     (lt_of_le_of_lt (Nat.le_ceil _) (by exact_mod_cast hN)) hM hloglog
+
+lemma eventually_lowerLogScale_zero_ge (A : ℝ) :
+    ∀ᶠ N : ℕ in atTop, A ≤ lowerLogScale N (lowerZeroIndex N) := by
+  let B : ℝ := max A 1
+  have hBpos : 0 < B := lt_of_lt_of_le zero_lt_one (le_max_right A 1)
+  filter_upwards [Filter.eventually_gt_atTop (Nat.ceil (Real.exp 1)),
+      eventually_Mscale_ge B hBpos,
+      tendsto_loglog_nat_atTop.eventually_ge_atTop 6] with N hN hM hloglog
+  have hNlarge : Real.exp 1 < (N : ℝ) :=
+    lt_of_le_of_lt (Nat.le_ceil _) (by exact_mod_cast hN)
+  have hMone : 1 ≤ Mscale N := (le_max_right A 1).trans hM
+  have hscale := Mscale_le_lowerLogScale_zero_of_scale hNlarge hMone hloglog
+  exact (le_max_left A 1).trans (hM.trans hscale)
+
+lemma eventually_lowerY_zero_ge (A : ℝ) :
+    ∀ᶠ N : ℕ in atTop, A ≤ lowerY N (lowerZeroIndex N) := by
+  by_cases hA : 0 < A
+  · filter_upwards [eventually_lowerLogScale_zero_ge (Real.log A)] with N hscale
+    rw [lowerY]
+    exact (Real.log_le_iff_le_exp hA).1 hscale
+  · exact Filter.Eventually.of_forall fun N =>
+      (le_of_not_gt hA).trans (Real.exp_pos _).le
+
+lemma lowerY_le_of_index_le {N : ℕ} {i j : lowerIndex N}
+    (hgap_nonneg : 0 ≤ lowerLogGap N) (hij : i.1 ≤ j.1) :
+    lowerY N i ≤ lowerY N j := by
+  have hsub := lowerLogScale_sub N j i
+  have hdiff_nonneg : 0 ≤ ((j.1 : ℝ) - (i.1 : ℝ)) * lowerLogGap N := by
+    have hidx : 0 ≤ (j.1 : ℝ) - (i.1 : ℝ) := by
+      exact sub_nonneg.2 (by exact_mod_cast hij)
+    exact mul_nonneg hidx hgap_nonneg
+  have hscale : lowerLogScale N i ≤ lowerLogScale N j := by
+    nlinarith
+  exact Real.exp_le_exp.2 hscale
+
+lemma lowerY_adjacent_le_exp_two_mul {N : ℕ} {i j : lowerIndex N}
+    (hgap_le : lowerLogGap N ≤ 2) (hij : j.1 = i.1 + 1) :
+    lowerY N j ≤ Real.exp 2 * lowerY N i := by
+  have hsub := lowerLogScale_sub N j i
+  have hscale : lowerLogScale N j = lowerLogScale N i + lowerLogGap N := by
+    have hdiff : ((j.1 : ℝ) - (i.1 : ℝ)) = 1 := by
+      rw [hij]
+      norm_num
+    nlinarith
+  have heq : lowerY N j = lowerY N i * Real.exp (lowerLogGap N) := by
+    rw [lowerY, lowerY, hscale, Real.exp_add]
+  rw [heq]
+  calc
+    lowerY N i * Real.exp (lowerLogGap N)
+        ≤ lowerY N i * Real.exp 2 := by
+          exact mul_le_mul_of_nonneg_left
+            (Real.exp_le_exp.2 hgap_le) (Real.exp_pos _).le
+    _ = Real.exp 2 * lowerY N i := by ring
+
+lemma lowerPrimeInterval_adjacent_card_le_floor_prev_eventually :
+    ∀ᶠ N : ℕ in atTop,
+      ∀ i j : lowerIndex N, j.1 = i.1 + 1 →
+        (lowerPrimeInterval N j).card ≤ Nat.floor (lowerY N i) := by
+  classical
+  let C : ℝ := (Real.log 4 + 1) * (2 * Real.exp 2)
+  have hCpos : 0 < C := by
+    dsimp [C]
+    have hlog4pos : 0 < Real.log 4 := Real.log_pos (by norm_num : (1 : ℝ) < 4)
+    positivity
+  rcases eventually_atTop.1
+      (Chebyshev.eventually_primeCounting_le (ε := 1) zero_lt_one) with
+    ⟨X, hcheb⟩
+  filter_upwards [eventually_lowerLogGap_gt_log_two,
+      tendsto_loglog_nat_atTop.eventually_ge_atTop 4,
+      eventually_lowerY_zero_ge (max (Real.exp C) (max X 1))] with
+    N hgap_gt hloglog hY0large
+  intro i j hij
+  have hgap_nonneg : 0 ≤ lowerLogGap N := by
+    have hlog_two_nonneg : 0 ≤ Real.log 2 :=
+      Real.log_nonneg (by norm_num : (1 : ℝ) ≤ 2)
+    exact hlog_two_nonneg.trans hgap_gt.le
+  have hgap_le_two : lowerLogGap N ≤ 2 :=
+    lowerLogGap_le_two_of_loglog_ge_four hloglog
+  have hzero_le_i : lowerY N (lowerZeroIndex N) ≤ lowerY N i :=
+    lowerY_le_of_index_le hgap_nonneg (by simp [lowerZeroIndex])
+  have hzero_le_j : lowerY N (lowerZeroIndex N) ≤ lowerY N j :=
+    lowerY_le_of_index_le hgap_nonneg (by simp [lowerZeroIndex])
+  have hYj_upper : lowerY N j ≤ Real.exp 2 * lowerY N i :=
+    lowerY_adjacent_le_exp_two_mul hgap_le_two hij
+  have hX_le_Y0 : X ≤ lowerY N (lowerZeroIndex N) := by
+    exact (le_max_left X 1).trans
+      ((le_max_right (Real.exp C) (max X 1)).trans hY0large)
+  have hExpC_le_Y0 : Real.exp C ≤ lowerY N (lowerZeroIndex N) := by
+    exact (le_max_left (Real.exp C) (max X 1)).trans hY0large
+  have hX_le_arg : X ≤ 2 * lowerY N j := by
+    have hX_le_j : X ≤ lowerY N j := hX_le_Y0.trans hzero_le_j
+    have hj_nonneg : 0 ≤ lowerY N j := (Real.exp_pos _).le
+    nlinarith
+  have hcheb_arg := hcheb (2 * lowerY N j) hX_le_arg
+  have hcard_pc :
+      ((lowerPrimeInterval N j).card : ℝ) ≤
+        (Nat.primeCounting (Nat.floor (2 * lowerY N j)) : ℝ) := by
+    exact_mod_cast dyadicPrimeInterval_card_le_primeCounting (lowerY N j)
+  have hlog_arg_ge_C : C ≤ Real.log (2 * lowerY N j) := by
+    have hExpC_le_arg : Real.exp C ≤ 2 * lowerY N j := by
+      have hExpC_le_j : Real.exp C ≤ lowerY N j := hExpC_le_Y0.trans hzero_le_j
+      have hj_nonneg : 0 ≤ lowerY N j := (Real.exp_pos _).le
+      nlinarith
+    have harg_pos : 0 < 2 * lowerY N j := by
+      exact mul_pos (by norm_num) (Real.exp_pos _)
+    exact (Real.le_log_iff_exp_le harg_pos).2 hExpC_le_arg
+  have hlog_arg_pos : 0 < Real.log (2 * lowerY N j) :=
+    hCpos.trans_le hlog_arg_ge_C
+  have hcoeff_pos : 0 ≤ Real.log 4 + 1 := by
+    have hlog4pos : 0 < Real.log 4 := Real.log_pos (by norm_num : (1 : ℝ) < 4)
+    linarith
+  have hnum_le :
+      (Real.log 4 + 1) * (2 * lowerY N j) ≤ C * lowerY N i := by
+    calc
+      (Real.log 4 + 1) * (2 * lowerY N j)
+          ≤ (Real.log 4 + 1) * (2 * (Real.exp 2 * lowerY N i)) := by
+            exact mul_le_mul_of_nonneg_left
+              (mul_le_mul_of_nonneg_left hYj_upper (by norm_num : (0 : ℝ) ≤ 2))
+              hcoeff_pos
+      _ = C * lowerY N i := by
+            dsimp [C]
+            ring
+  have hquot_le :
+      (Real.log 4 + 1) * (2 * lowerY N j) / Real.log (2 * lowerY N j)
+        ≤ lowerY N i := by
+    rw [div_le_iff₀ hlog_arg_pos]
+    have hi_nonneg : 0 ≤ lowerY N i := (Real.exp_pos _).le
+    nlinarith
+  have hcard_real : ((lowerPrimeInterval N j).card : ℝ) ≤ lowerY N i := by
+    exact hcard_pc.trans (hcheb_arg.trans hquot_le)
+  exact Nat.le_floor hcard_real
 
 /-- The finite BFV lower family of moduli. -/
 noncomputable def lowerQ (N : ℕ) : Finset ℕ :=
@@ -827,14 +1068,60 @@ lemma lowerResidueAssignment_pairwise_disjoint_of_capacity {N : ℕ}
 
 /-- Remaining scale/prime-counting bookkeeping for the CRT tree capacity.
 
-This is not a new analytic primitive: `Mathlib` already supplies Chebyshev's
-upper bound `Chebyshev.eventually_primeCounting_le`.  The proof still needs the
-local conversion from that global upper bound to dyadic block cardinalities,
-then the BFV scale inequalities showing each next block has at most as many
-primes as the previous selected prime, and that the fixed root is coprime to
-all tail primes by separation. -/
-axiom lowerEncodingCapacity_eventually_analytic :
-    ∀ᶠ N : ℕ in atTop, LowerEncodingCapacity N
+This uses Mathlib's Chebyshev upper bound `Chebyshev.eventually_primeCounting_le`,
+converted to dyadic blocks, plus the BFV scale separation showing each next
+block has fewer primes than the previous block's floor endpoint. -/
+theorem lowerEncodingCapacity_eventually_analytic :
+    ∀ᶠ N : ℕ in atTop, LowerEncodingCapacity N := by
+  filter_upwards [lowerPrimeInterval_adjacent_card_le_floor_prev_eventually,
+      eventually_lowerLogGap_gt_log_two,
+      eventually_lowerY_zero_ge_one] with N hadj hgap hY0
+  have hgap_nonneg : 0 ≤ lowerLogGap N := by
+    have hlog_two_nonneg : 0 ≤ Real.log 2 :=
+      Real.log_nonneg (by norm_num : (1 : ℝ) ≤ 2)
+    exact hlog_two_nonneg.trans hgap.le
+  constructor
+  · intro hR
+    have hidx :
+        ((lowerTailBlock N ⟨0, hR⟩).1).1 = (lowerZeroIndex N).1 + 1 := by
+      simp [lowerTailBlock, lowerZeroIndex]
+    have hcard := hadj (lowerZeroIndex N) (lowerTailBlock N ⟨0, hR⟩).1 hidx
+    exact hcard.trans (by simp [lowerP0])
+  · intro k hnext p hp
+    have hidx :
+        ((lowerTailBlock N ⟨k.1 + 1, hnext⟩).1).1 =
+          ((lowerTailBlock N k).1).1 + 1 := by
+      simp [lowerTailBlock, Fin.val_succ]
+    have hcard := hadj (lowerTailBlock N k).1
+      (lowerTailBlock N ⟨k.1 + 1, hnext⟩).1 hidx
+    have hp_floor :
+        Nat.floor (lowerY N (lowerTailBlock N k).1) < p :=
+      (mem_dyadicPrimeInterval.1 hp).1
+    exact hcard.trans (Nat.le_of_lt hp_floor)
+  · intro k p hp
+    let tail : lowerIndex N := (lowerTailBlock N k).1
+    have hsep : 2 * lowerY N (lowerZeroIndex N) < lowerY N tail :=
+      lowerY_dyadic_lt_of_lt_index hgap (by
+        dsimp [tail]
+        simp [lowerTailBlock, lowerZeroIndex, Fin.val_succ])
+    have hroot_le :
+        (lowerP0 N : ℝ) ≤ 2 * lowerY N (lowerZeroIndex N) :=
+      lowerRootFactor_le_two_mul_lowerY hY0
+    have hp_floor : Nat.floor (lowerY N tail) < p := by
+      dsimp [tail]
+      exact (mem_dyadicPrimeInterval.1 hp).1
+    have hy_lt_p : lowerY N tail < (p : ℝ) := by
+      have hy_floor : lowerY N tail < (Nat.floor (lowerY N tail) : ℝ) + 1 :=
+        Nat.lt_floor_add_one (lowerY N tail)
+      have hfloor_succ_le : Nat.floor (lowerY N tail) + 1 ≤ p :=
+        Nat.succ_le_of_lt hp_floor
+      exact hy_floor.trans_le (by exact_mod_cast hfloor_succ_le)
+    have hp0_lt_p_real : (lowerP0 N : ℝ) < (p : ℝ) :=
+      hroot_le.trans_lt (hsep.trans hy_lt_p)
+    have hp0_lt_p : lowerP0 N < p := by
+      exact_mod_cast hp0_lt_p_real
+    have hpprime : Nat.Prime p := (mem_dyadicPrimeInterval.1 hp).2.2
+    exact (Nat.coprime_of_lt_prime (lowerP0_pos N).ne' hp0_lt_p hpprime).symm
 
 /-- BFV lower-construction capacity, discharged against the named
 prime-counting and scale bookkeeping stub
@@ -842,24 +1129,6 @@ prime-counting and scale bookkeeping stub
 theorem lowerEncodingCapacity_eventually :
     ∀ᶠ N : ℕ in atTop, LowerEncodingCapacity N :=
   lowerEncodingCapacity_eventually_analytic
-
-/-- Prime-supply and product-scale lower bound for the rooted lower choices.
-
-This is the remaining C5 arithmetic estimate: use the dyadic prime lower bound
-for every tail block, multiply the block cardinalities via `lowerChoices_card`,
-and absorb the lost root block and logarithmic denominators into
-`Lscale (-(1+ε), N)`. -/
-axiom lowerChoices_card_lower_bound_eventually_analytic :
-    ∀ ε : ℝ, 0 < ε → ∀ᶠ N : ℕ in atTop,
-      Nat.ceil (bfvLowerTarget ε N) ≤ (lowerChoices N).card
-
-/-- Lower-choice cardinality bound, discharged against the named dyadic
-prime-supply and product-scale bookkeeping stub
-`lowerChoices_card_lower_bound_eventually_analytic`. -/
-theorem lowerChoices_card_lower_bound_eventually :
-    ∀ ε : ℝ, 0 < ε → ∀ᶠ N : ℕ in atTop,
-      Nat.ceil (bfvLowerTarget ε N) ≤ (lowerChoices N).card :=
-  lowerChoices_card_lower_bound_eventually_analytic
 
 /-! ## Lower-family theorem targets -/
 
@@ -958,16 +1227,6 @@ theorem lowerQ_pairwise_disjoint_residues_eventually :
   exact ⟨lowerResidueAssignment hcap hdisj,
     lowerResidueAssignment_pairwise_disjoint_of_capacity hcap hdisj⟩
 
-/-- Cardinality lower bound for the BFV family, combining dyadic prime supply,
-injectivity, and the explicit scale algebra. -/
-theorem lowerQ_card_lower_bound_eventually :
-    ∀ ε : ℝ, 0 < ε → ∀ᶠ N : ℕ in atTop,
-      Nat.ceil (bfvLowerTarget ε N) ≤ (lowerQ N).card := by
-  intro ε hε
-  filter_upwards [lowerModulus_injective_eventually,
-      lowerChoices_card_lower_bound_eventually ε hε] with N hinj hcard
-  rwa [lowerQ_card_eq_lowerChoices_card_of_injective hinj]
-
 /-! ## From the explicit family to `PossibleCard` -/
 
 lemma admissible_mono {N : ℕ} {Q Q' : Finset ℕ}
@@ -986,16 +1245,21 @@ lemma possibleCard_of_admissible_card_le {N r : ℕ} {Q : Finset ℕ}
   rcases Finset.exists_subset_card_eq (s := Q) hr with ⟨Q', hsub, hcard⟩
   exact ⟨Q', admissible_mono hQ hsub, hcard⟩
 
-/-- The explicit BFV lower family gives an admissible family of every required
-target size. -/
+/-- The lower construction gives an admissible family of every required target
+size.  The stale full-product cardinality route in this file is deliberately
+bypassed: the source-aligned rooted path construction proves the needed lower
+bound for `f N`, and `possibleCard_f` supplies an actual extremal admissible
+family from which we take a subset. -/
 theorem lower_possibleCard :
     ∀ ε : ℝ, 0 < ε → ∀ᶠ N : ℕ in atTop,
       PossibleCard N (Nat.ceil (bfvLowerTarget ε N)) := by
   intro ε hε
-  filter_upwards [lowerQ_moduli_in_range_eventually,
-      lowerQ_pairwise_disjoint_residues_eventually,
-      lowerQ_card_lower_bound_eventually ε hε] with N hRange hResidues hCard
-  exact possibleCard_of_admissible_card_le
-    ⟨hRange, hResidues⟩ hCard
+  filter_upwards [lowerPath_f_lower_bound_eventually ε hε] with N hf_lower
+  have hceil_le_f : Nat.ceil (bfvLowerTarget ε N) ≤ f N := by
+    apply Nat.ceil_le.2
+    simpa [bfvLowerTarget] using hf_lower
+  rcases possibleCard_f N with ⟨Q, hQ, hQcard⟩
+  exact possibleCard_of_admissible_card_le hQ (by
+    simpa [hQcard] using hceil_le_f)
 
 end Erdos202

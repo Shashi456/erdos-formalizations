@@ -10,8 +10,7 @@ Consequences of the Park–Pham threshold theorem for spread families:
    closure of a `κ`-spread family is not `p`-small at `p = κ⁻¹`. **Proved.**
 4. `mu_at_partition_density_ge_half`: chains (3), (2), and
    `park_pham_threshold` to get `muP ≥ 1/2` at density `1/(2r)` when
-   `κ ≥ Csp · r · log(ek)`. **Stated; body is a short bookkeeping argument
-   left for a focused subpass.**
+   `κ ≥ Csp · r · log(ek)`. **Proved against the threshold package.**
 -/
 
 import Mathlib
@@ -32,36 +31,14 @@ section
 
 variable [DecidableEq α]
 
-/-- `pSmall` is monotone in `p`: if `U` is `p`-small and `0 ≤ p₀ ≤ p ≤ 1`,
-then `U` is `p₀`-small (the same cover works). -/
-lemma pSmall_mono_density {X : Finset α} {U : Finset (Finset α)}
-    {p₀ p : ℝ} (h0 : 0 ≤ p₀) (hle : p₀ ≤ p)
-    (hSmall : pSmall X U p) : pSmall X U p₀ := by
-  classical
-  rcases hSmall with ⟨G, hCover, hsum⟩
-  refine ⟨G, hCover, le_trans ?_ hsum⟩
-  refine Finset.sum_le_sum ?_
-  intro T _
-  exact pow_le_pow_left₀ h0 hle T.card
-
-/-- If `U` is not `p`-small at `p = p₀`, then it is not `p`-small for any
-`p > p₀` with `p ≤ 1`. This is the `qSmallUpper` form. -/
-lemma qSmallUpper_of_not_pSmall {X : Finset α} {U : Finset (Finset α)}
-    {p₀ : ℝ} (hp₀_nonneg : 0 ≤ p₀)
-    (h : ¬ pSmall X U p₀) :
-    qSmallUpper X U p₀ := by
-  intro p hgt _
-  intro hSmall
-  exact h (pSmall_mono_density hp₀_nonneg hgt.le hSmall)
-
 /-! ## Counting argument: spread families are not small -/
 
 /-- If `A` is a `κ`-spread nonempty `k`-uniform family with `k ≥ 1` and
 `1 < κ`, then `upClosureIn X A` is not `p`-small at `p = κ⁻¹`. -/
 theorem not_pSmall_of_spread
     {X : Finset α} {A : Finset (Finset α)} {k : ℕ} {κ : ℝ}
-    (hA : A.Nonempty) (hk : 1 ≤ k)
-    (hUniform : Erdos202.UniformFamily A k)
+    (hA : A.Nonempty) (_hk : 1 ≤ k)
+    (_hUniform : Erdos202.UniformFamily A k)
     (hSpread : Erdos202.SpreadFamily A κ)
     (hκ : 1 < κ)
     (hAX : ∀ S ∈ A, S ⊆ X) :
@@ -142,30 +119,31 @@ The chain is:
    `CKK · (1/κ) · log(ell U) ≤ 1/(2r)` with `Csp := max 10 (8 · CKK)`.
 
 The bookkeeping in step 4 is purely algebraic (log inequalities and a few
-positivity arguments). Left as a named-target body for a focused subpass;
-this is the only sorry in `ParkPham/` outside `Threshold.lean`. -/
+positivity arguments). It is isolated behind the named Park--Pham threshold
+target for a focused subpass. -/
 
-/-- The Park–Pham constant for our application. -/
-noncomputable def Csp : ℝ :=
-  max 10 (8 * CKK_const)
+/-- The spread-disjointness constant produced from a Park–Pham threshold
+constant. -/
+noncomputable def CspOf (CKK : ℝ) : ℝ :=
+  max 10 (8 * CKK)
 
-lemma Csp_pos : 0 < Csp := by
-  unfold Csp
+lemma CspOf_pos (CKK : ℝ) : 0 < CspOf CKK := by
+  unfold CspOf
   refine lt_of_lt_of_le ?_ (le_max_left _ _)
   norm_num
 
-lemma Csp_ge_ten : (10 : ℝ) ≤ Csp := le_max_left _ _
+lemma CspOf_ge_ten (CKK : ℝ) : (10 : ℝ) ≤ CspOf CKK := le_max_left _ _
 
-lemma Csp_ge_two_CKK : 2 * CKK_const ≤ Csp := by
-  unfold Csp
+lemma CspOf_ge_two_CKK {CKK : ℝ} (hCKK_pos : 0 < CKK) :
+    2 * CKK ≤ CspOf CKK := by
+  unfold CspOf
   refine le_trans ?_ (le_max_right _ _)
-  have hCKK_pos : 0 < CKK_const := CKK_const_pos
   linarith
 
 /-- Helper: universe-monomorphic density bound. Takes `CKK` as an opaque
 real parameter so elaboration doesn't drag `Classical.choose` through. -/
 private lemma density_bound_from_kappa_aux
-    (CKK : ℝ) (hCKK_pos : 0 < CKK) (hCsp_ge_2CKK : 2 * CKK ≤ Csp)
+    (CKK Csp : ℝ) (hCKK_pos : 0 < CKK) (hCsp_ge_2CKK : 2 * CKK ≤ Csp)
     {ell_real κ : ℝ} {r k : ℕ}
     (hr : 2 ≤ r) (hk : 1 ≤ k)
     (hell_real_pos : 0 < ell_real)
@@ -210,17 +188,27 @@ private lemma density_bound_from_kappa_aux
   rw [heq, one_mul]
   exact hκ_lower
 
-/-- **Partition-density lower bound.** Chains `not_pSmall_of_spread`,
-`qSmallUpper_of_not_pSmall`, `density_bound_from_kappa_aux`, and
-`park_pham_threshold` (now a top-level axiom with `CKK_const`, so no
-`Classical.choose` elaboration overhead). -/
-theorem mu_at_partition_density_ge_half
+/-- **Partition-density lower bound, parameterized by a Park–Pham threshold
+constant and theorem.** Chains `not_pSmall_of_spread`,
+`qSmallUpper_of_not_pSmall`, `density_bound_from_kappa_aux`, and the supplied
+threshold theorem. -/
+theorem mu_at_partition_density_ge_half_of_threshold
+    (CKK : ℝ) (hCKK_pos : 0 < CKK)
+    (hThreshold :
+      ∀ (X : Finset α) (U : Finset (Finset α)) (q p : ℝ),
+        0 < q → q ≤ 1 →
+        0 ≤ p → p ≤ 1 →
+        CKK * q * Real.log (ell X U) ≤ p →
+        (∀ S ∈ U, S ⊆ X) →
+        IncreasingIn X U →
+        qSmallUpper X U q →
+        muP X U p ≥ 1 / 2)
     {X : Finset α} {A : Finset (Finset α)} {r k : ℕ} {κ : ℝ}
     (hA : A.Nonempty) (hr : 2 ≤ r) (hk : 1 ≤ k)
     (hUniform : Erdos202.UniformFamily A k)
     (hSpread : Erdos202.SpreadFamily A κ)
     (hAX : ∀ S ∈ A, S ⊆ X)
-    (hκ : Csp * (r : ℝ) * Real.log (Real.exp 1 * (k : ℝ)) ≤ κ) :
+    (hκ : CspOf CKK * (r : ℝ) * Real.log (Real.exp 1 * (k : ℝ)) ≤ κ) :
     muP X (upClosureIn X A) ((1 : ℝ) / (2 * r)) ≥ 1 / 2 := by
   set U := upClosureIn X A with hU_def
   -- Reals from naturals
@@ -241,14 +229,15 @@ theorem mu_at_partition_density_ge_half
     have h := Real.log_le_log he_pos hek_ge_e
     simpa [Real.log_exp] using h
   -- κ ≥ 20 > 1
-  have hCsp_ge_ten : (10 : ℝ) ≤ Csp := Csp_ge_ten
-  have hCsp_pos : 0 < Csp := Csp_pos
+  have hCsp_ge_ten : (10 : ℝ) ≤ CspOf CKK := CspOf_ge_ten CKK
+  have hCsp_pos : 0 < CspOf CKK := CspOf_pos CKK
   have hbase_ge_20 :
-      (20 : ℝ) ≤ Csp * (r : ℝ) * Real.log (Real.exp 1 * (k : ℝ)) := by
-    have h1 : (10 : ℝ) * 2 ≤ Csp * (r : ℝ) :=
+      (20 : ℝ) ≤ CspOf CKK * (r : ℝ) * Real.log (Real.exp 1 * (k : ℝ)) := by
+    have h1 : (10 : ℝ) * 2 ≤ CspOf CKK * (r : ℝ) :=
       mul_le_mul hCsp_ge_ten hr_real_ge_two (by norm_num) hCsp_pos.le
     have h2 :
-        Csp * (r : ℝ) * 1 ≤ Csp * (r : ℝ) * Real.log (Real.exp 1 * (k : ℝ)) :=
+        CspOf CKK * (r : ℝ) * 1 ≤
+          CspOf CKK * (r : ℝ) * Real.log (Real.exp 1 * (k : ℝ)) :=
       mul_le_mul_of_nonneg_left hlog_ek_ge_one (by positivity)
     linarith
   have hκ_ge_20 : (20 : ℝ) ≤ κ := le_trans hbase_ge_20 hκ
@@ -261,6 +250,10 @@ theorem mu_at_partition_density_ge_half
     simpa using h
   -- Increasing + not p-small + qSmallUpper
   have hIncr : IncreasingIn X U := increasingIn_upClosureIn X A
+  have hUXU : ∀ S ∈ U, S ⊆ X := by
+    intro S hS
+    have hS' : S ∈ upClosureIn X A := by simpa [hU_def] using hS
+    exact (mem_upClosureIn.mp hS').1
   have hNotSmall : ¬ pSmall X U (κ⁻¹) :=
     not_pSmall_of_spread hA hk hUniform hSpread hκ_gt_one hAX
   have hqSmall : qSmallUpper X U (κ⁻¹) :=
@@ -288,10 +281,11 @@ theorem mu_at_partition_density_ge_half
   have hell_real_le_ek : (ell X U : ℝ) ≤ Real.exp 1 * (k : ℝ) := by
     have h1 : ((ell X U : ℕ) : ℝ) ≤ ((max 2 k : ℕ) : ℝ) := by exact_mod_cast hell_le_max
     exact h1.trans hmax_le_ek
-  -- Density bound: CKK_const * κ⁻¹ * log(ell U) ≤ 1/(2r)
+  -- Density bound: CKK * κ⁻¹ * log(ell U) ≤ 1/(2r)
   have h_density_bound :
-      CKK_const * κ⁻¹ * Real.log (ell X U) ≤ (1 : ℝ) / (2 * (r : ℝ)) :=
-    density_bound_from_kappa_aux CKK_const CKK_const_pos Csp_ge_two_CKK
+      CKK * κ⁻¹ * Real.log (ell X U) ≤ (1 : ℝ) / (2 * (r : ℝ)) :=
+    density_bound_from_kappa_aux CKK (CspOf CKK) hCKK_pos
+      (CspOf_ge_two_CKK hCKK_pos)
       hr hk hell_real_pos hell_ge_one hell_real_le_ek hκ_pos hκ
   -- Density at-or-above-threshold positivity bounds
   have h2r_pos : (0 : ℝ) < 2 * (r : ℝ) := by linarith
@@ -299,11 +293,11 @@ theorem mu_at_partition_density_ge_half
   have h_p_le_one : (1 : ℝ) / (2 * (r : ℝ)) ≤ 1 := by
     rw [div_le_one h2r_pos]
     linarith
-  -- Apply the Park–Pham threshold axiom.
+  -- Apply the Park–Pham threshold theorem.
   have hgoal :
       muP X U ((1 : ℝ) / (2 * (r : ℝ))) ≥ 1 / 2 :=
-    park_pham_threshold X U (κ⁻¹) ((1 : ℝ) / (2 * (r : ℝ)))
-      hκ_inv_pos hκ_inv_le_one h_p_nn h_p_le_one h_density_bound hIncr hqSmall
+    hThreshold X U (κ⁻¹) ((1 : ℝ) / (2 * (r : ℝ)))
+      hκ_inv_pos hκ_inv_le_one h_p_nn h_p_le_one h_density_bound hUXU hIncr hqSmall
   simpa [hU_def] using hgoal
 
 end

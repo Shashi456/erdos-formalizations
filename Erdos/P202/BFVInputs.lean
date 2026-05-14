@@ -1,25 +1,24 @@
 /-
 Erdős Problem 202 — BFV inputs layer.
 
-Three theorem-shaped axioms isolating the BFV (Bourgain–Filaseta–Verstraëten,
-Acta Arith.) ingredients used by the descending chain:
+The BFV (de la Bretèche–Ford–Vandehey) input interface used by
+the descending chain:
 
-  * `bfv_pruning_input`           : pass to a subfamily with controlled
-                                     `omega`, `hExp`, distinct radicals.
   * `bfv_omega_count_input`       : count of `n ≤ y` with `omega n = K - W`,
                                      uniform in K, W in the BFV range.
   * `bfv_lower_bound_input`       : matching lower bound `f(N) ≥ N · L(-(1+ε), N)`.
 
-Each is stated with explicit ε-quantifiers (no informal `o(1)`); uniformity
-is built into the statement so multiplying `O(M)`-many factors below is sound.
-
-To be discharged by formalizing BFV (probably alongside parts of
-`Mathlib.NumberTheory.SmoothNumbers` and Selberg-type sieve infrastructure).
+The omega-count and lower-bound historical names are theorem aliases to the
+current BFV subdirectory replacements.  The pruning theorem is proved in
+`Erdos.P202.BFV.Pruning`, which imports this file for the `PrunedData`
+structure.
 -/
 
 import Mathlib
 import Erdos.P202.P202Basic
 import Erdos.P202.P202Arithmetic
+import Erdos.P202.BFV.OmegaCountInput
+import Erdos.P202.BFV.LowerBoundInput
 
 namespace Erdos202
 
@@ -77,29 +76,7 @@ lemma PrunedData.card_le_f {N : ℕ} (D : PrunedData N) :
     D.Q.card ≤ f N :=
   le_f_of_possibleCard D.possibleCard
 
-/-! ## §2 BFV pruning -/
-
-/-- **BFV pruning input.** From any admissible family of size approximately
-`f(N)` we can extract a `PrunedData N` whose cardinality is at least
-`f(N) · L(-ε, N)` for any prescribed `ε > 0`, eventually.
-
-Note: this is a slightly strengthened BFV pruning interface. The PDF
-(Proposition 3.1) states pruning for an extremal family `Q` with
-`Q.card = f N`; here we allow any admissible `Q` of near-extremal size
-`Q.card ≥ f N · L(-ε, N)`. The later proof must derive this stronger form
-by applying the same BFV deletions (small moduli, large ω, large h, radical
-pigeonhole) together with `bfv_lower_bound_input` to show the discarded
-sets are negligible. To be discharged from BFV's pruning argument. -/
-axiom bfv_pruning_input :
-  ∀ ε : ℝ, 0 < ε → ∀ᶠ N : ℕ in atTop,
-    ∀ Q : Finset ℕ, ∀ a : ResidueAssignment Q,
-      (∀ q ∈ Q, 1 ≤ q ∧ q ≤ N) →
-      PairwiseDisjointResidues Q a →
-      (Q.card : ℝ) ≥ (f N : ℝ) * Lscale (-ε) N →
-      ∃ D : PrunedData N,
-        (D.Q.card : ℝ) ≥ (Q.card : ℝ) * Lscale (-ε) N
-
-/-! ## §3 BFV ω-count estimate -/
+/-! ## §2 BFV ω-count estimate -/
 
 /-- **BFV ω-count input.** Uniform in `1 ≤ y ≤ N`, `K ≤ 3 M(N)`, and
 `0 ≤ W ≤ K`, the count of integers up to `y` with `ω(n) = K - W` is at most
@@ -112,7 +89,7 @@ false for arbitrarily large `y` relative to `N`. The PDF's quotient count
 
 The `(log N)^{W/2}` is real-exponentiated; we phrase it as
 `exp((W/2) · log log N)` to avoid `Real.rpow` overhead. -/
-axiom bfv_omega_count_input :
+theorem bfv_omega_count_input :
   ∀ ε : ℝ, 0 < ε → ∀ᶠ N : ℕ in atTop,
     ∀ y K W : ℕ,
       y ≤ N →
@@ -122,16 +99,18 @@ axiom bfv_omega_count_input :
       ((Finset.Icc 1 y).filter (fun n => omega n = K - W)).card
         ≤ Nat.floor
             ((y : ℝ) * Real.exp ((-d / 2 + ε) * Zscale N)
-              * Real.exp (((W : ℝ) / 2) * Real.log (Real.log (N : ℝ))))
+              * Real.exp (((W : ℝ) / 2) * Real.log (Real.log (N : ℝ)))) :=
+  bfv_omega_count_theorem
 
-/-! ## §4 BFV lower-bound construction -/
+/-! ## §3 BFV lower-bound construction -/
 
 /-- **BFV lower-bound input.** The unconditional matching lower bound
 `f(N) ≥ N · exp(-(1+ε) · Z(N))` for every `ε > 0`, eventually.
 
 Discharged by BFV's explicit construction; published, classical. -/
-axiom bfv_lower_bound_input :
+theorem bfv_lower_bound_input :
   ∀ ε : ℝ, 0 < ε → ∀ᶠ N : ℕ in atTop,
-    (N : ℝ) * Lscale (-(1 + ε)) N ≤ (f N : ℝ)
+    (N : ℝ) * Lscale (-(1 + ε)) N ≤ (f N : ℝ) :=
+  bfv_lower_bound_theorem
 
 end Erdos202

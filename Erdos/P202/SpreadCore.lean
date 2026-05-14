@@ -6,7 +6,7 @@ the Erdős–Lovász / minimal-family loss in the BFV descending chain.
 
 This file:
   * states the finite combinatorial spread-disjointness consequence of
-    Park–Pham (Kahn–Kalai) as a theorem-shaped axiom;
+    Park–Pham (Kahn–Kalai) as a derived theorem;
   * derives the dense-core corollary used downstream.
 
 Park–Pham theorem reference: arXiv:2203.17207. We do NOT formalize the full
@@ -37,8 +37,10 @@ downstream consumers (chain, dense-core, optimization) need no edits. -/
 
 /-- **Spread-disjointness input** — preserved name, now a derived theorem
 discharging the Park–Pham layer (`spread_disjointness_theorem`).
-Trust boundary moves to `CKK_const` + `park_pham_threshold` +
-`partition_density_to_disjoint_members`. -/
+Trust boundary moves to the non-smallness Park--Pham package
+`park_pham_threshold_not_small_lt_exists`; the closed-endpoint theorem, density
+monotonicity, the `qSmallUpper` wrapper, and random-partition bookkeeping are
+proved in `ParkPham/`. -/
 theorem spread_disjointness_input :
   ∃ Csp : ℝ, 0 < Csp ∧
     ∀ {α : Type*} [DecidableEq α]

@@ -46,6 +46,46 @@ lemma filter_not_card_real_ge_of_filter_card_le_floor {α : Type*} (s : Finset �
   have hfloor_le : (Nat.floor X : ℝ) ≤ X := Nat.floor_le hXnonneg
   exact hfloor_real.trans (hfloor_le.trans hX)
 
+lemma filter_large_of_bad_small {α : Type*} [DecidableEq α]
+    (Q Bad : Finset α) {δ : ℝ}
+    (hBad : Bad ⊆ Q)
+    (hsmall : (Bad.card : ℝ) ≤ δ * (Q.card : ℝ)) :
+    (((Q \ Bad).card : ℝ) ≥ (1 - δ) * (Q.card : ℝ)) := by
+  have hreal : ((Q \ Bad).card : ℝ) = (Q.card : ℝ) - (Bad.card : ℝ) := by
+    simpa using (Finset.cast_card_sdiff (R := ℝ) hBad)
+  rw [hreal]
+  nlinarith
+
+lemma filter_large_of_three_bad_small {α : Type*} [DecidableEq α]
+    (Q Bad₁ Bad₂ Bad₃ : Finset α) {δ₁ δ₂ δ₃ : ℝ}
+    (hBad₁ : Bad₁ ⊆ Q) (hBad₂ : Bad₂ ⊆ Q) (hBad₃ : Bad₃ ⊆ Q)
+    (hsmall₁ : (Bad₁.card : ℝ) ≤ δ₁ * (Q.card : ℝ))
+    (hsmall₂ : (Bad₂.card : ℝ) ≤ δ₂ * (Q.card : ℝ))
+    (hsmall₃ : (Bad₃.card : ℝ) ≤ δ₃ * (Q.card : ℝ)) :
+    (((Q \ (Bad₁ ∪ Bad₂ ∪ Bad₃)).card : ℝ) ≥
+      (1 - (δ₁ + δ₂ + δ₃)) * (Q.card : ℝ)) := by
+  have hBad : Bad₁ ∪ Bad₂ ∪ Bad₃ ⊆ Q := by
+    intro x hx
+    rcases Finset.mem_union.1 hx with hx12 | hx3
+    · rcases Finset.mem_union.1 hx12 with hx1 | hx2
+      · exact hBad₁ hx1
+      · exact hBad₂ hx2
+    · exact hBad₃ hx3
+  refine filter_large_of_bad_small Q (Bad₁ ∪ Bad₂ ∪ Bad₃) hBad ?_
+  have hcard_nat :
+      (Bad₁ ∪ Bad₂ ∪ Bad₃).card ≤ Bad₁.card + Bad₂.card + Bad₃.card := by
+    calc
+      (Bad₁ ∪ Bad₂ ∪ Bad₃).card
+          ≤ (Bad₁ ∪ Bad₂).card + Bad₃.card := Finset.card_union_le _ _
+      _ ≤ (Bad₁.card + Bad₂.card) + Bad₃.card := by
+            exact Nat.add_le_add_right (Finset.card_union_le Bad₁ Bad₂) Bad₃.card
+      _ = Bad₁.card + Bad₂.card + Bad₃.card := by omega
+  have hcard_real :
+      ((Bad₁ ∪ Bad₂ ∪ Bad₃).card : ℝ) ≤
+        (Bad₁.card : ℝ) + (Bad₂.card : ℝ) + (Bad₃.card : ℝ) := by
+    exact_mod_cast hcard_nat
+  nlinarith
+
 /-! ## Pigeonhole over a finite range -/
 
 lemma exists_fiber_card_mul_range_card_ge {α β : Type*} [DecidableEq β]

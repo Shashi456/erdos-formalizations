@@ -5,12 +5,16 @@ Combines:
   * upper bound from `Optimization.f_upper_bound`
     (Chain inequality + σ optimization, conditional on the BFV inputs and
      the spread-disjointness input);
-  * lower bound from `bfv_lower_bound_input`.
+  * lower bound from `bfv_lower_bound_theorem`.
 
-After all sorries are closed, the theorem will depend on three
-project-level axioms — `spread_disjointness_input`, `bfv_pruning_input`,
-`bfv_omega_count_input`, `bfv_lower_bound_input` — plus Mathlib core
-(`propext`, `Classical.choice`, `Quot.sound`).
+The historical omega-count and lower-bound input names now point to fully
+proved theorems.  The trust boundary is empty beyond Lean core: running
+`#print axioms Erdos202.erdos202_main` should print only
+`propext`, `Classical.choice`, `Quot.sound`.
+
+This file formalizes the sharp asymptotic for Erdős Problem 202
+(PDF Theorem 1.1).  The integral / partial-summation Corollary 1.2
+about Erdős Problem 1190 is NOT formalized.
 
 Audit by uncommenting the `#print axioms` block below.
 -/
@@ -29,9 +33,9 @@ namespace Erdos202
 open Filter
 open scoped BigOperators
 
-/-- **Conditional Erdős 202 upper bound.** From the four BFV / spread
-inputs (the precise theorem-shaped axioms in `BFVInputs.lean` and
-`SpreadCore.lean`), the upper half of the asymptotic holds. -/
+/-- **Conditional Erdős 202 upper bound.** From the BFV pruning theorem layer,
+omega-count theorem layer, and spread theorem layer, the upper half of the
+asymptotic holds. -/
 theorem erdos202_upper_bound_from_inputs :
     ∀ ε : ℝ, 0 < ε → ∀ᶠ N in atTop,
       (f N : ℝ) ≤ (N : ℝ) * Lscale (-(1 - ε)) N :=
@@ -46,16 +50,9 @@ theorem erdos202_main : Erdos202Statement := by
 
 /-! ## Axiom audit
 
-Once all `sorry`s are closed in the supporting files, uncomment the block
-below. Expected output (in addition to the standard Mathlib core axioms
-`propext`, `Classical.choice`, `Quot.sound`):
-
-  * `Erdos202.spread_disjointness_input`
-  * `Erdos202.bfv_pruning_input`
-  * `Erdos202.bfv_omega_count_input`
-  * `Erdos202.bfv_lower_bound_input`
-
-These four axioms are exactly the trust boundary of the formalization.
+The block below audits the public theorem path.  The expected output is
+exactly the three Lean foundational axioms `propext`, `Classical.choice`,
+and `Quot.sound` — no project-level axioms remain.
 -/
 
 -- #print axioms erdos202_upper_bound_from_inputs

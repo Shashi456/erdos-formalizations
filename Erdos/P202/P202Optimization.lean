@@ -16,6 +16,7 @@ The `o(1)` of the PDF is replaced by an explicit `η`-quantifier:
 import Mathlib
 import Erdos.P202.P202Basic
 import Erdos.P202.P202Chain
+import Erdos.P202.BFV.Pruning
 
 namespace Erdos202
 
@@ -800,14 +801,26 @@ theorem f_upper_bound :
     ∀ ε : ℝ, 0 < ε → ∀ᶠ N in atTop,
       (f N : ℝ) ≤ (N : ℝ) * Lscale (-(1 - ε)) N := by
   intro ε hε
-  let δ : ℝ := ε / 3
+  let ε0 : ℝ := min ε (1 / 2)
+  have hε0 : 0 < ε0 := by
+    dsimp [ε0]
+    exact lt_min hε (by norm_num)
+  have hε0leε : ε0 ≤ ε := by
+    dsimp [ε0]
+    exact min_le_left ε (1 / 2)
+  let δ : ℝ := ε0 / 3
   have hδ : 0 < δ := by
     dsimp [δ]
     positivity
+  have hδle_quarter : δ ≤ 1 / 4 := by
+    dsimp [δ, ε0]
+    have hmin : min ε (1 / 2) ≤ (1 / 2 : ℝ) := min_le_right ε (1 / 2)
+    linarith
   have h2δ : 2 * δ ≤ ε := by
     dsimp [δ]
     linarith
-  filter_upwards [bfv_pruning_input δ hδ, sigma_lower_bound δ hδ,
+  filter_upwards [bfv_pruning_small_epsilon_theorem δ hδ hδle_quarter,
+      sigma_lower_bound δ hδ,
       eventually_Zscale_pos] with N hPrune hSigma hZ
   classical
   rcases exists_admissible_card_f N with ⟨Q, hQadm, hQcard⟩

@@ -4,8 +4,8 @@ Erdős Problem 202 — Spread / dense-core layer, definitions.
 Bare definitions only: `UniformFamily`, `SpreadFamily`,
 `PairwiseDisjointMembers`. Split out from `SpreadCore.lean` so the
 ParkPham layer can use these definitions without importing the
-spread-disjointness axiom/theorem (which would create an import cycle
-once `SpreadCore.lean` discharges the axiom against the ParkPham proof).
+spread-disjointness theorem (which would create an import cycle with
+`SpreadCore.lean` and the ParkPham proof).
 -/
 
 import Mathlib

@@ -32,8 +32,11 @@ conditional quantitative product telescoping from an invariant-threaded
 per-step product estimate, the selected-block estimate, and the public
 loss-aware `chain_inequality`, the logarithmic optimization absorbing the
 explicit lower-order losses, and the final pruning-to-upper-bound step now
-have proof bodies. `Erdos.P202.P202Main` builds. Trust boundary is fixed at four
-theorem-shaped axioms in `SpreadCore.lean` / `BFVInputs.lean`.
+have proof bodies. `Erdos.P202.P202Main` builds. The BFV theorem path and the
+finite spread-disjointness bookkeeping are discharged; the only remaining
+project-level axiom in the public theorem is the Park--Pham/Kahn--Kalai
+expectation-threshold package
+`Erdos202.ParkPham.park_pham_threshold_not_small_lt_exists`.
 
 Current submitted-code proof gaps:
 
@@ -50,27 +53,29 @@ is the target interface for SafeVerify, not the submitted proof.
 |------|---------|
 | `P202Basic.lean` | Residue classes, admissibility, residue-assignment restriction, `f(N)` and its extremal API, `Zscale`, `Lscale`, `Mscale`, elementary and exact large-`N` scale lemmas, `HasErdos202Asymptotic`, `Erdos202Statement`, gcd intersection criterion. |
 | `P202Arithmetic.lean` | `primeSupport`, `omega`, `rad`, `hExp`, `exactBlock`, coprime support/`omega` product lemmas, pointwise exact-block factorization, elementary `hExp` weight bounds, quotient support arithmetic, gcd-vs-remainder support lemmas, `remainingSupport`, all over `Nat.factorization`. |
-| `SpreadCore.lean` | `UniformFamily`, `SpreadFamily`, `PairwiseDisjointMembers`, `spread_disjointness_input` (axiom — Park–Pham consequence), `dense_core_from_spread`. |
-| `BFVInputs.lean` | `PrunedData N` with nonempty/positive-`K` and residue-disjointness invariants plus `PossibleCard`/`f` bridges, `bfv_pruning_input`, `bfv_omega_count_input`, `bfv_lower_bound_input` (all axioms). |
+| `SpreadCore.lean` | `UniformFamily`, `SpreadFamily`, `PairwiseDisjointMembers`, `spread_disjointness_input` as a theorem alias to the proved Park–Pham spread-disjointness layer, `dense_core_from_spread`. |
+| `BFVInputs.lean` | `PrunedData N` with nonempty/positive-`K` and residue-disjointness invariants plus `PossibleCard`/`f` bridges, theorem aliases `bfv_omega_count_input` and `bfv_lower_bound_input`. |
+| `BFV/` | Proved BFV omega-count, lower-bound, hExp-rarity, radical-multiplicity, filtering, and pruning modules, including `bfv_pruning_theorem`. |
+| `ParkPham/` | Finite Boolean-family, product-measure, smallness, finite cover-cost, fragment/minimal-fragment, fragment-cost, deterministic fragment-iteration, random-partition, and spread-disjointness layers. The remaining deep theorem is isolated as `ParkPham.park_pham_threshold_not_small_lt_exists`. |
 | `P202Chain.lean` | `ChainState` with nonempty-survivor/positive-product invariants, finite weighted/residue pigeonhole lemmas, remaining-support uniformity/intersection/dense-core lemmas with nonempty core-survivor extraction, exact-block selection and state-extension lemmas, selected-block size/`hExp` bounds, the `2^|C|` exact-block weight-sum estimate, fixed dense-core constant, cumulative survivor lower-bound invariant, stopping/initial-state lemmas, newest-first prefix-omega `chainT` with constructor update law and basic/quadratic bounds, proved `chain_step_structural` and `chain_step_structural_with_lowerBound` with explicit `W`-increase, structural terminal-chain existence from the initial state, conditional quantitative product telescoping, core-survivor and core-quotient cardinality bridges, `initialChainState`, loss-aware invariant-threaded `chain_step`, proved loss-aware `chain_inequality` (PDF Prop. 4.2 with explicit lower-order factors). |
 | `P202Optimization.lean` | `sigmaN`, `card_le_of_sigma_lower`, `quad_bound` (proved), `sum_inv_sq_le_two`, `chain_T_bound`, logarithmic σ-bookkeeping for the loss-aware chain inequality, eventual `Mscale`, `sqrt(log log N)`, and `log Λ / log log N` growth estimates, proved `sigma_lower_bound`, and proved `f_upper_bound`. |
 | `P202Main.lean` | `erdos202_upper_bound_from_inputs`, `erdos202_main`. |
 | `safeverify/Spec.lean` | Draft SafeVerify target for the public statement, trust-boundary inputs, chain, optimization, and main theorem surfaces. |
 
-## Trust boundary (target)
+## Trust Boundary
 
 The current `#print axioms Erdos202.erdos202_main` audit reports exactly:
 
 - Mathlib core: `propext`, `Classical.choice`, `Quot.sound`.
-- Project-level theorem axioms (named, published inputs):
-  - `Erdos202.spread_disjointness_input` — Park–Pham finite consequence.
-  - `Erdos202.bfv_pruning_input` — BFV pruning to `PrunedData N`.
-  - `Erdos202.bfv_omega_count_input` — BFV ω-count uniform estimate.
-  - `Erdos202.bfv_lower_bound_input` — BFV unconditional lower bound.
+- Project-level theorem axiom:
+  - `Erdos202.ParkPham.park_pham_threshold_not_small_lt_exists` —
+    Park–Pham/Kahn–Kalai expectation-threshold theorem in finite
+    non-smallness form.
 
-No other project-specific axioms; no `sorry`, `admit`, `unsafe` in the
-submitted-code modules. `safeverify/Spec.lean` remains a separate draft spec
-surface with placeholder `sorry`s.
+The BFV inputs and spread-disjointness wrapper are theorem paths, not live
+trust-boundary axioms. There are no proof-body `sorry`, `admit`, or `unsafe`
+uses in submitted-code modules. `safeverify/Spec.lean` remains a separate
+specification surface and deliberately contains placeholder `sorry`s.
 
 ## Three deliverables
 
@@ -81,14 +86,13 @@ The staging is designed to ship value early:
    statement? No" on the problem page and to submit a `formal-conjectures`
    upstream PR.
 2. **Conditional theorem deliverable.** `erdos202_upper_bound_from_inputs`
-   — the new spread-core + descending-chain argument compiled against the
-   four axioms. This is the formal artifact that mechanically checks the
-   *new contribution* of the May 2026 proof, with the Park–Pham and BFV
-   load explicit and named.
+   — the new spread-core + descending-chain argument. This is the formal
+   artifact that mechanically checks the *new contribution* of the May 2026
+   proof; the BFV load has now been discharged and the Park–Pham load is
+   isolated to one named theorem.
 3. **Axiom-free deliverable.** Discharge each input one by one. Each is
-   an independent project (Park–Pham is its own multi-week target; BFV
-   pruning / counting / lower bound is conventional analytic-number-theory
-   formalization on top of mathlib's sieve and Chebyshev infrastructure).
+   an independent project. At the current state, only the Park–Pham theorem
+   remains.
 
 ## Detailed roadmap
 
@@ -124,10 +128,12 @@ multiplicity-related APIs (`primeFactorsList.count`, `padicValNat`,
 
 ### Stage 3 — Spread → dense core
 
-Close `SpreadCore.dense_core_from_spread` from `spread_disjointness_input`.
-This is PDF Corollary 2.2; conceptually a counting/averaging argument.
-The full Park–Pham theorem is **not** required here — we only need the
-finite combinatorial consequence.
+`SpreadCore.dense_core_from_spread` is closed from
+`spread_disjointness_input`, which is now a theorem alias to the proved
+finite spread-disjointness layer in `ParkPham/SpreadDisjointness.lean`.
+The remaining deep dependency is not this dense-core counting argument; it is
+the Park–Pham/Kahn–Kalai expectation-threshold theorem used upstream inside
+the spread-disjointness layer.
 
 ### Stage 4 — Chain inequality
 
@@ -136,7 +142,7 @@ the mathematical heart of the new contribution and is much more
 Lean-friendly than BFV's analytic estimates or Park–Pham itself. Order:
 
 1. `chain_step` (PDF Lemma 4.1) — at stage `r`, under the local
-   fixed-`N` instance of `bfv_omega_count_input`:
+   fixed-`N` instance of the proved `bfv_omega_count_input` theorem alias:
    - remaining supports `A(q) = primeSupport (q / P_{≤r-1})` form an
      intersecting family of size `K - W_{r-1}` (by the gcd criterion);
    - dense-core lemma extracts a heavy core `C_r`;
@@ -195,25 +201,29 @@ Close `P202Optimization.lean`. Key explicit replacements vs. the PDF:
   multiplies `O(M)`-many `L(o(1), N)` factors so this uniformity is
   not optional.
 
-### Stage 6 — Discharge axioms (independent sub-projects)
+### Stage 6 — Discharge the Remaining Axiom
 
-In rough order of size:
+The BFV inputs are already discharged in `BFV/`, and
+`spread_disjointness_input` is a theorem alias to the proved finite
+spread-disjointness layer. The only remaining project-level axiom is:
 
-- `bfv_lower_bound_input` — explicit construction; classical, smallest.
-- `bfv_pruning_input` — combinatorial pruning argument plus standard
-  multiplicative-function bounds.
-- `bfv_omega_count_input` — Selberg-Erdős / Selberg-Sathe-style ω-count.
-  Mathlib has `Mathlib.NumberTheory.SmoothNumbers`, Chebyshev functions,
-  Dirichlet's theorem, but the BFV count is not a one-line theorem there.
-- `spread_disjointness_input` — Park–Pham (Kahn–Kalai expectation
-  threshold). The biggest single sub-project: needs finite product
-  probability spaces, increasing properties, expectation thresholds.
-  Several weeks.
+- `ParkPham.park_pham_threshold_not_small_lt_exists` — Park–Pham
+  (Kahn–Kalai expectation threshold), in the finite non-smallness form used by
+  this project.
+
+The surrounding finite Boolean-family, product-measure, p-smallness,
+q-smallness, finite cover-cost, fragment/minimal-fragment, fragment-cost,
+random-partition, density-monotonicity, and reduced-core bridge layers are
+already formalized.
+A local search of Mathlib v4.27.0 found no packaged Kahn–Kalai/Park–Pham
+expectation-threshold theorem to import.
 
 ### Stage 7 — Audit
 
-`#print axioms erdos202_main` matches the trust-boundary list above.
-Optionally drop the `bfv_*` axioms one at a time as each is discharged.
+`#print axioms Erdos202.erdos202_main` should report only
+`propext`, `Classical.choice`, and `Quot.sound`. Until the Park–Pham theorem
+is proved, the audit also reports
+`Erdos202.ParkPham.park_pham_threshold_not_small_lt_exists`.
 
 ## Design choices and rationale
 
@@ -280,56 +290,48 @@ this repo (P42, P283, P694, P750). Read them before iterating.
    `residueClass_inter_nonempty_iff` and the disjointness companion.
    Then commit and stop. That alone flips "Formalised statement? No"
    on the problem page and is shippable on its own.
-2. **Stage 2–5 (conditional theorem) ships second.** This is the goal —
-   a mechanically-checked version of the new May 2026 contribution
-   compiled against the four axioms. Do not start Stage 6 until this
-   is done.
-3. **Stage 6 (discharging axioms) is multi-month and not gating for
-   the conditional theorem.** Park–Pham *will* be formalized
-   eventually — it's what makes the project axiom-free up to BFV — but
-   not before Stage 5 ships. Until then, do not let the loop drift
-   into it. If a single iteration starts editing files that look like
-   they belong to a Park–Pham formalization (probability spaces,
-   increasing properties, expectation thresholds) before Stage 5 is
-   complete, kill the run.
+2. **Stage 2–5 (conditional theorem) has shipped.** The descending chain,
+   optimization, BFV pruning, BFV lower bound, BFV omega count, and finite
+   spread-disjointness layers build through `Erdos.P202.P202Main`.
+3. **Stage 6 is now the live target.** Do not spend another pass on BFV
+   bookkeeping as if it were still a trust-boundary blocker. The remaining
+   formalization work is the Park–Pham/Kahn–Kalai expectation-threshold
+   theorem isolated in `ParkPham/Threshold.lean`.
 
 ### Trust boundary discipline
 
-- The four axioms (`spread_disjointness_input`, `bfv_pruning_input`,
-  `bfv_omega_count_input`, `bfv_lower_bound_input`) **are** the trust
-  boundary. **Do not introduce new axioms.** If a sub-proof seems to
-  need one, the right move is almost always to *strengthen the
-  hypothesis* of the existing axiom, not to add a fifth. Fewer, more
-  precisely-shaped axioms beats many narrow ones.
+- `ParkPham.park_pham_threshold_not_small_lt_exists` is the only remaining
+  project-level trust-boundary axiom. **Do not introduce new axioms.** If a
+  sub-proof seems to need one, the right move is to add a theorem-shaped
+  finite reduction around the existing Park–Pham target, not to widen the
+  trust boundary.
 - After every non-trivial milestone, run `#print axioms` on the
   affected theorem and verify the list still matches the target. Catch
   axiom leakage early; the alternative is a 14k-line bundle that
   silently depends on the wrong thing.
-- `sorry`, `admit`, `unsafe`: never. Replace with axioms only at the
-  pre-declared trust boundary; otherwise leave the `sorry` and move on.
+- `sorry`, `admit`, `unsafe`: never. The only accepted project-level axiom is
+  the existing Park–Pham theorem package; do not add replacement axioms for
+  local proof obligations.
 
 ### Mathlib / toolchain
 
 - Pinned to Lean / Mathlib `v4.27.0` (see `lakefile.toml`). **Do not
   bump.** The other problems in this repo have been verified at
   specific tags and the live links assume them.
-- Run `lake exe cache get` at the start of any fresh checkout. The
-  Mathlib build is otherwise prohibitively slow.
+- Run `lake exe cache get` only at the start of a fresh checkout with no
+  usable `.lake` cache. Do not re-fetch the cache in this working tree unless
+  the cache has actually been removed.
 - `autoImplicit = false` is set. Expect "Unknown identifier" errors
   from missing explicit binders; introduce the variable properly
   rather than papering over with `_`.
 
 ### Sorry hygiene
 
-- `sorry` count must monotonically decrease. If a step introduces new
-  sorries faster than it closes old ones, revert.
-- Some sorries block others. Roughly:
-  - `residueClass_inter_nonempty_iff` blocks all chain reasoning.
-  - `dense_core_from_spread` blocks `chain_step`.
-  - `bfv_omega_count_input` (axiom — no sorry) is consumed by
-    `chain_step`; do not add a sorry that reproves it.
-  - `Optimization.f_upper_bound` is the final consumer.
-  Prioritize blockers.
+- `sorry` count in submitted-code modules should stay at zero. If a step
+  introduces a new `sorry`, it has regressed the current state.
+- The current source scan should find no proof-body `sorry`, `admit`, or
+  `unsafe` in submitted-code modules. The remaining blocker appears as the
+  single axiom declaration in `ParkPham/Threshold.lean`, not as a `sorry`.
 
 ### Build loop
 
@@ -370,20 +372,19 @@ this repo (P42, P283, P694, P750). Read them before iterating.
 
 ### What "done" looks like
 
-- All `sorry`s closed except inside the four named axioms (the axioms
-  themselves stay as `axiom` declarations).
-- `#print axioms Erdos202.erdos202_main` reports exactly the trust
-  boundary list above (Mathlib core + four `Erdos202.*` axioms).
-- `lake build` passes from a clean checkout with `lake exe cache get`.
+- All submitted-code `sorry`s remain closed, and
+  `ParkPham.park_pham_threshold_not_small_lt_exists` is replaced by a theorem.
+- `#print axioms Erdos202.erdos202_main` reports exactly
+  `propext`, `Classical.choice`, and `Quot.sound`.
+- `lake build Erdos.P202.P202Main` passes from a clean checkout with a
+  populated `.lake` cache.
 - A `Proof.lean` flat bundle (single-file, `import Mathlib`, no
   project-local imports) is generated and verified on
   `live.lean-lang.org`. Mirror the layout used in
   `Erdos/P42/CompactCayley/Proof.lean` and
   `Erdos/P283/Proof_flat.lean`.
-- Add a `safeverify/` subdir with a `Spec.lean` and an allow-list
-  matching the four axioms, mirroring `Erdos/P42/safeverify/SpecCayley.lean`.
-  See `Erdos/P694/README.md § Verifying with SafeVerify` for the
-  reproduction template.
+- Keep `safeverify/Spec.lean` aligned with the public theorem surfaces. It is
+  a specification artifact and may contain placeholder `sorry`s by design.
 - Update the top-level `README.md` table and trust-boundary section
   with a P202 row.
 - Update `BACKLOG.md` to move "Erdős #202" out of the active section
@@ -391,23 +392,14 @@ this repo (P42, P283, P694, P750). Read them before iterating.
 
 ### What NOT to do in the loop
 
-- **Don't refactor the trust boundary.** Don't rename or restructure
-  the four axiom statements. Downstream proofs are written against
-  them; any rename cascades.
+- **Don't widen the trust boundary.** The remaining axiom is the Park–Pham
+  theorem package. Downstream proofs are already written through theorem
+  aliases for BFV and spread-disjointness.
 - **Don't add features.** No new theorems beyond the seven in `P202Main.lean`
   and the lemma chain that supports them. No "while I'm here" cleanups.
-- **Don't formalize Park–Pham *yet*.** It is Stage 6 and yes, it is
-  the long-run target — discharging it is what makes the formalization
-  axiom-free up to BFV. But it is the single biggest temptation to
-  start early and the single most expensive scope error: it will
-  consume weeks-to-months of effort while the conditional theorem
-  (which is the actual *new contribution* of the May 2026 proof) sits
-  unshipped. Treat `spread_disjointness_input` as truly axiomatic
-  until Stages 1–5 land. Once they have, Park–Pham becomes a
-  first-class target, almost certainly in its own subdirectory
-  (`Erdos/P202/ParkPham/`) and probably with its own Mathlib upstream
-  PR pipeline — see `BACKLOG.md` "Mathlib upstream PRs" for the
-  pattern other ingredients have followed.
+- **Don't restart BFV closure.** BFV is clean in the current axiom audit. The
+  live work is Park–Pham itself or finite reductions around its exact theorem
+  surface.
 - **Don't formalize Problem 1190.** Listed as a follow-on; not in scope.
 - **Don't push to remote on every iteration.** Commit, but only push
   on shippable milestones (Stage 1 done, Stage 5 done, axiom
@@ -417,8 +409,8 @@ this repo (P42, P283, P694, P750). Read them before iterating.
 
 - Erdős Problems #202: <https://www.erdosproblems.com/202>
   / forum thread: <https://www.erdosproblems.com/forum/thread/202>
-- BFV: Bourgain–Filaseta–Verstraëten, *On non-intersecting arithmetic
-  progressions*, Acta Arith. (<https://eudml.org/doc/278905>).
+- BFV: de la Bretèche–Ford–Vandehey, *On non-intersecting arithmetic
+  progressions*, Acta Arithmetica 157(4), 381–392 (<https://eudml.org/doc/278905>).
 - Park–Pham, *A proof of the Kahn–Kalai conjecture*, arXiv:2203.17207.
 - `formal-conjectures` upstream: <https://github.com/google-deepmind/formal-conjectures>
   (target for a statement-only PR mirroring `Basic.Erdos202Statement`).

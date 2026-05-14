@@ -2,11 +2,15 @@
 Erdős Problem 202 — Statement layer.
 
 Defines residue classes, admissible families, the extremal function `f(N)`,
-the BFV scale `L(α, N) = exp(α · sqrt(log N · log log N))`, and the sharp
-asymptotic predicate `HasErdos202Asymptotic`.
+the real-variable wrapper `fReal(x) = f(⌊x⌋)`, the BFV scale
+`L(α, N) = exp(α · sqrt(log N · log log N))`, and the sharp asymptotic
+predicate `HasErdos202Asymptotic`.
 
-Reference: PDF in `docs/`, BFV (Acta Arith.) for the unconditional bounds,
-spread-core variant for the matching upper bound `f(N) = N · L(-(1+o(1)), N)`.
+Reference: PDF in `docs/`. BFV (de la Bretèche–Ford–Vandehey) for the
+unconditional bounds; spread-core variant for the matching upper bound
+`f(N) = N · L(-(1+o(1)), N)`. This file formalizes the sharp asymptotic
+for Erdős Problem 202 (PDF Theorem 1.1); the integral / partial-summation
+corollary about Erdős Problem 1190 (PDF Corollary 1.2) is NOT formalized.
 -/
 
 import Mathlib
@@ -70,6 +74,12 @@ always admissible (`0` is reachable) and `r ≤ |Q| ≤ N`. -/
 noncomputable def f (N : ℕ) : ℕ := by
   classical
   exact Nat.findGreatest (PossibleCard N) N
+
+/-- Real-variable wrapper for the extremal function.  This is a statement-layer
+convenience: the formal proof is carried by the natural-valued `f`, and this
+definition packages the usual `x ↦ f(⌊x⌋)` extension. -/
+noncomputable def fReal (x : ℝ) : ℕ :=
+  f (Nat.floor x)
 
 lemma admissible_card_le {N : ℕ} {Q : Finset ℕ} (hQ : Admissible N Q) :
     Q.card ≤ N := by
@@ -372,6 +382,16 @@ def HasErdos202Asymptotic (F : ℕ → ℕ) : Prop :=
 extremal function `f`. Statement layer only. -/
 def Erdos202Statement : Prop :=
   HasErdos202Asymptotic f
+
+/-- Real-variable version of the Erdős 202 asymptotic, using `fReal x = f(⌊x⌋)`.
+This is not part of the SafeVerify contract; it is a clean public-facing
+statement matching the usual real-parameter formulation. -/
+def HasErdos202RealAsymptotic : Prop :=
+  ∀ ε : ℝ, 0 < ε → ∀ᶠ x : ℝ in atTop,
+    x * Real.exp (-(1 + ε) * Real.sqrt (Real.log x * Real.log (Real.log x)))
+      ≤ (fReal x : ℝ) ∧
+    (fReal x : ℝ)
+      ≤ x * Real.exp (-(1 - ε) * Real.sqrt (Real.log x * Real.log (Real.log x)))
 
 /-! ## §4 The non-coprime gcd criterion (foundational lemma) -/
 
