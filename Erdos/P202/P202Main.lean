@@ -13,8 +13,10 @@ proved theorems.  The trust boundary is empty beyond Lean core: running
 `propext`, `Classical.choice`, `Quot.sound`.
 
 This file formalizes the sharp asymptotic for Erdős Problem 202
-(PDF Theorem 1.1).  The integral / partial-summation Corollary 1.2
-about Erdős Problem 1190 is NOT formalized.
+(PDF Theorem 1.1).  The integral / partial-summation Corollary 1.2 about
+Erdős Problem 1190 is formalized separately as `Erdos202.erdos1190_main`
+in `Erdos/P1190/Proof.lean` (the P1190 directory has its own SafeVerify
+contract); the legacy compatibility import `Erdos.P202.P1190` re-exports it.
 
 Audit by uncommenting the `#print axioms` block below.
 -/

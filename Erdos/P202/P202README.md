@@ -400,7 +400,9 @@ this repo (P42, P283, P694, P750). Read them before iterating.
 - **Don't restart BFV closure.** BFV is clean in the current axiom audit. The
   live work is Park–Pham itself or finite reductions around its exact theorem
   surface.
-- **Don't formalize Problem 1190.** Listed as a follow-on; not in scope.
+- **Problem 1190 is now formalized** as a separate target in
+  `Erdos/P1190/Proof.lean` (`erdos1190_main`, axiom set: Lean core only).
+  Treat that as a peer artifact, not a follow-on.
 - **Don't push to remote on every iteration.** Commit, but only push
   on shippable milestones (Stage 1 done, Stage 5 done, axiom
   discharged).

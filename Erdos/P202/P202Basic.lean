@@ -9,8 +9,9 @@ predicate `HasErdos202Asymptotic`.
 Reference: PDF in `docs/`. BFV (de la Bretèche–Ford–Vandehey) for the
 unconditional bounds; spread-core variant for the matching upper bound
 `f(N) = N · L(-(1+o(1)), N)`. This file formalizes the sharp asymptotic
-for Erdős Problem 202 (PDF Theorem 1.1); the integral / partial-summation
-corollary about Erdős Problem 1190 (PDF Corollary 1.2) is NOT formalized.
+for Erdős Problem 202 (PDF Theorem 1.1).  The statement layer and finite
+reductions for the integral / partial-summation corollary about Erdős Problem
+1190 (PDF Corollary 1.2) live in `P1190.lean`.
 -/
 
 import Mathlib

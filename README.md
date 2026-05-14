@@ -13,6 +13,7 @@ Lean 4 / Mathlib formalizations of problems from
 | [42](https://www.erdosproblems.com/42) | Sidon difference avoidance | Route B complete; Route A in progress |
 | [43](https://www.erdosproblems.com/43) | Sidon difference avoidance (equal cardinality) | Scaffold |
 | [202](https://www.erdosproblems.com/202) | Disjoint AP residue classes — sharp asymptotic | Complete |
+| [1190](https://www.erdosproblems.com/1190) | Reciprocal-sum tail `ε_m` for pairwise-disjoint residues | Complete |
 
 ### Artifacts
 
@@ -24,6 +25,7 @@ Lean 4 / Mathlib formalizations of problems from
 | 42 | [PDF](Erdos/P42/docs/compact_cayley_proof.pdf) | [`Proof.lean`](Erdos/P42/Proof.lean) | Route A: [live-lean](https://live.lean-lang.org/#project=mathlib-v4.28.0&url=https%3A%2F%2Fraw.githubusercontent.com%2FShashi456%2Ferdos-formalizations%2Frefs%2Fheads%2Fmain%2FErdos%2FP42%2FFourierPositive%2FProof.lean) · Route B: [live-lean](https://live.lean-lang.org/#project=mathlib-v4.28.0&url=https%3A%2F%2Fraw.githubusercontent.com%2FShashi456%2Ferdos-formalizations%2Frefs%2Fheads%2Fmain%2FErdos%2FP42%2FCompactCayley%2FProof.lean) |
 | 43 | [combined P42/43 PDF](Erdos/P42/docs/combined_42_43_proof.pdf) | [`Proof.lean`](Erdos/P43/Proof.lean) | — (scaffold) |
 | 202 | [PDF](Erdos/P202/docs/erdos202.pdf) | [`P202Main.lean`](Erdos/P202/P202Main.lean) · [`Proof.lean`](Erdos/P202/Proof.lean) (flat) | [live-lean](https://live.lean-lang.org/#project=mathlib-v4.28.0&url=https%3A%2F%2Fraw.githubusercontent.com%2FShashi456%2Ferdos-formalizations%2Frefs%2Fheads%2Fmain%2FErdos%2FP202%2FProof.lean) |
+| 1190 | [PDF](Erdos/P202/docs/erdos202.pdf) (Cor. 1.2) | [`Proof.lean`](Erdos/P1190/Proof.lean) | [live-lean](https://live.lean-lang.org/#project=mathlib-v4.28.0&url=https%3A%2F%2Fraw.githubusercontent.com%2FShashi456%2Ferdos-formalizations%2Frefs%2Fheads%2Fmain%2FErdos%2FP1190%2FProof.lean) |
 
 See each problem's per-folder `README.md` for the full statement, trust
 boundary, and notes on alignment with the upstream
@@ -42,7 +44,8 @@ Beyond Mathlib core (`propext`, `Classical.choice`, `Quot.sound`):
 | 42 Route A (active) | `finite_fourier_avoidance_count` | Finite Fourier avoidance counting theorem (Green–Tao `U²` regularity / complexity-1 counting). Drives `theorem_1_1` and `erdos_42`; the existence interface used downstream is derived from the count statement. |
 | 42 Route B | none | Compact-Cayley clique theorem (compact PDF Theorem 2.1) proved end-to-end; Route B's `compact_cayley_clique` and `theorem_1_1_from_compact_cayley` depend only on Mathlib core. |
 | 43 | depends on #42 + Bose–Chowla parity (scaffold) | First half inherits Route A's axiom via #42; second half (Bose–Chowla parity construction) is still `sorry`. |
-| 202 | none | Sharp BFV (de la Bretèche–Ford–Vandehey, *On non-intersecting arithmetic progressions*, Acta Arith. 157) asymptotic `f(N) = N · exp(-(1+o(1))·√(log N · log log N))` for PDF Theorem 1.1 / Erdős Problem 202. `erdos202_main` depends only on Lean core (`propext`, `Classical.choice`, `Quot.sound`); BFV ingredients and the Park–Pham / Kahn–Kalai spread-core lemma are fully discharged. The integral / partial-summation Corollary 1.2 about Erdős Problem 1190 is NOT formalized. |
+| 202 | none | Sharp BFV (de la Bretèche–Ford–Vandehey, *On non-intersecting arithmetic progressions*, Acta Arith. 157) asymptotic `f(N) = N · exp(-(1+o(1))·√(log N · log log N))` for PDF Theorem 1.1 / Erdős Problem 202. `erdos202_main` depends only on Lean core (`propext`, `Classical.choice`, `Quot.sound`); BFV ingredients and the Park–Pham / Kahn–Kalai spread-core lemma are fully discharged. |
+| 1190 | none | Reciprocal-sum tail asymptotic `ε_m = exp(-(1+o(1))·√(log m · log log m))` (PDF Corollary 1.2 / Erdős Problem 1190), via partial summation from P202. `erdos1190_main` depends only on Lean core. |
 
 Inspect by enabling the `#print axioms …` block at the bottom of each
 `Proof.lean`, or by reading the per-problem `README.md`. The trust boundaries
