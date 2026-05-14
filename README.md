@@ -25,7 +25,7 @@ Lean 4 / Mathlib formalizations of problems from
 | 42 | [PDF](Erdos/P42/docs/compact_cayley_proof.pdf) | [`Proof.lean`](Erdos/P42/Proof.lean) | Route A: [live-lean](https://live.lean-lang.org/#project=mathlib-v4.28.0&url=https%3A%2F%2Fraw.githubusercontent.com%2FShashi456%2Ferdos-formalizations%2Frefs%2Fheads%2Fmain%2FErdos%2FP42%2FFourierPositive%2FProof.lean) · Route B: [live-lean](https://live.lean-lang.org/#project=mathlib-v4.28.0&url=https%3A%2F%2Fraw.githubusercontent.com%2FShashi456%2Ferdos-formalizations%2Frefs%2Fheads%2Fmain%2FErdos%2FP42%2FCompactCayley%2FProof.lean) |
 | 43 | [combined P42/43 PDF](Erdos/P42/docs/combined_42_43_proof.pdf) | [`Proof.lean`](Erdos/P43/Proof.lean) | — (scaffold) |
 | 202 | [PDF](Erdos/P202/docs/erdos202.pdf) | [`P202Main.lean`](Erdos/P202/P202Main.lean) · [`Proof.lean`](Erdos/P202/Proof.lean) (flat) | [live-lean](https://live.lean-lang.org/#project=mathlib-v4.28.0&url=https%3A%2F%2Fraw.githubusercontent.com%2FShashi456%2Ferdos-formalizations%2Frefs%2Fheads%2Fmain%2FErdos%2FP202%2FProof.lean) |
-| 1190 | [PDF](Erdos/P202/docs/erdos202.pdf) (Cor. 1.2) | [`Proof.lean`](Erdos/P1190/Proof.lean) | [live-lean](https://live.lean-lang.org/#project=mathlib-v4.28.0&url=https%3A%2F%2Fraw.githubusercontent.com%2FShashi456%2Ferdos-formalizations%2Frefs%2Fheads%2Fmain%2FErdos%2FP1190%2FProof.lean) |
+| 1190 | [PDF](Erdos/P202/docs/erdos202.pdf) (Cor. 1.2) | [`Proof.lean`](Erdos/P1190/Proof.lean) · [`Proof_flat.lean`](Erdos/P1190/Proof_flat.lean) | [live-lean](https://live.lean-lang.org/#project=mathlib-v4.28.0&url=https%3A%2F%2Fraw.githubusercontent.com%2FShashi456%2Ferdos-formalizations%2Frefs%2Fheads%2Fmain%2FErdos%2FP1190%2FProof_flat.lean) |
 
 See each problem's per-folder `README.md` for the full statement, trust
 boundary, and notes on alignment with the upstream
@@ -69,7 +69,7 @@ Local toolchain: Lean 4 `v4.27.0`, Mathlib `v4.27.0` (pinned in
 The standalone flat bundles loadable in
 [live.lean-lang.org](https://live.lean-lang.org/) are:
 
-- **v4.28.0** — P694 `Proof.lean`, P750 `Proof_v4.28.lean`, P42 `FourierPositive/Proof.lean`, P42 `CompactCayley/Proof.lean`, P1190 `Proof.lean`.
+- **v4.28.0** — P694 `Proof.lean`, P750 `Proof_v4.28.lean`, P42 `FourierPositive/Proof.lean`, P42 `CompactCayley/Proof.lean`, P1190 `Proof_flat.lean`.
 - **v4.27.0** — P750 `Proof.lean`, P283 `Proof_flat.lean`, P202 `Proof.lean` (~21k LOC).
 
 P43 does not yet ship a single-file bundle (scaffold).
